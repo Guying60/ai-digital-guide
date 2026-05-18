@@ -1,0 +1,49 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+.venv/
+.venv1/
+
+# === Java / Maven ===
+target/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+
+# === IDE ===
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# === Claude Code (local settings) ===
+.claude/
+
+# === Sensitive configs (contains credentials) ===
+ai-guide-backend/ai-start/src/main/resources/application-dev.yml
+ai-guide-backend/ai-start/src/main/resources/application-prod.yml
+MuseTalk/config.py
+
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Logs ===
+*.log
+logs/
+
+# === Temp files ===
+*~
+*.swp
+*.swo
+*.tmp

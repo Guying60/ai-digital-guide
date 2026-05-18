@@ -1,0 +1,16 @@
+package com.guying.message;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserTourHistoryMessage {
+
+    private Long userId;
+    private Long attractionId;
+    private String conversationId;
+}

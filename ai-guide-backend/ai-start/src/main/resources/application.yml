@@ -1,0 +1,151 @@
+server:
+  forward-headers-strategy: native
+  port: 8080
+  servlet:
+    context-path: /ai-project
+
+spring:
+  application:
+    name: cpp
+  profiles:
+    active: dev
+
+  # ---- 数据库 ----
+  datasource:
+    url: jdbc:mysql://${cpp.datasource.host}:${cpp.datasource.port}/${cpp.datasource.database}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    driver-class-name: ${cpp.datasource.driver-class-name}
+    username: ${cpp.datasource.username}
+    password: ${cpp.datasource.password}
+
+  # ---- Redis ----
+  data:
+    redis:
+      host: ${cpp.redis.host}
+      port: ${cpp.redis.port}
+      database: ${cpp.redis.database}
+      password: ${cpp.redis.password}
+      timeout: ${cpp.redis.timeout}
+      lettuce:
+        pool:
+          max-active: ${cpp.redis.lettuce.pool.max-active}
+          max-wait: ${cpp.redis.lettuce.pool.max-wait}
+          max-idle: ${cpp.redis.lettuce.pool.max-idle}
+          min-idle: ${cpp.redis.lettuce.pool.min-idle}
+
+  # ---- RabbitMQ ----
+  rabbitmq:
+    host: ${cpp.rabbitmq.host}
+    port: ${cpp.rabbitmq.port}
+    virtual-host: ${cpp.rabbitmq.virtual-host}
+    username: ${cpp.rabbitmq.username}
+    password: ${cpp.rabbitmq.password}
+    connection-timeout: 200
+    listener:
+      simple:
+        prefetch: 1
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          multiplier: 1
+          max-retries: 5
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000ms
+        multiplier: 1
+        max-retries: 5
+      mandatory: false
+    publisher-confirm-type: none
+    publisher-returns: false
+
+  # ---- 文件上传 ----
+  servlet:
+    multipart:
+      max-file-size: 1024MB
+      max-request-size: 1100MB
+
+  # ---- Spring AI ----
+  ai:
+    openai:
+      base-url: ${cpp.ai.openai.base-url}
+      api-key: ${cpp.ai.openai.api-key}
+      chat:
+        options:
+          model: qwen3.6-flash
+          temperature: 0.7
+          extra-body:
+            enable_thinking: false
+      embedding:
+        options:
+          model: text-embedding-v4
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: never
+    mcp:
+      client:
+        streamable:
+          http:
+            connections:
+              amap-maps:
+                url: https://dashscope.aliyuncs.com/api/v1/mcps/amap-maps/mcp
+                headers:
+                  Authorization: "Bearer ${cpp.ai.openai.api-key} "
+    vectorstore:
+      redis:
+        initialize-schema: true
+        index-name: attraction_index
+        prefix: "attraction:"
+
+  # ---- autoDL MuseTalk服务器地址 ----
+  museTalk:
+    ws-url: ${cpp.museTalk.ws-url}
+
+  # ---- autoDL cosyVoice服务器地址 ----
+  cosyVoice:
+    ws-url: ${cpp.cosyVoice.ws-url}
+
+  # ---- 阿里云 NLS 语音识别 ----
+  aliyun:
+    nls:
+      app-key: ${cpp.aliyun.app-key}
+      access-key: ${cpp.aliyun.access-key-id}
+      secret-key: ${cpp.aliyun.access-key-secret}
+
+  # ---- 阿里云 OSS 文件存储 ----
+  file-storage:
+    default-platform: aliyun-oss-1
+    thumbnail-suffix: ".min.jpg"
+    aliyun-oss:
+      - platform: aliyun-oss-1
+        enable-storage: true
+        access-key: ${cpp.aliyun.access-key-id}
+        secret-key: ${cpp.aliyun.access-key-secret}
+        end-point: oss-cn-guangzhou.aliyuncs.com
+        bucket-name: guying60
+        domain: https://guying60.oss-cn-guangzhou.aliyuncs.com/
+        base-path: ai-project/
+
+# ---- MyBatis-Plus ----
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-not-delete-value: 0
+      logic-delete-value: 1
+
+# ---- 日志 ----
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG
+
+# ---- JWT ----
+jwt:
+  secret: ${cpp.jwt.secret}

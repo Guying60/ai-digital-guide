@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.guying.mapper.ExperienceAnalysisMapper">
+    <select id="getEmotionTrend" resultType="com.guying.ai.dto.EmotionTrendDTO">
+        SELECT DATE_FORMAT(create_time, '%m-%d') AS date,
+               emotion,
+               COUNT(*)                          AS count
+        FROM tb_ai_experience_analysis
+        WHERE attraction_id = #{attractionId}
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY DATE_FORMAT(create_time, '%m-%d'), emotion
+        ORDER BY date
+    </select>
+
+    <select id="getEmotionStat" resultType="com.guying.ai.dto.EmotionStatDTO">
+        SELECT
+            SUM(CASE WHEN create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+                         THEN 1 ELSE 0 END) AS total,
+            SUM(CASE WHEN create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+                AND emotion = 0 THEN 1 ELSE 0 END) AS positiveCount,
+            SUM(CASE WHEN create_time &lt; DATE_SUB(NOW(), INTERVAL #{days} DAY)
+                         THEN 1 ELSE 0 END) AS preTotal,
+            SUM(CASE WHEN create_time &lt; DATE_SUB(NOW(), INTERVAL #{days} DAY)
+                AND emotion = 0 THEN 1 ELSE 0 END) AS prePositiveCount
+        FROM tb_ai_experience_analysis
+        WHERE attraction_id = #{attractionId}
+          AND create_time >= DATE_SUB(NOW(), INTERVAL #{doubleDays} DAY)
+    </select>
+
+    <select id="getFocusStat" resultType="com.guying.ai.dto.FocusStatDTO">
+        SELECT focus, COUNT(*) AS count
+        FROM tb_ai_experience_analysis
+        WHERE attraction_id = #{attractionId}
+          AND create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY focus
+        ORDER BY count DESC
+    </select>
+
+    <select id="getWorstFocus" resultType="com.guying.ai.dto.FocusStatDTO">
+        SELECT focus, COUNT(*) AS count
+        FROM tb_ai_experience_analysis
+        WHERE attraction_id = #{attractionId}
+          AND emotion = 2
+          AND create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY focus
+        ORDER BY count DESC
+    </select>
+
+    <select id="getNegativeSample" resultType="com.guying.pojo.dto.NegativeSampleDTO">
+        SELECT a.focus, m.content
+        FROM tb_ai_experience_analysis a
+                 JOIN SPRING_AI_CHAT_MEMORY m ON m.conversation_id = a.conversation_id
+        WHERE a.attraction_id = #{attractionId}
+          AND a.emotion = 2
+          AND m.type = 'USER'
+          AND a.create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        ORDER BY a.focus, RAND()
+    </select>
+</mapper>

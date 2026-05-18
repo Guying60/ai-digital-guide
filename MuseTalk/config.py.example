@@ -1,0 +1,15 @@
+import os
+from pathlib import Path
+
+PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", "/root/autodl-tmp/DigitalHuman"))
+MUSETALK_ROOT = Path(os.getenv("MUSETALK_ROOT", "/root/autodl-tmp/MuseTalk"))
+BASE_VIDEO_DIR = Path(os.getenv("BASE_VIDEO_DIR", "/root/autodl-tmp/videos"))
+VOICES_DIR = Path(os.getenv("VOICES_DIR", "/root/autodl-tmp/voices"))
+COSYVOICE_URL = os.getenv("COSYVOICE_URL", "http://localhost:6008")
+DEVICE = os.getenv("DEVICE", "cuda")
+
+MQ_URL = os.getenv("MQ_URL", "amqp://<username>:<password>@<host>:5672/")
+MQ_QUEUE_NAME = os.getenv("MQ_QUEUE_NAME", "video.preload.queue")
+
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "6006"))

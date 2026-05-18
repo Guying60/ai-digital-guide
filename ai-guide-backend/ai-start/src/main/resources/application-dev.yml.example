@@ -1,0 +1,40 @@
+cpp:
+  aliyun:
+    app-key: <your-aliyun-nls-app-key>
+    access-key-id: <your-aliyun-access-key-id>
+    access-key-secret: <your-aliyun-access-key-secret>
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    virtual-host: /
+    username: <your-rabbitmq-username>
+    password: <your-rabbitmq-password>
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    password: <your-redis-password>
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: 127.0.0.1
+    port: 3306
+    database: ai_guide
+    username: <your-mysql-username>
+    password: <your-mysql-password>
+  ai:
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: <your-dashscope-api-key>
+  jwt:
+    secret: <your-jwt-secret>
+  museTalk:
+    ws-url: <your-musetalk-ws-url>
+  cosyVoice:
+    ws-url: <your-cosyvoice-ws-url>

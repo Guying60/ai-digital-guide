@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.guying.mapper.FaqDailyStatsMapper">
+
+    <select id="getHotFaqChartData" resultType="com.guying.pojo.vo.HotFaqChartVO">
+        SELECT
+            f.question AS question,
+            SUM(s.`count`) AS count
+        FROM
+            tb_faq_daily_stats s
+                INNER JOIN
+            tb_attraction_faq f ON s.faq_id = f.id
+        WHERE
+            s.attraction_id = #{attractionId}
+          AND s.create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY
+            s.faq_id,
+            f.question
+        ORDER BY
+            count DESC
+    </select>
+
+</mapper>
