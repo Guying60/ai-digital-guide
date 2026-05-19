@@ -150,24 +150,4 @@ public class FileController {
         return Result.error("上传失败！");
     }
 
-    @PostMapping("/digital-human")
-    public Result uploadDigitalHuman(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            return Result.error("上传的文件不能为空");
-        }
-
-        String contentType = file.getContentType();
-
-        if (contentType == null || !contentType.startsWith("image/")) {
-            log.error("文件格式错误，并非图片类型，实际 Content-Type 为: {}", contentType);
-            return Result.error("文件格式错误，请上传图片");
-        }
-        String path ="digital-human/"+ LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        log.info("数字人上传path:{}", path);
-        FileInfo fileInfo = fileStorageService.of(file)
-                .setPath(path) //保存到相对路径下，为了方便管理，不需要可以不写
-                .upload();  //将文件上传到对应地方
-        return fileInfo == null ? Result.error("上传失败！") : Result.success(fileInfo.getUrl());
-    }
-
 }

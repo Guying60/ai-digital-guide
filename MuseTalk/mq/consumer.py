@@ -5,7 +5,7 @@ import logging
 import aio_pika
 import aiohttp
 
-from config import MQ_URL, MQ_QUEUE_NAME, BASE_VIDEO_DIR, VOICES_DIR, COSYVOICE_URL
+from config import MQ_URL, MQ_QUEUE_NAME, MQ_DELETE_QUEUE_NAME, BASE_VIDEO_DIR, VOICES_DIR, COSYVOICE_URL
 from utils.helper import download_video
 
 logger = logging.getLogger(__name__)
@@ -47,36 +47,72 @@ async def start_consumer(engine) -> None:
             connection = await aio_pika.connect_robust(MQ_URL)
             async with connection:
                 channel = await connection.channel()
-                queue = await channel.declare_queue(
+
+                preload_queue = await channel.declare_queue(
                     MQ_QUEUE_NAME,
                     durable=True,
                 )
-                logger.info(f"[MQ] 开始监听队列: {MQ_QUEUE_NAME}")
+                delete_queue = await channel.declare_queue(
+                    MQ_DELETE_QUEUE_NAME,
+                    durable=True,
+                )
+                logger.info(f"[MQ] 开始监听队列: {MQ_QUEUE_NAME}, {MQ_DELETE_QUEUE_NAME}")
 
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        async with message.process():
+                async def handle_preload(message: aio_pika.IncomingMessage):
+                    async with message.process():
+                        try:
+                            body = json.loads(message.body.decode())
+                            attraction_id = str(body["attractionId"])
+                            video_url = body["videoUrl"]
+                            dest = str(BASE_VIDEO_DIR / f"{attraction_id}.mp4")
+
+                            logger.info(f"[MQ] 收到预加载消息: attractionId={attraction_id}")
+                            await download_video(video_url, dest)
+                            logger.info(f"[MQ] 下载完成: {dest}")
+
+                            # 驱逐旧缓存，确保更新场景也能重新加载
+                            engine.avatar_cache.pop(attraction_id, None)
+
+                            await asyncio.to_thread(engine.load_avatar, attraction_id)
+                            logger.info(f"[MQ] 预加载完成: {attraction_id}")
+
                             try:
-                                body = json.loads(message.body.decode())
-                                attraction_id = str(body["attractionId"])
-                                video_url = body["videoUrl"]
-                                dest = str(BASE_VIDEO_DIR / f"{attraction_id}.mp4")
-
-                                logger.info(f"[MQ] 收到消息: attractionId={attraction_id}")
-                                await download_video(video_url, dest)
-                                logger.info(f"[MQ] 下载完成: {dest}")
-
-                                await asyncio.to_thread(engine.load_avatar, attraction_id)
-                                logger.info(f"[MQ] 预加载完成: {attraction_id}")
-
-                                try:
-                                    audio_path = await extract_audio(dest, attraction_id)
-                                    logger.info(f"[MQ] 音频抽取完成: {audio_path}")
-                                    await notify_cosyvoice_reload()
-                                except Exception as e:
-                                    logger.warning(f"[MQ] 音频抽取失败（不影响主流程）: {e}", exc_info=True)
+                                audio_path = await extract_audio(dest, attraction_id)
+                                logger.info(f"[MQ] 音频抽取完成: {audio_path}")
+                                await notify_cosyvoice_reload()
                             except Exception as e:
-                                logger.error(f"[MQ] 处理消息失败: {e}", exc_info=True)
+                                logger.warning(f"[MQ] 音频抽取失败（不影响主流程）: {e}", exc_info=True)
+                        except Exception as e:
+                            logger.error(f"[MQ] 处理预加载消息失败: {e}", exc_info=True)
+
+                async def handle_delete(message: aio_pika.IncomingMessage):
+                    async with message.process():
+                        try:
+                            body = json.loads(message.body.decode())
+                            attraction_id = str(body["attractionId"])
+                            logger.info(f"[MQ] 收到删除消息: attractionId={attraction_id}")
+
+                            engine.avatar_cache.pop(attraction_id, None)
+                            logger.info(f"[MQ] 已清除缓存: {attraction_id}")
+
+                            video_path = BASE_VIDEO_DIR / f"{attraction_id}.mp4"
+                            if video_path.exists():
+                                video_path.unlink()
+                                logger.info(f"[MQ] 已删除视频: {video_path}")
+
+                            audio_path = VOICES_DIR / f"{attraction_id}.wav"
+                            if audio_path.exists():
+                                audio_path.unlink()
+                                logger.info(f"[MQ] 已删除音频: {audio_path}")
+                                await notify_cosyvoice_reload()
+                        except Exception as e:
+                            logger.error(f"[MQ] 处理删除消息失败: {e}", exc_info=True)
+
+                await preload_queue.consume(handle_preload)
+                await delete_queue.consume(handle_delete)
+
+                # 保持连接存活
+                await asyncio.Future()
         except Exception as e:
             logger.error(f"[MQ] 连接断开，5秒后重连: {e}", exc_info=True)
             await asyncio.sleep(5)

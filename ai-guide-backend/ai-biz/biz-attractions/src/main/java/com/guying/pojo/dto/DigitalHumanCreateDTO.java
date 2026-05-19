@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DigitalHumanCreateDTO {
+    private Long id;
     @NotBlank(message = "数字人图片URL不能为空")
     private String ossUrl;
     @NotNull(message = "景区ID不能为空")

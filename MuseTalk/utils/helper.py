@@ -63,7 +63,7 @@ def encode_frames_gpu(imgs_cuda_u8: List[torch.Tensor], quality: int = 50) -> Li
         out = encode_jpeg(imgs_cuda_u8, quality=quality)
         if isinstance(out, torch.Tensor):
             out = [out]
-        result = [t.numpy().tobytes() for t in out]
+        result = [t.cpu().numpy().tobytes() for t in out]
         if _JPEG_GPU_OK is None:
             logger.info("[helper] GPU JPEG (NVJPEG) 路径已启用")
             _JPEG_GPU_OK = True

@@ -33,9 +33,14 @@ public class MqConstants {
     public static final String DLQ_ROUTING_KEY = "doc.dlq.routing.key";
 
     /**
-     * 预加载视频队列
+     * 预加载视频队列（新增/更新时触发）
      */
     public static final String VIDEO_PRELOAD_QUEUE = "video.preload.queue";
+
+    /**
+     * 删除视频队列
+     */
+    public static final String VIDEO_DELETE_QUEUE = "video.delete.queue";
 
 }
 

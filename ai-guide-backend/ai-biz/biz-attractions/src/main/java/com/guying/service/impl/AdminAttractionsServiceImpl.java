@@ -11,15 +11,18 @@ import com.guying.context.AdminContext;
 import com.guying.converter.AdminAttractionsConverter;
 import com.guying.converter.AttractionsConverter;
 import com.guying.exception.ServiceException;
+import com.guying.mapper.AdminDigitalHumanMapper;
 import com.guying.mapper.AttractionDocumentMapper;
 import com.guying.mapper.AttractionFaqMapper;
 import com.guying.mapper.AttractionsMapper;
+import com.guying.message.VideoDeleteMessage;
 import com.guying.pojo.dto.AttractionCreateDTO;
 import com.guying.pojo.dto.AttractionListQueryDTO;
 import com.guying.pojo.dto.AttractionUpdateDTO;
 import com.guying.pojo.entity.Attraction;
 import com.guying.pojo.entity.AttractionDocument;
 import com.guying.pojo.entity.AttractionFaq;
+import com.guying.pojo.entity.DigitalHuman;
 import com.guying.pojo.vo.AttractionAdditionVO;
 import com.guying.pojo.vo.AttractionDetailVO;
 import com.guying.pojo.vo.AttractionListVO;
@@ -59,6 +62,8 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
     private AdminAttractionsConverter adminAttractionsConverter;
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private AdminDigitalHumanMapper adminDigitalHumanMapper;
 
 
 
@@ -253,6 +258,22 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         fqLqw.eq(AttractionFaq::getAttractionId, attractionId);
         attractionFaqMapper.delete(fqLqw);
 
-
+        //删除数字人并通知 MuseTalk 清理缓存
+        LambdaQueryWrapper<DigitalHuman> dhLqw = new LambdaQueryWrapper<>();
+        dhLqw.eq(DigitalHuman::getAttractionId, attractionId);
+        dhLqw.eq(DigitalHuman::getAdminId, adminId);
+        DigitalHuman digitalHuman = adminDigitalHumanMapper.selectOne(dhLqw);
+        if (digitalHuman != null) {
+            fileStorageService.delete(digitalHuman.getOssUrl());
+            adminDigitalHumanMapper.delete(dhLqw);
+            try {
+                rabbitTemplate.convertAndSend(
+                        MqConstants.VIDEO_DELETE_QUEUE,
+                        new VideoDeleteMessage(attractionId)
+                );
+            } catch (Exception e) {
+                log.error("删除景点时发送数字人删除消息失败, attractionId: {}", attractionId, e);
+            }
+        }
     }
 }

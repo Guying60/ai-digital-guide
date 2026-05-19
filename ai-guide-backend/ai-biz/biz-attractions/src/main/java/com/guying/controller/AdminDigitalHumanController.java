@@ -30,8 +30,8 @@ public class AdminDigitalHumanController {
      */
     @Operation(summary = "新增数字人")
     @PostMapping
-    public Result<DigitalHumanVO> add(@Valid @RequestBody DigitalHumanCreateDTO dto) {
-        DigitalHumanVO vo = adminDigitalHumanService.add(dto);
+    public Result<DigitalHumanVO> addOrUpdate(@Valid @RequestBody DigitalHumanCreateDTO dto) {
+        DigitalHumanVO vo = adminDigitalHumanService.addOrUpdate(dto);
         return Result.success(vo);
     }
 
@@ -47,17 +47,6 @@ public class AdminDigitalHumanController {
         return Result.success();
     }
 
-    /**
-     * 修改数字人
-     * @param dto
-     * @return
-     */
-    @Operation(summary = "修改数字人")
-    @PutMapping
-    public Result<DigitalHumanVO> update(@Valid @RequestBody DigitalHumanUpdateDTO dto) {
-        DigitalHumanVO vo = adminDigitalHumanService.update(dto);
-        return Result.success(vo);
-    }
 
     /**
      * 用于数据回显

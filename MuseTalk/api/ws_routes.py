@@ -38,10 +38,14 @@ async def _send_jpegs(
     jpeg_list: List[bytes],
     frame_index: int,
     is_last_batch: bool,
+    shutdown_event: asyncio.Event,
 ) -> int:
     """把一批 JPEG 推到 WS。返回更新后的 frame_index。最后一批的最后一帧打 is_last=1。"""
     last_pos = len(jpeg_list) - 1
     for k, jpeg in enumerate(jpeg_list):
+        # 发每帧前先检查连接是否已关闭
+        if shutdown_event.is_set():
+            return frame_index
         is_last = 1 if (is_last_batch and k == last_pos) else 0
         header = struct.pack(">IB", frame_index, is_last)
         await ws.send_bytes(header + jpeg)
@@ -71,46 +75,66 @@ async def websocket_endpoint(ws: WebSocket):
                 if task_data is None:
                     break
 
+                # 取出任务后先检查连接是否已断开，是则清空队列退出
+                if shutdown_event.is_set():
+                    logger.info("[ws] 连接已断开，丢弃剩余推理任务")
+                    inference_queue.task_done()
+                    while not inference_queue.empty():
+                        try:
+                            inference_queue.get_nowait()
+                            inference_queue.task_done()
+                        except Exception:
+                            pass
+                    break
+
                 full_audio, attr_id = task_data
                 logger.info(
                     f"[ws] 从队列取出任务，开始推理！音频长度: {len(full_audio)}，"
                     f"当前排队任务数: {inference_queue.qsize()}"
                 )
+                TAIL_SILENCE_MS = 160
+                tail_silence = b'\x00\x00' * int(16000 * TAIL_SILENCE_MS / 1000)
+                full_audio = full_audio + tail_silence
 
                 engine.reset_cancel()
                 frame_index = 0
                 async with engine._lock:
-                    # 流水线：本轮 GPU 推理出帧 → encode → 下一轮发送时再 send，
-                    # 让发送/编码与下一轮 UNet 重叠。
                     pending_jpegs: Optional[List[bytes]] = None
                     for blended_list in engine.generate_frames(full_audio, attr_id):
                         if shutdown_event.is_set():
-                            logger.warning("[ws] 收到超时信号，终止当前推理")
+                            logger.warning("[ws] 收到关闭信号，终止当前推理")
                             engine.cancel()
                             break
 
-                        # 先把上一批 JPEG 发完（与本批 GPU 后处理重叠的窗口）
                         if pending_jpegs is not None:
                             frame_index = await _send_jpegs(
-                                ws, pending_jpegs, frame_index, is_last_batch=False
+                                ws, pending_jpegs, frame_index,
+                                is_last_batch=False,
+                                shutdown_event=shutdown_event,
                             )
 
-                        # 本批 GPU JPEG 编码（NVJPEG，失败回落 CPU）
                         pending_jpegs = encode_frames_gpu(blended_list, quality=JPEG_QUALITY)
 
-                    # 收尾：把最后一批发出去，is_last 打在最后一帧
                     if pending_jpegs is not None and not shutdown_event.is_set():
                         frame_index = await _send_jpegs(
-                            ws, pending_jpegs, frame_index, is_last_batch=True
+                            ws, pending_jpegs, frame_index,
+                            is_last_batch=True,
+                            shutdown_event=shutdown_event,
                         )
 
-                await ws.send_json({"type": "done"})
-                logger.info(f"[ws] 单句推理完成，共发送 {frame_index} 帧")
+                if not shutdown_event.is_set():
+                    await ws.send_json({"type": "done"})
+                    logger.info(f"[ws] 单句推理完成，共发送 {frame_index} 帧")
+
                 inference_queue.task_done()
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"推理工作线程异常: {e}", exc_info=True)
+                # 异常后若连接已断开则退出 worker
+                if shutdown_event.is_set():
+                    break
 
     worker_task = asyncio.create_task(inference_worker())
     ping_task = asyncio.create_task(ping_loop(ws, last_pong, shutdown_event))
@@ -135,6 +159,7 @@ async def websocket_endpoint(ws: WebSocket):
             raw = await ws.receive()
 
             if raw.get("type") == "websocket.disconnect":
+                logger.info("[ws] 客户端正常退出")
                 break
 
             if "text" in raw:
@@ -172,6 +197,8 @@ async def websocket_endpoint(ws: WebSocket):
             except Exception:
                 pass
     finally:
+        shutdown_event.set()  # 确保 worker 能感知到连接已断开
         ping_task.cancel()
         await inference_queue.put(None)
         worker_task.cancel()
+        logger.info("[ws] 连接清理完成")
