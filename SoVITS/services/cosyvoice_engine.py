@@ -16,7 +16,7 @@ from config import (
     MODEL_SAMPLE_RATE,
     OUTPUT_SAMPLE_RATE,
     VOICES_DIR,
-    WARMUP_TEXT,
+    WARMUP_TEXT, TTS_SPEED,
 )
 
 if COSYVOICE_REPO not in sys.path:
@@ -189,6 +189,7 @@ class CosyVoiceEngine:
                     prompt_wav,
                     zero_shot_spk_id=spk_id,
                     stream=False,
+                    speed=TTS_SPEED,
                 ):
                     pass
             logger.info("warmup done with spk_id=%s", spk_id)
@@ -224,6 +225,7 @@ class CosyVoiceEngine:
                         prompt_wav,
                         zero_shot_spk_id=spk_id,
                         stream=True,
+                        speed=TTS_SPEED
                     ):
                         pcm = self._to_pcm16_bytes(output["tts_speech"])
                         if pcm:

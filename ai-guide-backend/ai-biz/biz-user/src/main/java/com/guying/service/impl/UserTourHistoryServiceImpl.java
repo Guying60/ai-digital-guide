@@ -28,6 +28,11 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
     @Autowired
     private UserTourHistoryConverter userTourHistoryConverter;
 
+    /**
+     * 获取旅游历史
+     * @param userTourHistoryPageQueryDTO
+     * @return
+     */
     @Override
     public ScrollResult<UserTourHistoryPageVO> getTourHistory(UserTourHistoryPageQueryDTO userTourHistoryPageQueryDTO) {
 

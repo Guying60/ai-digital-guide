@@ -34,5 +34,5 @@ WARMUP_TEXT = os.environ.get(
     "COSYVOICE_WARMUP_TEXT",
     "你好，欢迎使用语音合成服务，这是一段用于预热模型的测试文本。",
 )
-
+TTS_SPEED = float(os.getenv("TTS_SPEED", "0.85"))
 LOG_LEVEL = os.environ.get("COSYVOICE_LOG_LEVEL", "INFO")

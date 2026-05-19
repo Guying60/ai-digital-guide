@@ -24,6 +24,11 @@ public class UserAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, A
     private UserAttractionsConverter userAttractionsConverter;
 
 
+    /**
+     * 获取周围景点列表
+     * @param attractionsPageQueryDTO
+     * @return
+     */
     @Override
     public ScrollResult<AttractionsAroundPageQueryVO> getAttractionsAround(AttractionsPageQueryDTO attractionsPageQueryDTO) {
         LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
