@@ -29,6 +29,11 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    /**
+     * 添加或更新数字人
+     * @param dto
+     * @return
+     */
     @Override
     public DigitalHumanVO addOrUpdate(DigitalHumanCreateDTO dto) {
         DigitalHuman entity = digitalHumanConverter.toEntity(dto);
@@ -37,6 +42,10 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         return digitalHumanConverter.toVO(entity);
     }
 
+    /**
+     * 删除数字人
+     * @param id
+     */
     @Override
     public void deleteById(Long id) {
         LambdaQueryWrapper<DigitalHuman> lambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -64,7 +73,11 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         }
     }
 
-
+    /**
+     * 获取数字人详情
+     * @param attractionId
+     * @return
+     */
     @Override
     public DigitalHumanVO getDetail(Long attractionId) {
         Long id = AdminContext.getAdminId();
@@ -72,6 +85,9 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         lambdaQueryWrapper.eq(DigitalHuman::getAttractionId, attractionId)
                 .eq(DigitalHuman::getAdminId, id);
         DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
+        if (entity == null) {
+            throw new RuntimeException("数字人不存在");
+        }
         return digitalHumanConverter.toVO(entity);
     }
 

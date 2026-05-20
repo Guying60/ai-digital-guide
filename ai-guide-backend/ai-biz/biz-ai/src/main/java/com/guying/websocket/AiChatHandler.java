@@ -110,7 +110,6 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 aiChatService.invoke(ctx, wordText);
             }
             case "photo" -> {
-                log.info("有图片");
                 ctx.setPendingImage(node.get("photo").asText());
             }
             case "camera" -> {
