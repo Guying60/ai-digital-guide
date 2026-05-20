@@ -182,6 +182,26 @@ async def websocket_endpoint(ws: WebSocket):
                     logger.info(f"[ws] 已将一条音频推入推理队列，继续监听网络...")
                     continue
 
+                if msg.get("type") == "interrupt":
+                    logger.info(
+                        "[ws] 收到 interrupt，丢弃 audio_buffer + 清空推理队列 + 取消当前推理"
+                    )
+                    # 1) 清空尚未 flush 进队列的 PCM 缓冲
+                    audio_buffer.clear()
+                    # 2) 标记 engine 取消当前正在生成的批次（worker 会在下一次循环退出）
+                    engine.cancel()
+                    # 3) 抽干队列中尚未开始推理的任务
+                    drained = 0
+                    while not inference_queue.empty():
+                        try:
+                            inference_queue.get_nowait()
+                            inference_queue.task_done()
+                            drained += 1
+                        except Exception:
+                            break
+                    logger.info(f"[ws] interrupt 已丢弃 {drained} 个待推理任务")
+                    continue
+
             if "bytes" in raw:
                 last_pong["ts"] = time.time()
                 audio_buffer.extend(raw["bytes"])

@@ -7,6 +7,7 @@ import com.guying.context.AdminContext;
 import com.guying.converter.DigitalHumanConverter;
 import com.guying.mapper.AdminDigitalHumanMapper;
 import com.guying.message.VideoDeleteMessage;
+import com.guying.message.VideoPreloadMessage;
 import com.guying.pojo.dto.DigitalHumanCreateDTO;
 import com.guying.pojo.dto.DigitalHumanUpdateDTO;
 import com.guying.pojo.entity.DigitalHuman;
@@ -16,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import static com.guying.common.constants.MqConstants.VIDEO_PRELOAD_QUEUE;
 
 @Service
 @Slf4j
@@ -39,6 +42,9 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         DigitalHuman entity = digitalHumanConverter.toEntity(dto);
         entity.setAdminId(AdminContext.getAdminId());
         adminDigitalHumanMapper.insertOrUpdate(entity);
+        //异步发送视频预加载消息
+        VideoPreloadMessage message = new VideoPreloadMessage(entity.getAttractionId(), entity.getOssUrl());
+        rabbitTemplate.convertAndSend(VIDEO_PRELOAD_QUEUE, message);
         return digitalHumanConverter.toVO(entity);
     }
 

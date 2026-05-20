@@ -118,6 +118,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 }
             }
             case "ping" -> sender.sendJson(ctx, "pong", null);
+            case "interrupt" -> handleInterrupt(ctx);
             default -> log.warn("未知的客户端消息类型: {}", type);
         }
     }
@@ -151,7 +152,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
             return;
         }
-        closeQuietly(ctx.getPythonSession(), "MuseTalk", sid);
+        closeQuietly(ctx.getMuseTalkSession(), "MuseTalk", sid);
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);
         log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
@@ -165,6 +166,22 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         if (ttsExecutor != null && !ttsExecutor.isShutdown()) {
             ttsExecutor.shutdownNow();
         }
+    }
+
+    /**
+     * 处理用户主动打断数字人：
+     *  1) 通知 MuseTalk / CosyVoice 停止当前生成并清空待推理任务队列；
+     *  2) 立即 shutdownNow 当前 TTS 串行执行器，再新建一个，让后续对话继续。
+     */
+    private void handleInterrupt(ChatSessionContext ctx) {
+        log.info("用户主动打断 sid={}", ctx.getSid());
+        museTalkConnector.interrupt(ctx);
+        cosyVoiceConnector.interrupt(ctx);
+        ExecutorService old = ctx.getTtsExecutor();
+        if (old != null && !old.isShutdown()) {
+            old.shutdownNow();
+        }
+        ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
     }
 
     private void closeQuietly(WebSocketSession session, String tag, String sid) {

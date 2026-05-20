@@ -5,8 +5,9 @@ import os
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -80,6 +81,11 @@ class MuseTalkEngine:
         except Exception as e:
             logger.warning(f"[engine] 创建 post_stream 失败，将使用默认流：{e}")
             self._post_stream = None
+
+        # 用于把 CPU 端 audio2feat 与 GPU 端预热 / 上一次推理尾巴并行起来
+        self._audio_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="musetalk-audio"
+        )
 
         self._warmed_up = False
 
@@ -202,6 +208,45 @@ class MuseTalkEngine:
                     )  # (1, bh, bw) fp16
 
                 N = ori_resized_gpu.shape[0]
+
+                # ---- 预计算 per-k 的 face_box 区域常量，blend 时不再做重复转换 ----
+                # 关键观察：原始 blend 在 crop_box 外保持 ori 不变；在 crop_box 内 face_box
+                # 之外（mask 软边区）也等价于 ori（body_crop == ori_crop）。所以输出与 ori
+                # 唯一不同的就是 face_box 区域。我们只需 face_box 内的 ori 与 mask。
+                ori_face_norm_list: List[torch.Tensor] = []   # (3, fbh, fbw) fp16 [0,1]
+                mask_face_list: List[torch.Tensor] = []       # (1, fbh, fbw) fp16 [0,1]
+                face_boxes_list: List[Tuple[int, int, int, int]] = []
+                for k in range(N):
+                    (fx, fy, fx1, fy1), (cxs, cys, cxe, cye) = box_pairs[k]
+                    fbh, fbw = fy1 - fy, fx1 - fx
+                    cch, ccw = cye - cys, cxe - cxs
+
+                    mask_full_fp16 = masks_gpu[k]  # (1, mh, mw) fp16，对应原始 crop_box 大小
+                    if mask_full_fp16.shape[-2:] != (cch, ccw):
+                        mask_crop = F.interpolate(
+                            mask_full_fp16.unsqueeze(0), size=(cch, ccw),
+                            mode="bilinear", align_corners=False, antialias=False,
+                        ).squeeze(0)
+                    else:
+                        mask_crop = mask_full_fp16
+                    # face_box 在 crop_box 内的相对坐标
+                    fy_lo, fy_hi = fy - cys, fy1 - cys
+                    fx_lo, fx_hi = fx - cxs, fx1 - cxs
+                    mask_face = mask_crop[:, fy_lo:fy_hi, fx_lo:fx_hi].contiguous()
+                    mask_face_list.append(mask_face)
+
+                    ori_face_norm = (
+                        ori_resized_gpu[k, :, fy:fy1, fx:fx1].to(torch.float16) / 255.0
+                    ).contiguous()
+                    ori_face_norm_list.append(ori_face_norm)
+                    face_boxes_list.append((fx, fy, fx1, fy1))
+
+                # 把帧按 (fbh, fbw) 分组，blend 时同组用一次批量 F.interpolate
+                size_groups: Dict[Tuple[int, int], List[int]] = {}
+                for k, (fx, fy, fx1, fy1) in enumerate(face_boxes_list):
+                    key = (fy1 - fy, fx1 - fx)
+                    size_groups.setdefault(key, []).append(k)
+
                 indices = list(range(N)) + list(range(N))[::-1]  # 前进 + 倒放
 
                 self.avatar_cache[attraction_id] = {
@@ -209,6 +254,11 @@ class MuseTalkEngine:
                     "ori_resized_gpu": ori_resized_gpu,
                     "masks_gpu": masks_gpu,
                     "box_pairs": box_pairs,          # list[(face_box, crop_box)] 目标坐标系
+                    # 以下为 blend 加速所需的 per-k 预计算资源
+                    "ori_face_norm_list": ori_face_norm_list,   # list[(3, fbh, fbw) fp16]
+                    "mask_face_list": mask_face_list,           # list[(1, fbh, fbw) fp16]
+                    "face_boxes": face_boxes_list,              # list[(fx, fy, fx1, fy1)]
+                    "size_groups": size_groups,                 # {(fbh, fbw): [k, ...]}
                     "indices": indices,
                     "current_idx": 0,
                     "N": N,
@@ -217,6 +267,8 @@ class MuseTalkEngine:
                     latents_gpu.numel() * latents_gpu.element_size()
                     + ori_resized_gpu.numel() * ori_resized_gpu.element_size()
                     + sum(m.numel() * m.element_size() for m in masks_gpu)
+                    + sum(t.numel() * t.element_size() for t in ori_face_norm_list)
+                    + sum(t.numel() * t.element_size() for t in mask_face_list)
                 ) / (1024 ** 3)
                 logger.info(
                     f"✅ 景点 {attraction_id} 预处理完成！有效帧={N}，"
@@ -299,62 +351,79 @@ class MuseTalkEngine:
         return imgs
 
     # --------------------------------------------------------------
-    # 单帧 GPU 混合：F.interpolate + α blend
+    # 批量 GPU 混合：把整批 recon 一次性贴回 ori
     # --------------------------------------------------------------
     @torch.inference_mode()
-    def _blend_one_gpu(
+    def _blend_batch_gpu(
         self,
-        recon_face: torch.Tensor,         # (3, 256, 256) fp16 [0,1] RGB
-        ori_full_u8: torch.Tensor,        # (3, Ht, Wt) uint8 RGB
-        mask_fp16: torch.Tensor,          # (1, ch, cw) fp16 [0,1]，对应 crop_box 大小
-        box_pair: Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]],
-    ) -> torch.Tensor:
-        """复刻 MuseTalk 原版 get_image_blending：
-        recon → resize 到 face_box → 硬贴入 ori 的 face_box 区域 →
-        在 crop_box 区域用 mask 做 α 混合（face_box ⊆ crop_box）。
+        recon: torch.Tensor,        # (B, 3, 256, 256) fp16 [0,1] RGB
+        k_list: List[int],          # 长度 B，每个元素是 avatar 帧索引 k
+        avatar: dict,
+    ) -> List[torch.Tensor]:
+        """等价于对每个 j 调用一次 _blend_one_gpu，但合并到几次大 kernel。
+
+        关键观察：原版 blend 的输出与 ori 仅在 face_box 区域不同（crop_box 内 face_box
+        之外的 mask 软边区，body_crop == ori_crop，blend 结果等于 ori 自身）。
+        所以这里我们只需要：
+          1) 把整批 ori 一次 index_select 拷出来作为输出底；
+          2) 按 face_box 尺寸 (fbh, fbw) 分组，对同组的 recon 做一次批量 F.interpolate；
+          3) 在每帧 face_box 区域用预计算好的 ori_face_norm + mask_face 做 α 混合并写回。
         """
-        (fx, fy, fx1, fy1), (cxs, cys, cxe, cye) = box_pair
-        fbh, fbw = fy1 - fy, fx1 - fx
-        cch, ccw = cye - cys, cxe - cxs
+        ori_gpu: torch.Tensor = avatar["ori_resized_gpu"]
+        ori_face_norm_list: List[torch.Tensor] = avatar["ori_face_norm_list"]
+        mask_face_list: List[torch.Tensor] = avatar["mask_face_list"]
+        face_boxes: List[Tuple[int, int, int, int]] = avatar["face_boxes"]
+        size_groups: Dict[Tuple[int, int], List[int]] = avatar["size_groups"]
 
-        out = ori_full_u8.clone()  # (3, Ht, Wt) uint8
+        B = recon.shape[0]
+        k_tensor = torch.as_tensor(k_list, device=recon.device, dtype=torch.long)
+        # 一次 index_select 完成整批 ori 的拷贝（替代原本每帧一次的 .clone()）
+        out_batch = ori_gpu.index_select(0, k_tensor).contiguous()  # (B,3,Ht,Wt) uint8
 
-        # 1) recon resize 到 face_box，硬贴入 out（uint8）
-        face = F.interpolate(
-            recon_face.unsqueeze(0), size=(fbh, fbw),
-            mode="bilinear", align_corners=False, antialias=False,
-        ).squeeze(0)  # (3, fbh, fbw) fp16 [0,1]
-        out[:, fy:fy1, fx:fx1] = (face.clamp(0.0, 1.0) * 255.0 + 0.5).to(torch.uint8)
+        # 把 batch 中出现的 k 按 face_box 尺寸归并：同尺寸的所有 batch 位置一起做插值
+        # 注意：batch 里同一个 j 可能多次出现同一个 k，没关系，我们按 j 写回
+        per_size: Dict[Tuple[int, int], List[int]] = {}
+        for j, k in enumerate(k_list):
+            (fx, fy, fx1, fy1) = face_boxes[k]
+            per_size.setdefault((fy1 - fy, fx1 - fx), []).append(j)
 
-        # 2) 在 crop_box 区域，用 mask 把硬贴帧与原图做 α 混合
-        if mask_fp16.shape[-2:] != (cch, ccw):
-            mask = F.interpolate(
-                mask_fp16.unsqueeze(0), size=(cch, ccw),
+        for (fbh, fbw), js in per_size.items():
+            if not js:
+                continue
+            j_idx = torch.as_tensor(js, device=recon.device, dtype=torch.long)
+            # 一次性 resize 同尺寸的所有 face
+            faces = F.interpolate(
+                recon.index_select(0, j_idx), size=(fbh, fbw),
                 mode="bilinear", align_corners=False, antialias=False,
-            ).squeeze(0)
-        else:
-            mask = mask_fp16
+            ).clamp_(0.0, 1.0)  # (g, 3, fbh, fbw) fp16
 
-        body_crop = out[:, cys:cye, cxs:cxe].to(torch.float16) / 255.0
-        ori_crop = ori_full_u8[:, cys:cye, cxs:cxe].to(torch.float16) / 255.0
-        blended = ori_crop * (1.0 - mask) + body_crop * mask
-        out[:, cys:cye, cxs:cxe] = (blended.clamp(0.0, 1.0) * 255.0 + 0.5).to(torch.uint8)
-        return out
+            # 收集该组每帧对应的 ori_face_norm 和 mask_face（不同 k 但同尺寸）
+            ori_face_stack = torch.stack(
+                [ori_face_norm_list[k_list[j]] for j in js], dim=0
+            )  # (g, 3, fbh, fbw) fp16
+            mask_face_stack = torch.stack(
+                [mask_face_list[k_list[j]] for j in js], dim=0
+            )  # (g, 1, fbh, fbw) fp16
+
+            blended = ori_face_stack * (1.0 - mask_face_stack) + faces * mask_face_stack
+            blended_u8 = (blended.clamp_(0.0, 1.0) * 255.0 + 0.5).to(torch.uint8)
+
+            # 写回到 out_batch 各自的 face_box
+            for local_i, j in enumerate(js):
+                (fx, fy, fx1, fy1) = face_boxes[k_list[j]]
+                out_batch[j, :, fy:fy1, fx:fx1] = blended_u8[local_i]
+
+        return list(out_batch.unbind(0))
 
     # --------------------------------------------------------------
     # generate_frames：音频 → 帧（list[Tensor cuda uint8]）
     # --------------------------------------------------------------
-    def generate_frames(self, audio_chunk: bytes, attraction_id: str):
-        avatar = self.avatar_cache.get(attraction_id)
-        if not avatar:
-            return
-
-        # 1) PCM int16 mono 16k → fp32 ndarray，无落盘
+    def _audio_to_chunks(self, audio_chunk: bytes):
+        """纯 CPU/whisper 路径，可在线程池里跑，避免阻塞 GPU 调度。"""
         try:
             audio_np = np.frombuffer(audio_chunk, dtype=np.int16).astype(np.float32) / 32768.0
             whisper_feature = self.audio_processor.audio2feat(audio_np)
         except Exception as e:
-            # 极端情况下 vendored whisper 不接 ndarray，回落到 wav 落盘
             logger.warning(f"[engine] audio2feat(ndarray) 失败，回落 wav 落盘：{e}")
             import wave
             tmpdir = "/dev/shm" if os.path.isdir("/dev/shm") else None
@@ -365,36 +434,54 @@ class MuseTalkEngine:
                     wf.setframerate(16000)
                     wf.writeframes(audio_chunk)
                 whisper_feature = self.audio_processor.audio2feat(tmp.name)
+        return self.audio_processor.feature2chunks(whisper_feature, fps=25)
 
-        whisper_chunks = self.audio_processor.feature2chunks(whisper_feature, fps=25)
+    def generate_frames(self, audio_chunk: bytes, attraction_id: str):
+        avatar = self.avatar_cache.get(attraction_id)
+        if not avatar:
+            return
+
+        # 1) audio2feat 立刻丢到后台线程跑（NumPy / whisper-tiny 主要是 CPU + 小 GPU op，
+        #    GIL 大部分时间会释放）。主线程同时做 GPU 端的预热与首批准备。
+        chunks_future = self._audio_executor.submit(self._audio_to_chunks, audio_chunk)
 
         latents_gpu: torch.Tensor = avatar["latents_gpu"]
-        ori_gpu: torch.Tensor = avatar["ori_resized_gpu"]
-        masks_gpu: List[torch.Tensor] = avatar["masks_gpu"]
-        box_pairs = avatar["box_pairs"]
         indices: List[int] = avatar["indices"]
         idx0: int = avatar["current_idx"]
         nN: int = len(indices)
         unet_fn = self._get_or_compile_unet()
 
+        # 在等 audio2feat 期间触发一次 cudaStreamSynchronize 之外的轻量 GPU 调度，
+        # 让 CUDA context / cudnn handle 保持热（成本几乎为零，但能消除冷启动空隙）。
+        if torch.cuda.is_available():
+            _kicker = latents_gpu.narrow(0, 0, 1).sum()  # 极小 kernel
+            del _kicker
+
+        whisper_chunks = chunks_future.result()
         n = len(whisper_chunks)
+        if n == 0:
+            return
+
+        default_stream = torch.cuda.current_stream() if torch.cuda.is_available() else None
+        post_stream = self._post_stream
+
+        # 一拍流水线：上一批的 blend 与下一批的 UNet 在不同 stream 上并行
+        prev_blend: Optional[List[torch.Tensor]] = None
+        prev_event: Optional[torch.cuda.Event] = None
+        prev_bs: int = 0
+
         for i in range(0, n, BATCH):
             if self._cancel_flag:
                 return
 
             batch_chunks = whisper_chunks[i:i + BATCH]
             bs = len(batch_chunks)
-
-            # pad-to-BATCH，保持 torch.compile 单一 shape
             if bs < BATCH:
-                pad_count = BATCH - bs
-                batch_chunks = list(batch_chunks) + [batch_chunks[-1]] * pad_count
+                batch_chunks = list(batch_chunks) + [batch_chunks[-1]] * (BATCH - bs)
 
-            # 取 latents（GPU index_select）
-            sel = torch.tensor(
-                [indices[(idx0 + i + j) % nN] for j in range(BATCH)],
-                device=self.device, dtype=torch.long,
-            )
+            # 取 latents（GPU index_select）+ k 列表（仅 bs 个有效，pad 部分对最终输出不暴露）
+            k_list_full = [indices[(idx0 + i + j) % nN] for j in range(BATCH)]
+            sel = torch.as_tensor(k_list_full, device=self.device, dtype=torch.long)
             latent_batch = latents_gpu.index_select(0, sel).contiguous()  # (B,4,32,32)
             audio_batch = torch.from_numpy(np.stack(batch_chunks)).to(
                 self.device, dtype=torch.float16, non_blocking=True
@@ -404,29 +491,41 @@ class MuseTalkEngine:
                 pred_latents = unet_fn(
                     latent_batch, 0, encoder_hidden_states=audio_batch
                 ).sample
-                # CUDAGraph: 输出在下一次 replay 会被覆盖，立刻 clone 再走 VAE
                 if self._unet_compiled is not self.unet.model:
                     pred_latents = pred_latents.clone()
                 recon = self._vae_decode_tensor(pred_latents)  # (B,3,256,256) fp16 RGB
 
-            # 后处理放到第二条 stream，与下一批 UNet 在默认流并行
-            blended_list: List[torch.Tensor] = []
-            if self._post_stream is not None:
-                with torch.cuda.stream(self._post_stream):
-                    self._post_stream.wait_stream(torch.cuda.default_stream())
-                    for j in range(bs):
-                        k = indices[(idx0 + i + j) % nN]
-                        blended_list.append(self._blend_one_gpu(
-                            recon[j], ori_gpu[k], masks_gpu[k], box_pairs[k]
-                        ))
-                torch.cuda.current_stream().wait_stream(self._post_stream)
+            # 在 post_stream 上排布本批 blend：等默认流的 recon 就绪后开跑
+            if post_stream is not None and default_stream is not None:
+                post_stream.wait_stream(default_stream)
+                with torch.cuda.stream(post_stream):
+                    blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
+                    # 让张量内存被默认流引用期间不会被 caching allocator 回收
+                    for t in blend_list:
+                        t.record_stream(default_stream)
+                event = torch.cuda.Event()
+                event.record(post_stream)
             else:
-                for j in range(bs):
-                    k = indices[(idx0 + i + j) % nN]
-                    blended_list.append(self._blend_one_gpu(
-                        recon[j], ori_gpu[k], masks_gpu[k], box_pairs[k]
-                    ))
+                blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
+                event = None
 
-            yield blended_list  # list[(3,Ht,Wt) uint8 cuda]
+            # 关键：先把"上一批"的结果交付出去，再进入下一轮 UNet。
+            # 这样本批 blend（在 post_stream 上）就能与下一批 UNet（默认流）真正并行。
+            if prev_blend is not None:
+                if prev_event is not None:
+                    prev_event.synchronize()  # CPU 等 GPU；等待期间默认流仍在跑下一批 UNet
+                yield prev_blend
+                avatar["current_idx"] = (avatar["current_idx"] + prev_bs) % nN
+                if self._cancel_flag:
+                    return
 
-            avatar["current_idx"] = (avatar["current_idx"] + bs) % nN
+            prev_blend = blend_list
+            prev_event = event
+            prev_bs = bs
+
+        # 收尾：交付最后一批
+        if prev_blend is not None:
+            if prev_event is not None:
+                prev_event.synchronize()
+            yield prev_blend
+            avatar["current_idx"] = (avatar["current_idx"] + prev_bs) % nN

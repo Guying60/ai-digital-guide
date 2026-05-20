@@ -41,12 +41,35 @@ public class MuseTalkConnector {
 
         StandardWebSocketClient client = new StandardWebSocketClient(container);
         try {
-            WebSocketSession pythonSession = client
+            WebSocketSession museTalkSession = client
                     .execute(new MuseTalkHandler(ctx), pythonWsUrl)
                     .get();
-            ctx.setPythonSession(pythonSession);
+            ctx.setMuseTalkSession(museTalkSession);
         } catch (Exception e) {
             log.error("连接 Python 炼丹炉失败！", e);
+        }
+    }
+
+    /**
+     * 通知 MuseTalk 端：停止当前用户的视频帧生成、并清空待推理任务队列。
+     * 任何异常均被吞掉（仅 log.warn），避免影响 CosyVoice 那一路的打断。
+     */
+    public void interrupt(ChatSessionContext ctx) {
+        WebSocketSession museTalkSession = ctx.getMuseTalkSession();
+        if (museTalkSession == null || !museTalkSession.isOpen()) {
+            log.warn("MuseTalk session 不可用，跳过 interrupt sid={}", ctx.getSid());
+            return;
+        }
+        try {
+            String json = objectMapper.createObjectNode()
+                    .put("type", "interrupt")
+                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("session_id", ctx.getSid())
+                    .toString();
+            museTalkSession.sendMessage(new TextMessage(json));
+            log.info("已向 MuseTalk 发送 interrupt sid={}", ctx.getSid());
+        } catch (Exception e) {
+            log.warn("向 MuseTalk 发送 interrupt 失败 sid={}", ctx.getSid(), e);
         }
     }
 
@@ -59,22 +82,22 @@ public class MuseTalkConnector {
         }
 
         @Override
-        public void afterConnectionEstablished(WebSocketSession pythonSession) throws Exception {
+        public void afterConnectionEstablished(WebSocketSession museTalkSession) throws Exception {
             log.info("建立连接{}", ctx.getAttractionId());
             String initJson = objectMapper.createObjectNode()
                     .put("type", "init")
                     .put("attraction_id", String.valueOf(ctx.getAttractionId()))
                     .toString();
-            pythonSession.sendMessage(new TextMessage(initJson));
+            museTalkSession.sendMessage(new TextMessage(initJson));
         }
 
         @Override
-        protected void handleTextMessage(WebSocketSession pythonSession, TextMessage message) throws Exception {
+        protected void handleTextMessage(WebSocketSession museTalkSession, TextMessage message) throws Exception {
             ObjectNode node = (ObjectNode) objectMapper.readTree(message.getPayload());
             String type = node.get("type").asText();
             switch (type) {
                 case "ping" -> {
-                    pythonSession.sendMessage(new TextMessage(
+                    museTalkSession.sendMessage(new TextMessage(
                             objectMapper.createObjectNode().put("type", "pong").toString()));
                     log.debug("[Python WS] ← ping，已回 pong");
                 }
@@ -95,7 +118,7 @@ public class MuseTalkConnector {
         }
 
         @Override
-        protected void handleBinaryMessage(WebSocketSession pythonSession, BinaryMessage message) {
+        protected void handleBinaryMessage(WebSocketSession museTalkSession, BinaryMessage message) {
             if (!ctx.getUserSession().isOpen()) return;
             byte[] rawVideoBytes = message.getPayload().array();
             byte[] androidPayload = new byte[rawVideoBytes.length + 1];

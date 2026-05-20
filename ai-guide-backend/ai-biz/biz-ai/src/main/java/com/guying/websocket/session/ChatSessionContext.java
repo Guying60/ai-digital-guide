@@ -23,7 +23,7 @@ public class ChatSessionContext {
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
 
-    @Setter private volatile WebSocketSession pythonSession;
+    @Setter private volatile WebSocketSession museTalkSession;
     @Setter private volatile WebSocketSession cosyVoiceSession;
     @Setter private volatile SpeechTranscriber transcriber;
     @Setter private volatile ExecutorService ttsExecutor;

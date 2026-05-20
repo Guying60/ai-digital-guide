@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -19,6 +20,7 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * CosyVoice TTS 客户端：
@@ -42,6 +44,9 @@ public class CosyVoiceConnector {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** sid → handler 注册表，用于 interrupt 时清空对应会话的 PCM 缓冲。 */
+    private final ConcurrentHashMap<String, CosyVoiceHandler> handlers = new ConcurrentHashMap<>();
+
     public void connect(ChatSessionContext ctx) {
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         container.setDefaultMaxBinaryMessageBufferSize(1024 * 1024);
@@ -49,10 +54,12 @@ public class CosyVoiceConnector {
 
         StandardWebSocketClient client = new StandardWebSocketClient(container);
         try {
+            CosyVoiceHandler handler = new CosyVoiceHandler(ctx);
             WebSocketSession cosySession = client
-                    .execute(new CosyVoiceHandler(ctx), cosyVoiceWsUrl)
+                    .execute(handler, cosyVoiceWsUrl)
                     .get();
             ctx.setCosyVoiceSession(cosySession);
+            handlers.put(ctx.getSid(), handler);
         } catch (Exception e) {
             log.error("连接 CosyVoice TTS 服务失败！url={}", cosyVoiceWsUrl, e);
         }
@@ -81,6 +88,35 @@ public class CosyVoiceConnector {
             cosySession.sendMessage(new TextMessage(req.toString()));
         } catch (IOException e) {
             log.error("发送 synthesize 请求到 CosyVoice 失败 sid={}", ctx.getSid(), e);
+        }
+    }
+
+    /**
+     * 通知 CosyVoice 端：停止当前用户的语音合成、并清空待推理任务队列；
+     * 同时清空本地 PCM 缓冲，避免打断后残留 PCM 在下一次 chunk_end 时被错误转发到 MuseTalk。
+     */
+    public void interrupt(ChatSessionContext ctx) {
+        // 1) 清空本地 handler 中尚未转发的 PCM 缓冲
+        CosyVoiceHandler handler = handlers.get(ctx.getSid());
+        if (handler != null) {
+            handler.clearPcmBuffer();
+        }
+        // 2) 通知下游 CosyVoice 停止生成 + 清队列
+        WebSocketSession cosySession = ctx.getCosyVoiceSession();
+        if (cosySession == null || !cosySession.isOpen()) {
+            log.warn("CosyVoice session 不可用，跳过 interrupt sid={}", ctx.getSid());
+            return;
+        }
+        try {
+            String json = objectMapper.createObjectNode()
+                    .put("type", "interrupt")
+                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("session_id", ctx.getSid())
+                    .toString();
+            cosySession.sendMessage(new TextMessage(json));
+            log.info("已向 CosyVoice 发送 interrupt sid={}", ctx.getSid());
+        } catch (Exception e) {
+            log.warn("向 CosyVoice 发送 interrupt 失败 sid={}", ctx.getSid(), e);
         }
     }
 
@@ -145,18 +181,30 @@ public class CosyVoiceConnector {
                 pcmBuffer.reset();
             }
             ChatSessionContext live = registry.get(ctx.getSid());
-            WebSocketSession pythonSession = live != null ? live.getPythonSession() : null;
-            if (pythonSession == null || !pythonSession.isOpen()) return;
+            WebSocketSession museTalkSession = live != null ? live.getMuseTalkSession() : null;
+            if (museTalkSession == null || !museTalkSession.isOpen()) return;
 
             try {
                 if (sentencePcm.length > 0) {
-                    pythonSession.sendMessage(new BinaryMessage(sentencePcm));
+                    museTalkSession.sendMessage(new BinaryMessage(sentencePcm));
                 }
-                pythonSession.sendMessage(new TextMessage(
+                museTalkSession.sendMessage(new TextMessage(
                         objectMapper.createObjectNode().put("type", "audio_end").toString()));
             } catch (IOException e) {
                 log.error("发送 PCM/audio_end 到 MuseTalk 失败 sid={}", ctx.getSid(), e);
             }
+        }
+
+        /** 打断时清空本地未转发的 PCM 缓冲。 */
+        void clearPcmBuffer() {
+            synchronized (pcmBuffer) {
+                pcmBuffer.reset();
+            }
+        }
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession cosySession, CloseStatus status) {
+            handlers.remove(ctx.getSid(), this);
         }
     }
 }

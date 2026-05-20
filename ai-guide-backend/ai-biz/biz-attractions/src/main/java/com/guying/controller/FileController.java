@@ -140,11 +140,7 @@ public class FileController {
                 .upload();
         //发送消息到算力服务器
         if (fileInfo != null) {
-            // 2. 发送消息到 RabbitMQ，通知 Python 服务预加载
             log.info("发送视频预加载消息, attractionId: {}", attractionId);
-            VideoPreloadMessage message = new VideoPreloadMessage(attractionId, fileInfo.getUrl());
-            rabbitTemplate.convertAndSend(VIDEO_PRELOAD_QUEUE, message);
-
             return Result.success(fileInfo.getUrl());
         }
         return Result.error("上传失败！");
