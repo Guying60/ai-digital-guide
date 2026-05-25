@@ -10,6 +10,7 @@ public class UserLoginVO {
     /**
      * 性别 0:女 1:男 2:未知
      */
+    private String avatarUrl;
     private Integer gender;
     private String token;
 }

@@ -26,7 +26,7 @@ public class UserInfoDTO {
     @Max(value = 2, message = "性别值不合法")
     private Integer gender;
 
-
+    private String avatarUrl;
 
     @Min(value = 0, message = "年龄不能小于0")
     @Max(value = 120, message = "年龄不合法")

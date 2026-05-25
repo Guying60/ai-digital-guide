@@ -37,7 +37,7 @@ import static com.guying.common.constants.RedisConstants.FILE_PARSING_KEY;
 @RestController
 @RequestMapping("/v1/admins/file")
 @Slf4j
-@Tag(name = "文件上传")
+@Tag(name = "管理文件上传")
 public class FileController {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -122,7 +122,7 @@ public class FileController {
     }
 
     @PostMapping("/video")
-    public Result uploadVideo(MultipartFile file, Long attractionId) {
+    public Result uploadVideo(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return Result.error("上传的文件不能为空");
         }
@@ -140,7 +140,6 @@ public class FileController {
                 .upload();
         //发送消息到算力服务器
         if (fileInfo != null) {
-            log.info("发送视频预加载消息, attractionId: {}", attractionId);
             return Result.success(fileInfo.getUrl());
         }
         return Result.error("上传失败！");

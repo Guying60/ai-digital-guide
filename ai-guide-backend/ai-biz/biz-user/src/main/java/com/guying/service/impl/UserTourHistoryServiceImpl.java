@@ -35,7 +35,6 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
      */
     @Override
     public ScrollResult<UserTourHistoryPageVO> getTourHistory(UserTourHistoryPageQueryDTO userTourHistoryPageQueryDTO) {
-
         Long userId = UserContext.getUserId();
         LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserTourHistory::getUserId, userId)

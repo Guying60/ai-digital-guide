@@ -29,6 +29,12 @@ public class User {
      */
     @TableField(select = false)
     private String password;
+
+    /**
+     * 用户头像
+     */
+    private String avatarUrl;
+
     /**
      * 用户性别
      */
