@@ -2,6 +2,7 @@ package com.guying.controller;
 
 import com.guying.common.result.Result;
 import com.guying.common.result.ScrollResult;
+import com.guying.pojo.dto.AttractionBatchDeleteDTO;
 import com.guying.pojo.dto.AttractionCreateDTO;
 import com.guying.pojo.dto.AttractionListQueryDTO;
 import com.guying.pojo.dto.AttractionUpdateDTO;
@@ -108,6 +109,13 @@ public class AdminAttractionsController {
     @DeleteMapping("/{attractionId}")
     public Result deleteAttraction(@PathVariable Long attractionId) {
         adminAttractionsService.deleteAttraction(attractionId);
+        return Result.success();
+    }
+
+    @Operation(summary = "批量删除景点")
+    @DeleteMapping("/batch")
+    public Result deleteAttractions(@RequestBody @Valid AttractionBatchDeleteDTO dto) {
+        adminAttractionsService.deleteAttractions(dto.getIds());
         return Result.success();
     }
 

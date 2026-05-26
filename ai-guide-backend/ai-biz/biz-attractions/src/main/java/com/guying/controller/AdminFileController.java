@@ -2,15 +2,11 @@ package com.guying.controller;
 
 import cn.xuyanwu.spring.file.storage.FileInfo;
 import cn.xuyanwu.spring.file.storage.FileStorageService;
-import com.guying.common.constants.MqConstants;
 import com.guying.common.enums.TaskStatusEnum;
 import com.guying.common.result.Result;
 import com.guying.context.AdminContext;
-import com.guying.message.AttractionDocumentMessage;
 import com.guying.message.VectorIngestMessage;
-import com.guying.message.VideoPreloadMessage;
 import com.guying.pojo.vo.DocumentUploadVO;
-import io.micrometer.common.util.StringUtils;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -25,12 +21,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.guying.common.constants.MqConstants.REQUEST_QUEUE;
-import static com.guying.common.constants.MqConstants.VIDEO_PRELOAD_QUEUE;
 import static com.guying.common.constants.RedisConstants.FILE_PARSING_EXPIRE_TIME;
 import static com.guying.common.constants.RedisConstants.FILE_PARSING_KEY;
 
@@ -38,7 +32,7 @@ import static com.guying.common.constants.RedisConstants.FILE_PARSING_KEY;
 @RequestMapping("/v1/admins/file")
 @Slf4j
 @Tag(name = "管理文件上传")
-public class FileController {
+public class AdminFileController {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 

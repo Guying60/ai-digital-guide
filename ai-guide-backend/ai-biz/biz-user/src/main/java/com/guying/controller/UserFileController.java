@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 @RequestMapping("/v1/users/file")
 @Slf4j
 @Tag(name = "用户文件上传")
-public class FileController {
+public class UserFileController {
 
     @Autowired
     private FileStorageService fileStorageService;

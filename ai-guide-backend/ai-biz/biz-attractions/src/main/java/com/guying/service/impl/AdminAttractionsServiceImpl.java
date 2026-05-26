@@ -239,6 +239,22 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         return new ScrollResult<>(attractionListVOList, nextLastId, hasMore);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void deleteAttractions(List<Long> attractionIds) {
+        Long adminId = AdminContext.getAdminId();
+        for (Long attractionId : attractionIds) {
+            LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Attraction::getId, attractionId);
+            queryWrapper.eq(Attraction::getAdminId, adminId);
+            deleteAboutAttraction(attractionId, adminId);
+            int delete = attractionsMapper.delete(queryWrapper);
+            if (delete == 0) {
+                throw new ServiceException("删除景点信息失败,可能为景点不存在或权限不符, attractionId: " + attractionId);
+            }
+        }
+    }
+
     protected void deleteAboutAttraction(Long attractionId, Long adminId) {
         //删除相关文档信息
         LambdaQueryWrapper<AttractionDocument> lqw = new LambdaQueryWrapper<>();

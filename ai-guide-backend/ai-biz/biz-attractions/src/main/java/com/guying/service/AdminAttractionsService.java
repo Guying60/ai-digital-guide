@@ -32,6 +32,8 @@ public interface AdminAttractionsService extends IService<Attraction> {
 
     void deleteAttraction(Long attractionId);
 
+    void deleteAttractions(List<Long> attractionIds);
+
     ScrollResult<AttractionListVO> getAttractionList(AttractionListQueryDTO attractionListQueryDTO);
 
 
