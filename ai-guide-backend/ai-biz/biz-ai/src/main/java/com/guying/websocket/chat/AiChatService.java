@@ -1,5 +1,6 @@
 package com.guying.websocket.chat;
 
+import com.guying.ratelimit.RateLimiterUtil;
 import com.guying.service.ExperienceAnalysisService;
 import com.guying.websocket.protocol.WsMessageSender;
 import com.guying.websocket.session.ChatSessionContext;
@@ -30,12 +31,14 @@ import java.util.concurrent.ExecutorService;
 public class AiChatService {
 
     @Autowired
+    private RateLimiterUtil rateLimiterUtil;
+    @Autowired
     @Qualifier("vlGuideChatClient")
     private ChatClient vlGuideChatClient;
 
     @Autowired
-    @Qualifier("dsGuideChatClient")
-    private ChatClient dsGuideChatClient;
+    @Qualifier("llmGuideChatClient")
+    private ChatClient llmGuideChatClient;
 
     @Autowired
     private DynamicPromptService dynamicPromptService;
@@ -51,7 +54,11 @@ public class AiChatService {
 
     public void invoke(ChatSessionContext ctx, String userText) {
         log.info("调用 AI 服务，用户输入：{}", userText);
-
+        // 令牌桶限流：每用户每分钟最多10次
+        if (!rateLimiterUtil.tryAcquire("ai:chat:" + ctx.getUserId(), 10, 60)) {
+            sender.sendError(ctx, "请求太频繁，请稍后再试");
+            return;
+        }
         String conversationId = ctx.conversationId();
         String prompt = dynamicPromptService.build(userText, ctx.getUserId(), ctx.getAttractionId());
         String pendingImage = ctx.consumePendingImage();
@@ -67,8 +74,8 @@ public class AiChatService {
     }
 
     private Flux<String> streamDs(String userText, String prompt, String conversationId) {
-        log.info("调用 DS 模型");
-        return dsGuideChatClient.prompt()
+        log.info("调用 llm 模型");
+        return llmGuideChatClient.prompt()
                 .user(u -> u.text(userText))
                 .system(prompt)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))

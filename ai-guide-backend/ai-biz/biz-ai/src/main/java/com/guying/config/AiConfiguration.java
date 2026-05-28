@@ -61,13 +61,13 @@ public class AiConfiguration {
                 .build();
     }
 
-    @Bean("dsGuideChatClient")
-    public ChatClient dsGuideChatClient(ChatClient.Builder builder, ChatMemory chatMemory,ToolCallbackProvider toolCallbackProvider) {
+    @Bean("llmGuideChatClient")
+    public ChatClient llmGuideChatClient(ChatClient.Builder builder, ChatMemory chatMemory,ToolCallbackProvider toolCallbackProvider) {
         return builder
                 .defaultToolCallbacks(toolCallbackProvider.getToolCallbacks())
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .defaultOptions(OpenAiChatOptions.builder()
-                        .model("deepseek-v4-flash")
+                        .model("qwen3.7-max")
                         .temperature(0.8)
                         .extraBody(Map.of("enable_thinking", false))
                         .build())

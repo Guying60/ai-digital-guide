@@ -46,7 +46,7 @@ public class DynamicPromptService {
         dynamicPrompt.put("absoluteFact", "");
         dynamicPrompt.put("context", "");
 
-        List<Document> hotQuestions = vectorSearchService.searchSimilarQuestion(userText, attractionId, 0.9);
+        List<Document> hotQuestions = vectorSearchService.searchSimilarQuestion(userText, attractionId, 0.85);
         if (!hotQuestions.isEmpty()) {
             applyHotFaq(dynamicPrompt, hotQuestions, attractionId);
         } else {
