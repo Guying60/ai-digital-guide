@@ -1,0 +1,1485 @@
+# 	ai-guide 接口文档（完整版）
+
+> **服务器后端部署地址：** `https://ai.guying.xyz`
+>
+> **以下接口请求 URL 前缀：** `/ai-project/v1`
+>
+> **鉴权说明：** 除登录、注册接口外，所有请求均需在 Header 中携带 Token：
+> `Authorization: <token>`
+>
+> **雪花ID 注意：** 所有 ID 字段均为雪花 ID（Long），前端请以 **String 类型** 存储和传递，避免精度丢失。
+
+---
+
+[TOC]
+
+---
+
+# 一、用户端接口
+
+## 1.1 用户注册
+
+**请求 URL：** `POST /users/register`
+
+**请求参数（Body / JSON）：**
+
+| 参数名          | 类型   | 必填 | 说明                              |
+| --------------- | ------ | ---- | --------------------------------- |
+| username        | String | 是   | 账号，4-16 位字母、数字或下划线   |
+| password        | String | 是   | 密码，6-20 位字母、数字或特殊字符 |
+| confirmPassword | String | 是   | 确认密码，必须与 password 一致    |
+| nickname        | String | 是   | 昵称，1-20 个字符                 |
+
+**请求示例：**
+
+```json
+{
+  "username": "aCwg4dP9",
+  "password": "Blx6GD123",
+  "confirmPassword": "Blx6GD123",
+  "nickname": "小明"
+}
+```
+
+> 两次密码不一致时返回 `"两次输入的密码不一致"`
+
+**成功响应示例：**
+
+> 拿到响应结果后跳转至登录界面，并将 username 填入输入框
+
+```json
+{
+  "code": 1,
+  "data": {
+    "username": "aCwg4dP9"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 1.2 用户登录
+
+**请求 URL：** `POST /users/login`
+
+**请求参数（Body / JSON）：**
+
+| 参数名   | 类型   | 必填 | 说明 |
+| -------- | ------ | ---- | ---- |
+| username | String | 是   | 账号 |
+| password | String | 是   | 密码 |
+
+**请求示例：**
+
+```json
+{
+  "username": "asdfghjkl",
+  "password": "asdfghjkl"
+}
+```
+
+**成功响应参数说明：**
+
+| 参数名 | 类型   | 说明                                             |
+| ------ | ------ | ------------------------------------------------ |
+| token  | String | JWT Token，后续所有请求放入 Authorization Header |
+| id     | String | 用户 ID，建立 WebSocket 连接时作为路径参数使用   |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "1234567890123456789",
+    "token": "eyJhbGciOiJIUzM4NCJ9.xxx",
+  },
+  "msg": "success"
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "账号格式不正确，需为4-16位字母、数字或下划线"
+}
+```
+
+> 可直接将 `msg` 弹窗提示给用户
+
+---
+
+## 1.3 用户信息回显
+
+**请求 URL：** `GET /users/userInfo`
+
+**请求参数：** 无
+
+**响应参数说明：**
+
+| 参数名      | 类型    | 说明                     |
+| ----------- | ------- | ------------------------ |
+| nickname    | String  | 昵称（可能为 null）      |
+| userSetting | String  | 用户设定（可能为 null）  |
+| gender      | Integer | 0:女；1:男；2:未知       |
+| age         | Integer | 年龄（可能为 null）      |
+| avatarUrl   | String  | 头像地址（可能为 null）  |
+
+> 以上参数均可能为 null，渲染前请做判空处理
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "nickname": "小明",
+    "userSetting": "我是一个旅行爱好者",
+    "gender": 1,
+    "age": 25,
+    "avatarUrl": "https://oss.example.com/avatar/2026/05/21/xxx.jpg"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 1.4 更新用户信息
+
+**请求 URL：** `PUT /users`
+
+**请求参数（Body / JSON）：**
+
+| 参数名      | 类型    | 必填 | 说明                              |
+| ----------- | ------- | ---- | --------------------------------- |
+| nickname    | String  | 否   | 昵称，1-20 个字符                 |
+| userSetting | String  | 否   | 用户设定，不超过 100 个字符       |
+| gender      | Integer | 否   | 0:女；1:男；2:未知                |
+| age         | Integer | 否   | 0 到 120                          |
+| avatarUrl   | String  | 否   | 头像地址，通过 1.11 上传后获取    |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 1.5 用户获取景点列表（游标分页）
+
+**请求 URL：** `GET /users/attractions`
+
+**请求参数（Query）：**
+
+| 参数名   | 类型    | 必填 | 说明                                           |
+| -------- | ------- | ---- | ---------------------------------------------- |
+| keyWord  | String  | 否   | 搜索关键词，匹配景点名称，长度不超过 20 个字符 |
+| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
+| pageSize | Integer | 是   | 每页条数，推荐传 6                             |
+
+> 当用户点击某条景点进入对话时，将列表中的 `id` 作为 `attractionId` 建立 WebSocket 连接
+
+**请求示例：**
+
+```
+GET /users/attractions?keyWord=故宫&pageSize=6
+GET /users/attractions?lastId=1234567890123456789&pageSize=6
+```
+
+**响应参数说明：**
+
+| 字段              | 类型    | 说明                              |
+| ----------------- | ------- | --------------------------------- |
+| list[].id         | String  | 景点 ID                           |
+| list[].attractionName | String  | 景点名称                      |
+| list[].coverUrl   | String  | 封面图片地址                      |
+| nextLastId        | String  | 下一页游标，为 null 表示无更多数据 |
+| hasMore           | Boolean | 是否还有更多数据                  |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "list": [
+      {
+        "id": "1234567890",
+        "attractionName": "故宫博物院",
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg"
+      }
+    ],
+    "nextLastId": "1234567890123456789",
+    "hasMore": true
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 1.6 用户获取旅游历史（游标分页）
+
+**请求 URL：** `GET /tourHistory`
+
+**请求参数（Query）：**
+
+| 参数名   | 类型    | 必填 | 说明                                           |
+| -------- | ------- | ---- | ---------------------------------------------- |
+| keyWord  | String  | 否   | 搜索关键词，匹配景点名称，长度不超过 20 个字符 |
+| type     | Integer | 否   | 历史类型筛选，不传则查全部                     |
+| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
+| pageSize | Integer | 是   | 每页条数                                       |
+
+**请求示例：**
+
+```
+GET /tourHistory?keyWord=故宫&type=1&pageSize=10
+GET /tourHistory?lastId=1234567890123456789&pageSize=10
+```
+
+**响应参数说明：**
+
+| 字段                  | 类型    | 说明                              |
+| --------------------- | ------- | --------------------------------- |
+| list[].id             | String  | 记录 ID                           |
+| list[].attractionName | String  | 景点名称                          |
+| list[].coverUrl       | String  | 封面图片地址                      |
+| list[].conversationId | String  | 对话 ID                           |
+| nextLastId            | String  | 下一页游标，为 null 表示无更多数据 |
+| hasMore               | Boolean | 是否还有更多数据                  |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "list": [
+      {
+        "id": "23123131344",
+        "attractionName": "故宫博物院",
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+        "conversationId": "1234567890123456789"
+      }
+    ],
+    "nextLastId": "1234567890123456789",
+    "hasMore": true
+  },
+  "msg": "success"
+}
+```
+
+> `hasMore` 为 `false` 时，展示"没有更多了"并停止触发加载
+
+---
+
+## 1.7 删除用户旅游记录
+
+**请求 URL：** `DELETE /users/tourHistory/delete/{id}`
+
+**请求参数（路径参数）：**
+
+| 参数名 | 类型   | 必填 | 说明           |
+| ------ | ------ | ---- | -------------- |
+| id     | String | 是   | 旅游历史记录 ID |
+
+**请求示例：** `DELETE /users/tourHistory/delete/1001`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 1.8 获取 AI 聊天历史
+
+**请求 URL：** `GET /users/ai-history/{conversationId}`
+
+**请求参数（路径参数）：**
+
+| 参数名         | 类型   | 必填 | 说明       |
+| -------------- | ------ | ---- | ---------- |
+| conversationId | String | 是   | 会话唯一ID |
+
+**响应说明：** 返回 Array，每个元素为一条消息对象，按时间顺序排列。
+
+| 字段    | 类型   | 说明                                   |
+| ------- | ------ | -------------------------------------- |
+| content | String | 消息内容                               |
+| role    | String | `user` 为用户，`assistant` 为 AI 助手  |
+
+**响应示例：**
+
+```json
+[
+  { "content": "你好", "role": "user" },
+  { "content": "你好！我是本景区的 AI 导游，有什么可以帮您？", "role": "assistant" }
+]
+```
+
+---
+
+## 1.9 删除 AI 聊天记录
+
+**请求 URL：** `DELETE /users/ai-history/{conversationId}`
+
+**请求参数（路径参数）：**
+
+| 参数名         | 类型   | 必填 | 说明       |
+| -------------- | ------ | ---- | ---------- |
+| conversationId | String | 是   | 会话唯一ID |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 1.10 评价旅游历史
+
+**请求 URL：** `POST /users/tourHistory/evaluate`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 用户对某次游览进行评分和文字反馈，更新到对应的游览记录。
+
+**请求体（Body / JSON）：**
+
+`TourEvaluateDTO`：
+
+| 字段         | 类型    | 必填 | 说明                     |
+| ------------ | ------- | ---- | ------------------------ |
+| conversationId | Long  | 是   | 会话ID，对应一次游览记录 |
+| score        | Integer | 否   | 评分，1-5 分             |
+| feedbackText | String  | 否   | 文字反馈                 |
+
+**请求示例：**
+
+```json
+{
+  "conversationId": 123456789,
+  "score": 4,
+  "feedbackText": "不错"
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+---
+
+## 1.11 上传用户头像
+
+**请求 URL：** `POST /users/file/avatar`
+
+**请求方式：** `multipart/form-data`
+
+**请求参数：**
+
+| 参数名 | 位置      | 类型 | 必填 | 说明                         |
+| ------ | --------- | ---- | ---- | ---------------------------- |
+| file   | form-data | File | 是   | 头像图片文件，仅支持图片格式（`image/*`） |
+
+**请求示例：**
+
+```
+POST /users/file/avatar
+Content-Type: multipart/form-data
+
+file: <图片文件>
+```
+
+**响应参数说明：**
+
+| 字段 | 类型   | 说明                   |
+| ---- | ------ | ---------------------- |
+| data | String | 头像图片 OSS 访问地址  |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": "https://oss.example.com/avatar/2026/05/21/xxx.jpg",
+  "msg": "success"
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "文件格式错误，请上传图片"
+}
+```
+
+> 上传成功后，将 `data` 中的 URL 保存并用于头像展示；上传失败时可直接将 `msg` 弹窗提示用户
+
+---
+
+# 二、管理员端接口
+
+## 2.1 管理员注册
+
+**请求 URL：** `POST /admins/register`
+
+| 参数名          | 类型   | 必填 | 说明                              |
+| --------------- | ------ | ---- | --------------------------------- |
+| username        | String | 是   | 账号，4-16 位字母、数字或下划线   |
+| password        | String | 是   | 密码，6-20 位字母、数字或特殊字符 |
+| confirmPassword | String | 是   | 确认密码，必须与 password 一致    |
+| nickname        | String | 是   | 昵称，2-15 位中英文、数字或下划线 |
+
+**请求示例：**
+
+```json
+{
+  "username": "admin001",
+  "password": "Admin123!@#",
+  "confirmPassword": "Admin123!@#",
+  "nickname": "管理员小王"
+}
+```
+
+> 两次密码不一致时返回 `"两次输入的密码不一致"`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "username": "admin001"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.2 管理员登录
+
+**请求 URL：** `POST /admins/login`
+
+> 请求参数同用户登录，参考 1.2
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "0",
+    "token": "eyJhbGciOiJIUzM4NCJ9.xxx"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.3 新增景点
+
+**请求 URL：** `POST /admins/attractions`
+
+**请求参数（Body / JSON）：**
+
+| 参数名         | 类型    | 必填 | 说明                                                         |
+| -------------- | ------- | ---- | ------------------------------------------------------------ |
+| coverUrl       | String  | 是   | 封面图片地址                                                 |
+| attractionName | String  | 是   | 景点名称，中英文或数字，2-20 个字符                          |
+| type           | Integer | 是   | 景点类型：0 主题乐园 / 1 博物馆与展馆 / 2 自然公园 / 3 风景名胜与休闲度假 / 4 历史文化 / 5 古镇水乡 / 6 动植物园与水族馆 / 7 现代地标 |
+
+**请求示例：**
+
+```json
+{
+  "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+  "attractionName": "故宫博物院",
+  "type": 1
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639490",
+    "attractionName": "故宫博物院",
+    "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+    "type": 1
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.4 更新景点
+
+**请求 URL：** `PUT /admins/attractions`
+
+**请求参数（Body / JSON）：**
+
+| 参数名         | 类型    | 必填 | 说明                   |
+| -------------- | ------- | ---- | ---------------------- |
+| id             | String  | 是   | 景点 ID（雪花ID字符串） |
+| coverUrl       | String  | 否   | 封面图片地址           |
+| attractionName | String  | 否   | 景点名称               |
+| type           | Integer | 否   | 景点类型（枚举同 2.3） |
+
+**请求示例：**
+
+```json
+{
+  "id": "2044387096879357953",
+  "attractionName": "故宫博物院（更新名）",
+  "coverUrl": "https://oss.example.com/cover/new.jpg",
+  "type": 4
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044387096879357953",
+    "attractionName": "故宫博物院（更新名）",
+    "coverUrl": "https://oss.example.com/cover/new.jpg",
+    "type": 4
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.5 删除景点
+
+**请求 URL：** `DELETE /admins/attractions/{attractionId}`
+
+> ⚠️ 删除前请弹窗二次确认
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明       |
+| ------------ | ------ | ---- | ---------- |
+| attractionId | String | 是   | 景点唯一ID |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 2.6 批量删除景点
+
+**请求 URL：** `DELETE /admins/attractions/batch`
+
+**请求参数（Body / JSON）：**
+
+| 参数名 | 类型          | 必填 | 说明             |
+| ------ | ------------- | ---- | ---------------- |
+| ids    | List\<Long\> | 是   | 景点ID列表，不可为空 |
+
+**请求示例：**
+
+```json
+{
+  "ids": [2044359968888639490, 2044359968888639491]
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 2.7 获取景点列表（管理员，游标分页）
+
+**请求 URL：** `GET /admins/attractions`
+
+**请求参数（Query）：**
+
+| 参数名   | 类型    | 必填 | 说明                                        |
+| -------- | ------- | ---- | ------------------------------------------- |
+| keyWord  | String  | 否   | 搜索关键词，匹配景点名称，不超过 20 个字符  |
+| type     | Integer | 否   | 景点类型筛选，不传则查全部                  |
+| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传 |
+| pageSize | Integer | 否   | 每页条数，默认 6                            |
+
+**请求示例：**
+
+```
+GET /admins/attractions?keyWord=故宫&type=1&pageSize=6
+GET /admins/attractions?lastId=2044359968888639490&pageSize=6
+```
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "list": [
+      {
+        "id": "2044359968888639490",
+        "attractionName": "故宫博物院",
+        "type": 1
+      }
+    ],
+    "nextLastId": "2044359968888639490",
+    "hasMore": true
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.8 景点数据回显
+
+**请求 URL：** `GET /admins/attractions/{attractionId}`
+
+> 点击某条景点进入编辑页时调用
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明       |
+| ------------ | ------ | ---- | ---------- |
+| attractionId | String | 是   | 景点唯一ID |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639490",
+    "attractionName": "故宫博物院",
+    "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+    "type": 1
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.9 文件上传
+
+**请求 URL：** `POST /admins/file/doc`
+
+> 仅支持后缀为 `.doc`、`.pdf`、`.docx` 的文件，上传至阿里云 OSS，使用 `multipart/form-data`
+
+**响应参数说明：**
+
+| 参数名 | 类型   | 说明                   |
+| ------ | ------ | ---------------------- |
+| ossUrl | String | OSS 文件地址           |
+| taskId | String | 用于轮询文档解析状态   |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "ossUrl": "https://oss.example.com/doc/xxx.pdf",
+    "taskId": "task_abc123"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.10 文档解析状态轮询
+
+**请求 URL：** `GET /admins/attractions/documents/{taskId}`
+
+> 文件上传成功后，拿到 `taskId` 每 **2 秒**轮询一次本接口
+
+**请求参数（路径参数）：**
+
+| 参数名 | 类型   | 必填 | 说明                    |
+| ------ | ------ | ---- | ----------------------- |
+| taskId | String | 是   | 文件上传返回的任务 ID   |
+
+**响应 data 枚举值：**
+
+| 值         | 含义                                                       |
+| ---------- | ---------------------------------------------------------- |
+| PROCESSING | 正在解析，继续轮询                                         |
+| SUCCESS    | 解析完成，弹窗提示"解析成功"，并调用 2.10 刷新文件列表     |
+| FAILED     | 解析失败，弹窗提示"解析失败"，并调用 2.10 刷新文件列表     |
+
+**响应示例：**
+
+```json
+{ "code": 1, "msg": "success", "data": "PROCESSING" }
+{ "code": 1, "msg": "success", "data": "SUCCESS" }
+{ "code": 1, "msg": "success", "data": "FAILED" }
+```
+
+---
+
+## 2.11 景点文件列表回显
+
+**请求 URL：** `GET /admins/attractions/documents/{attractionId}`
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明       |
+| ------------ | ------ | ---- | ---------- |
+| attractionId | String | 是   | 景点唯一ID |
+
+**响应参数说明：**
+
+| 字段       | 类型   | 说明         |
+| ---------- | ------ | ------------ |
+| id         | String | 文件 ID      |
+| ossUrl     | String | OSS 文件地址 |
+| fileName   | String | 文件名       |
+| fileType   | String | 文件类型     |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": [
+    {
+      "id": "1001",
+      "ossUrl": "https://oss.example.com/doc/xxx.pdf",
+      "fileName": "景区介绍.pdf",
+      "fileType": "pdf"
+    }
+  ],
+  "msg": "success"
+}
+```
+
+> list 为空时，仅展示"添加文件"的加号卡片
+
+---
+
+## 2.12 删除景点文档
+
+**请求 URL：** `DELETE /admins/attractions/documents/{fileId}`
+
+> ⚠️ 删除前请弹窗二次确认
+
+**请求参数（路径参数）：**
+
+| 参数名 | 类型   | 必填 | 说明                   |
+| ------ | ------ | ---- | ---------------------- |
+| fileId | String | 是   | 文件 ID（列表中的 id） |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 2.13 新增或修改数字人
+
+**请求 URL：** `POST /admins/attractions/digital-human`
+
+**请求参数（Body / JSON）：**
+
+| 参数名       | 类型    | 必填 | 说明                                |
+| ------------ | ------- | ---- | ----------------------------------- |
+| id           | Long    | 否   | 数字人 ID（雪花ID，字符串传递）      |
+| ossUrl       | String  | 是   | 数字人肖像图片的 OSS 地址           |
+| attractionId | Long    | 是   | 关联的景点 ID（雪花ID，字符串传递） |
+
+**请求示例：**
+
+```json
+{
+  "id": "2044359968888639999",
+  "ossUrl": "https://oss.example.com/portrait/guide_02.jpg",
+  "attractionId": "2044359968888639490"
+}
+```
+
+> 新增/修改成功后，算力服务器会在后台异步预加载视频。前端应调用 **2.15 预加载状态轮询** 接口，等到状态变为 `SUCCESS` 后数字人才可用。预加载完成后可调用 **2.19 生成测试视频** 接口生成一段测试视频，供管理员预览推理效果。
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639999",
+    "ossUrl": "https://oss.example.com/portrait/guide_02.jpg"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.14 查询数字人详情
+
+**请求 URL：** `GET /admins/attractions/digital-human/{attractionId}`
+
+> 进入数字人编辑页时调用，用于数据回显
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明         |
+| ------------ | ------ | ---- | ------------ |
+| attractionId | String | 是   | attractionId |
+
+**请求示例：** `GET /admins/attractions/digital-human/2044359968888639999`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639999",
+    "ossUrl": "https://oss.example.com/portrait/guide_02.jpg"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 2.15 数字人预加载状态轮询
+
+**请求 URL：** `GET /admins/attractions/digital-human/preload-status/{attractionId}`
+
+> 调用 2.13 新增/修改数字人后，每 **2 秒**轮询一次本接口，直到状态变为 `SUCCESS` 或 `FAILED`。
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明               |
+| ------------ | ------ | ---- | ------------------ |
+| attractionId | String | 是   | 景点 ID（与 2.13 中的 attractionId 一致） |
+
+**请求示例：** `GET /admins/attractions/digital-human/preload-status/2044359968888639490`
+
+**响应 data 枚举值：**
+
+| 值         | 含义                                                       |
+| ---------- | ---------------------------------------------------------- |
+| PROCESSING | 正在下载视频并加载模型，继续轮询                           |
+| SUCCESS    | 预加载完成，数字人可以使用                                 |
+| FAILED     | 预加载失败，检查视频文件是否有效或重试                     |
+| null       | 尚未开始处理，继续轮询                                     |
+
+**响应示例：**
+
+```json
+{ "code": 1, "msg": "success", "data": "PROCESSING" }
+{ "code": 1, "msg": "success", "data": "SUCCESS" }
+{ "code": 1, "msg": "success", "data": "FAILED" }
+```
+
+---
+
+## 2.16 删除数字人
+
+**请求 URL：** `DELETE /admins/attractions/digital-human/{id}`
+
+> ⚠️ 删除前请弹窗二次确认
+
+**请求参数（路径参数）：**
+
+| 参数名 | 类型   | 必填 | 说明          |
+| ------ | ------ | ---- | ------------- |
+| id     | String | 是   | 数字人唯一 ID |
+
+**请求示例：** `DELETE /admins/attractions/digital-human/2044359968888639999`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+---
+
+## 2.17 上传景点封面图片
+
+**请求 URL：** `POST /admins/file/cover`
+
+**请求方式：** `multipart/form-data`
+
+**接口说明：** 上传景点封面图片至阿里云 OSS，返回图片地址。返回的 URL 填入新增景点（2.3）或更新景点（2.4）的 `coverUrl` 字段。
+
+**请求参数（form-data）：**
+
+| 参数名 | 类型 | 必填 | 说明 |
+| ------ | ---- | ---- | ---- |
+| file   | File | 是   | 图片文件，仅支持图片格式（`image/*`） |
+
+**响应参数说明：**
+
+| 字段 | 类型   | 说明              |
+| ---- | ------ | ----------------- |
+| data | String | 图片 OSS 访问地址 |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": "https://oss.example.com/cover/2026/05/19/xxx.jpg",
+  "msg": "success"
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "文件格式错误，请上传图片"
+}
+```
+
+---
+
+## 2.18 上传数字人驱动视频
+
+**请求 URL：** `POST /admins/file/video`
+
+**请求方式：** `multipart/form-data`
+
+**接口说明：** 上传数字人驱动视频至阿里云 OSS，返回视频 OSS 地址。返回的 URL 可用于 2.13 新增/修改数字人时填入 `ossUrl` 字段。
+
+> 上传视频仅完成文件存储，预加载在调用 2.13 新增/修改数字人后才会触发。预加载完成后（轮询 2.15 获得 `SUCCESS`）数字人才可用。
+
+**请求参数（form-data + Query）：**
+
+| 参数名       | 位置      | 类型   | 必填 | 说明                                     |
+| ------------ | --------- | ------ | ---- | ---------------------------------------- |
+| file         | form-data | File   | 是   | 视频文件，仅支持视频格式（`video/*`）    |
+| attractionId | Query     | String | 是   | 关联景点 ID（雪花 ID，字符串传递）       |
+
+**请求示例：**
+
+```
+POST /admins/file/video?attractionId=2044359968888639490
+Content-Type: multipart/form-data
+
+file: <视频文件>
+```
+
+**响应参数说明：**
+
+| 字段 | 类型   | 说明              |
+| ---- | ------ | ----------------- |
+| data | String | 视频 OSS 访问地址 |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": "https://oss.example.com/video/2026/05/19/xxx.mp4",
+  "msg": "success"
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "文件格式错误，请上传视频"
+}
+```
+
+---
+
+## 2.19 生成测试视频
+
+**请求 URL：** `POST /admins/attractions/digital-human/test-video/{attractionId}`
+
+> 触发算力服务器异步生成一段测试视频，用于管理员预览数字人的推理效果。生成完成后通过 **2.20 测试视频状态轮询** 获取视频地址。
+
+**请求参数（路径参数 + Body / JSON）：**
+
+| 参数名       | 位置 | 类型   | 必填 | 说明                                                  |
+| ------------ | ---- | ------ | ---- | ----------------------------------------------------- |
+| attractionId | Path | String | 是   | 景点 ID（与数字人关联的 attractionId 一致）           |
+| text         | Body | String | 否   | 自定义测试文本，为空时使用算力服务器默认语音文本      |
+
+**请求示例：**
+
+```json
+POST /admins/attractions/digital-human/test-video/2044359968888639490
+{
+  "text": "你好，欢迎来到故宫博物院参观游览。"
+}
+```
+
+> 自定义文本为空时传 `{}` 即可，系统会使用默认测试文本。
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": "任务已提交",
+  "msg": "success"
+}
+```
+
+> 调用成功后，每 **3 秒**轮询一次 **2.20 测试视频状态轮询** 接口。测试视频生成时间通常为 10-30 秒，取决于算力负载。
+
+---
+
+## 2.20 测试视频生成状态轮询
+
+**请求 URL：** `GET /admins/attractions/digital-human/test-video-status/{attractionId}`
+
+> 调用 2.19 触发测试视频生成后，每 **3 秒**轮询一次本接口，直到状态变为 `SUCCESS` 或 `FAILED`。
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明               |
+| ------------ | ------ | ---- | ------------------ |
+| attractionId | String | 是   | 景点 ID            |
+
+**请求示例：** `GET /admins/attractions/digital-human/test-video-status/2044359968888639490`
+
+**响应 data 字段说明：**
+
+| 字段     | 类型   | 说明                                                |
+| -------- | ------ | --------------------------------------------------- |
+| status   | String | 见下方枚举值                                        |
+| videoUrl | String | 为 `null` 时表示尚未完成，成功后为视频播放地址      |
+
+**status 枚举值：**
+
+| 值         | 含义                                                       |
+| ---------- | ---------------------------------------------------------- |
+| PROCESSING | 正在生成测试视频，继续轮询                                 |
+| SUCCESS    | 生成完成，`videoUrl` 指向可播放的 MP4 视频                 |
+| FAILED     | 生成失败，检查数字人是否已预加载完成或重试                 |
+
+**响应示例：**
+
+```json
+{ "code": 1, "msg": "success", "data": { "status": "PROCESSING", "videoUrl": null } }
+```
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": {
+    "status": "SUCCESS",
+    "videoUrl": "/ai-project/v1/admins/attractions/digital-human/test-video-file/2044359968888639490"
+  }
+}
+```
+
+```json
+{ "code": 1, "msg": "success", "data": { "status": "FAILED", "videoUrl": null } }
+```
+
+**前端使用说明：**
+
+- 拿到 `SUCCESS` 后，将 `videoUrl` 直接填入 `<video>` 标签的 `src` 属性即可播放
+- 测试视频在算力服务器上保留 **24 小时**，超期自动清理，届时 `videoUrl` 将失效
+
+---
+
+## 2.21 获取测试视频文件（代理）
+
+**请求 URL：** `GET /admins/attractions/digital-human/test-video-file/{attractionId}`
+
+> 后端代理接口，从算力服务器获取 MP4 视频文件并流式返回。通常直接使用 2.20 返回的 `videoUrl` 即可，无需单独调用此接口。
+
+**请求参数（路径参数）：**
+
+| 参数名       | 类型   | 必填 | 说明       |
+| ------------ | ------ | ---- | ---------- |
+| attractionId | String | 是   | 景点 ID    |
+
+**请求示例：** `GET /admins/attractions/digital-human/test-video-file/2044359968888639490`
+
+**响应：** `Content-Type: video/mp4`， `<video>` 标签可直接播放。
+
+---
+
+# 三、数据统计接口（管理员）
+
+## 3.1 热门问题排行（柱状图）
+
+**请求 URL：** `GET /admins/stat/faq/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 位置  | 必填 | 默认值 | 说明                    |
+| ------------ | ------- | ----- | ---- | ------ | ----------------------- |
+| attractionId | String  | Path  | 是   | —      | 景点唯一 ID             |
+| days         | Integer | Query | 否   | 7      | 统计时间窗口（天），如 7、30 |
+
+**请求示例：** `GET /admins/stat/faq/10086?days=7`
+
+**响应参数说明（List\<HotFaqChartVO\>）：**
+
+| 字段     | 类型    | 说明                         |
+| -------- | ------- | ---------------------------- |
+| question | String  | 标准问题内容（X 轴类目数据） |
+| count    | Integer | 触发次数（Y 轴数值数据）     |
+
+> 返回数据已按 `count` 降序排列
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": [
+    { "count": 452, "question": "学生票半价需要带学生证吗？" },
+    { "count": 389, "question": "五一期间景区的开放时间是几点？" },
+    { "count": 210, "question": "自驾游的车可以停在景区里面吗？" }
+  ],
+  "msg": "success"
+}
+```
+
+---
+
+## 3.2 聊天服务使用趋势
+
+**请求 URL：** `GET /admins/stat/chat-trend/{attractionId}`
+
+> 统计口径为 T+1，不含今天
+
+**请求参数：**
+
+| 参数名       | 类型    | 位置  | 必填 | 默认值 | 说明                                                                  |
+| ------------ | ------- | ----- | ---- | ------ | --------------------------------------------------------------------- |
+| attractionId | String  | Path  | 是   | —      | 景点唯一 ID                                                           |
+| days         | Integer | Query | 是   | 7      | 1：昨日（按小时，24 个数据点）；7：近 7 天；30：近 30 天（均按天分组） |
+
+**响应参数说明（ChatTrendVO）：**
+
+| 字段                  | 类型    | 说明                                                                 |
+| --------------------- | ------- | -------------------------------------------------------------------- |
+| summary.totalChats    | Integer | 所选周期内的总聊天数                                                 |
+| trendList[].time      | String  | X 轴时间节点，`days=1` 时格式 `HH:00`，`days>1` 时格式 `YYYY-MM-DD` |
+| trendList[].count     | Integer | Y 轴数值，对应时间节点的聊天次数                                     |
+
+**响应示例（days=7）：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "summary": { "totalChats": 1250 },
+    "trendList": [
+      { "time": "2026-04-07", "count": 120 },
+      { "time": "2026-04-08", "count": 150 },
+      { "time": "2026-04-13", "count": 116 }
+    ]
+  },
+  "msg": "success"
+}
+```
+
+**响应示例（days=1）：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "summary": { "totalChats": 116 },
+    "trendList": [
+      { "time": "00:00", "count": 2 },
+      { "time": "01:00", "count": 0 },
+      { "time": "23:00", "count": 8 }
+    ]
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## 3.3 用户满意度趋势（折线图）
+
+**请求 URL：** `GET /admins/stat/satisfaction-trend/{attractionId}`
+
+**认证方式：** Bearer Token（管理员 JWT）
+
+**接口说明：** 获取指定景点近N天的用户满意度趋势，返回每日均分和总均分，用于折线图展示。
+
+**请求参数：**
+
+| 参数名       | 类型    | 位置  | 必填 | 说明                                  |
+| ------------ | ------- | ----- | ---- | ------------------------------------- |
+| attractionId | Long    | Path  | 是   | 景点 ID                               |
+| days         | Integer | Query | 是   | 查询天数，`7` 表示近7天，`30` 表示近30天 |
+
+**请求示例：**
+
+```http
+GET /admins/stat/satisfaction-trend/1001?days=7
+Authorization: Bearer <admin_token>
+```
+
+**响应参数说明（SatisfactionTrendVO）：**
+
+| 字段          | 类型           | 说明                                   |
+| ------------- | -------------- | -------------------------------------- |
+| totalAvgScore | Double         | 该时段内所有评价的总体均分（保留1位小数） |
+| dates         | List\<String\> | 日期列表，格式 `yyyy-MM-dd`，升序       |
+| avgScores     | List\<Double\> | 每日均分，与 dates 一一对应             |
+| counts        | List\<Integer\>| 每日评价数，与 dates 一一对应           |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": {
+    "totalAvgScore": 3.8,
+    "dates": ["2026-05-06", "2026-05-07", "2026-05-08", "2026-05-09", "2026-05-10", "2026-05-11", "2026-05-12"],
+    "avgScores": [3.5, 4.0, 4.0, 3.7, 4.2, 3.5, 4.0],
+    "counts": [8, 10, 9, 7, 12, 6, 11]
+  }
+}
+```
+
+---
+
+# 四、游客体验分析接口（管理员）
+
+## 4.1 情感趋势
+
+**请求 URL：** `GET /admin/analysis/emotion-trend/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 必填 | 说明                     |
+| ------------ | ------- | ---- | ------------------------ |
+| attractionId | String  | 是   | 景区 ID，路径参数        |
+| days         | Integer | 是   | 时间范围，可传 7 或 30   |
+
+**响应参数说明：**
+
+| 参数名            | 类型            | 说明                                                |
+| ----------------- | --------------- | --------------------------------------------------- |
+| dates             | List\<String\>  | 日期序列，格式 MM-dd，无数据日期照常返回            |
+| positiveCount     | List\<Integer\> | 每日正面情感数量，下标与 dates 对应                 |
+| neutralCount      | List\<Integer\> | 每日中性情感数量                                    |
+| negativeCount     | List\<Integer\> | 每日负面情感数量                                    |
+| positiveRate      | List\<Double\>  | 每日正面情感占比，保留一位小数，如 68.4             |
+| neutralRate       | List\<Double\>  | 每日中性情感占比                                    |
+| negativeRate      | List\<Double\>  | 每日负面情感占比                                    |
+| totalPositiveRate | Double          | 所选时间段内正面情感整体占比                        |
+| totalNeutralRate  | Double          | 所选时间段内中性情感整体占比                        |
+| totalNegativeRate | Double          | 所选时间段内负面情感整体占比                        |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "dates": ["04-01", "04-02", "04-03"],
+    "positiveCount": [65, 70, 0],
+    "neutralCount": [20, 18, 0],
+    "negativeCount": [10, 8, 0],
+    "positiveRate": [68.4, 72.9, 0.0],
+    "neutralRate": [21.1, 18.8, 0.0],
+    "negativeRate": [10.5, 8.3, 0.0],
+    "totalPositiveRate": 70.7,
+    "totalNeutralRate": 19.9,
+    "totalNegativeRate": 9.4
+  },
+  "msg": "success"
+}
+```
+
+**前端使用说明：**
+
+- 折线图使用 `*Rate` 字段渲染曲线，点击数据点时用同下标的 `*Count` 展示当日详情
+- 环形图直接使用 `total*Rate` 三个字段，无需前端二次计算
+- 某天无数据时 count 为 0、rate 为 0.0，日期序列完整不断档，前端无需做缺失处理
+
+---
+
+## 4.2 情感与关注点卡片
+
+**请求 URL：** `GET /admin/analysis/emotion-focus-card/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 必填 | 说明                      |
+| ------------ | ------- | ---- | ------------------------- |
+| attractionId | String  | 是   | 景区 ID，路径参数         |
+| days         | Integer | 是   | 时间范围，可传 1 / 7 / 30 |
+
+**响应参数说明：**
+
+| 参数名             | 类型   | 说明                                                     |
+| ------------------ | ------ | -------------------------------------------------------- |
+| positiveRate       | Double | 当期正面情感占比，保留一位小数，如 68.4                  |
+| positiveRateChange | Double | 与上期相比的变化值，正数上升，负数下降，如 +3.2          |
+| changeLabel        | String | 对比说明，如"较昨日"/"较上个7天"/"较上个30天"            |
+| topFocus           | String | 高频关注点，如"餐饮"或"餐饮/票务"                        |
+| topFocusRate       | Double | 高频关注点第一名占所有问询的比例，保留一位小数           |
+| worstFocus         | String | 待改善项，负面情感最集中的关注点，如"停车"或"停车/导览"  |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "positiveRate": 68.4,
+    "positiveRateChange": 3.2,
+    "changeLabel": "较上个7天",
+    "topFocus": "餐饮/票务",
+    "topFocusRate": 41.0,
+    "worstFocus": "停车"
+  },
+  "msg": "success"
+}
+```
+
+**前端使用说明：**
+
+- `topFocus` 和 `worstFocus`：第二名数量不足第一名一半时只返回第一名，否则返回前两名以 `/` 拼接
+- 当期无数据时 `positiveRate`、`topFocusRate` 返回 0.0，`topFocus`、`worstFocus` 返回"暂无数据"
+
+---
+
+## 4.3 获取 AI 服务建议
+
+**请求 URL：** `GET /admin/analysis/ai-service-suggestion/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 位置  | 必填 | 说明                               |
+| ------------ | ------- | ----- | ---- | ---------------------------------- |
+| attractionId | String  | Path  | 是   | 景点唯一 ID                        |
+| type         | Integer | Query | 是   | 时间范围：0 = 近 7 天；1 = 近 30 天 |
+
+**请求示例：** `GET /admin/analysis/ai-service-suggestion/1001?type=0`
+
+**响应参数说明（SuggestionVO）：**
+
+| 字段       | 类型   | 说明                        |
+| ---------- | ------ | --------------------------- |
+| summary    | String | AI 综合分析后生成的总结内容 |
+| suggestion | String | AI 针对该景点给出的具体建议 |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "summary": "近7天游客整体满意度较高，情感正面率达 70.7%...",
+    "suggestion": "建议在餐饮区增设引导标识，改善停车区拥堵问题..."
+  },
+  "msg": "success"
+}
+```
+
+---
+
+# 附录：通用响应结构
+
+所有接口统一返回以下结构：
+
+```json
+{
+  "code": 1,
+  "data": "...",
+  "msg": "success"
+}
+```
+
+| 字段 | 类型    | 说明                    |
+| ---- | ------- | ----------------------- |
+| code | Integer | 1 表示成功，其他表示失败 |
+| data | Any     | 业务数据，失败时为 null |
+| msg  | String  | 提示信息                |
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "数字人图片URL不能为空"
+}
+```

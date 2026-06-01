@@ -1,0 +1,629 @@
+# 后端及AI微服务部署手册
+
+> **适用版本**：v26.5.19 | **最后修订**：2026-05-25 | **目标受众**：运维工程师 / 第三方审核人员
+
+---
+
+## 目录
+
+1. [前置环境要求](#1-前置环境要求)
+2. [核心架构简述](#2-核心架构简述)
+3. [环境变量配置](#3-环境变量配置)
+4. [部署与启动](#4-部署与启动)
+5. [验证与排错](#5-验证与排错)
+6. [附录：端口规划总表](#6-附录端口规划总表)
+
+---
+
+## 1. 前置环境要求
+
+本项目采用**算力分离**部署架构，故以下要求按节点类型分别列出。
+
+### 1.1 节点角色划分
+
+| 节点 | 类型 | 承载服务 |
+| --- | --- | --- |
+| **CPU 云服务器** | 普通云服务器（如阿里云 ECS / 腾讯云 CVM） | Java 后端 + MySQL + Redis + RabbitMQ + markitdown-worker |
+| **AutoDL GPU 实例** | AutoDL 算力平台（RTX 5090） | MuseTalk（数字人生成）+ SoVITS/CosyVoice（AI 语音合成） |
+
+### 1.2 基础软件 — CPU 云服务器
+
+| 软件 | 最低版本 | 推荐版本 | 用途 |
+| --- | --- | --- | --- |
+| **Docker** | 24.0+ | 27.x | 容器运行时（MySQL / Redis / RabbitMQ / markitdown-worker） |
+| **Docker Compose** | v2.20+ | v2.30+ | 中间件编排 |
+| **JDK** | 21 | 21 LTS (GraalVM 21 亦可) | 编译及运行 Java 后端 |
+| **Apache Maven** | 3.8+ | 3.9+ | Java 后端构建打包 |
+| **Git LFS** | 3.0+ | 最新 | 仓库中部分模型文件使用 Git LFS 管理 |
+
+### 1.3 基础软件 — AutoDL GPU 实例
+
+AutoDL 平台已提供预置 CUDA 和 PyTorch 的官方基础镜像，**无需手动安装 GPU 驱动或深度学习框架**。创建实例时选择以下镜像即可满足全部环境要求：
+
+| 镜像 | 说明 |
+| --- | --- |
+| **Ubuntu 22.04 + PyTorch 2.6 + CUDA 12.6**（推荐） | 官方维护，开箱即用，包含 CUDA、cuDNN、PyTorch、Python 3.11 |
+
+实例创建后仅需额外安装：
+
+| 软件 | 用途 |
+| --- | --- |
+| **Python venv** (内置) | 为 MuseTalk / SoVITS 创建独立虚拟环境 |
+| **Git LFS** | 拉取部分模型文件 |
+
+> **重要提示**：AutoDL 实例的**系统盘较小（通常 30-50G）**，所有代码、模型权重和视频素材**必须放在数据盘 `/root/autodl-tmp` 下**，否则极易导致系统盘写满、容器或服务异常。
+
+### 1.4 硬件建议
+
+#### CPU 云服务器
+
+| 组件 | 最低配置 | 推荐配置 | 说明 |
+| --- | --- | --- | --- |
+| Java 后端 | 2C/4G | 4C/8G | CPU 密集型（JWT 加解密、业务逻辑、WebSocket 会话管理） |
+| MySQL (Docker) | 2C/2G | 4C/4G | 已限制 `innodb-buffer-pool-size=128M` |
+| Redis (Docker) | 1C/512M | 2C/1G | 已限制 `maxmemory 256mb` |
+| RabbitMQ (Docker) | 1C/512M | 2C/1G | 已限制 `vm_memory_high_watermark 0.15` |
+| markitdown-worker (Docker) | 1C/512M | 2C/1G | 文档格式转换（纯 CPU） |
+| **整机建议** | **4C/8G** | **8C/16G** | 含操作系统开销 |
+
+#### AutoDL GPU 实例
+
+| 组件 | 最低配置 | 推荐配置 | 说明 |
+| --- | --- | --- | --- |
+| MuseTalk | 8C/16G + **RTX 4090 24G** | 12C/32G + **RTX 5090 32G** | 数字人生成，显存占用视视频分辨率及预热帧数而定 |
+| SoVITS/CosyVoice | 4C/8G + **RTX 4090 24G** | 8C/16G + **RTX 5090 32G** | CosyVoice3 模型 fp16 推理，约 3-4G 显存 |
+| **整机建议** | **16C/32G + RTX 5090 32G** | 同一实例运行两个服务（约 12-16G 显存） |
+
+### 1.5 网络要求
+
+- **CPU 云服务器**上所有中间件通过 Docker 内部网络互通；与 AutoDL 实例通过**广域网**通信。
+- Java 后端通过 **AutoDL 暴露的公网自定义服务端口** 以 WebSocket 协议连接 MuseTalk（端口 6006）和 SoVITS（端口 6008）。
+- Java 后端需要出网访问以下外部服务：
+  - `dashscope.aliyuncs.com`（阿里云百炼 LLM API）
+  - `oss-cn-guangzhou.aliyuncs.com`（阿里云 OSS 对象存储）
+  - NLS 实时语音识别 WebSocket 端点（阿里云智能语音交互）
+- AutoDL 实例需在控制台 **"自定义服务"** 中暴露端口 6006 和 6008，获得对应的公网代理地址（格式 `http://<instance-id>.c2.guangzhou.gpuhub.com:port` 或类似）。
+- 须开放端口详见 [附录：端口规划总表](#6-附录端口规划总表)。
+
+---
+
+## 2. 核心架构简述
+
+### 2.1 整体架构图
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           客户端 (App/Web)                               │
+└──────┬──────────────────────────────┬────────────────────────────────────┘
+       │ HTTP/WebSocket               │ HTTP
+       ▼                              ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ╔═════════════════════════════ CPU 云服务器 ══════════════════════════╗ │
+│  ║                                                                      ║ │
+│  ║              ai-guide-backend (Java 21)                              ║ │
+│  ║           Spring Boot 4.0.4  ·  Port 8080                           ║ │
+│  ║           Context-Path: /ai-project                                  ║ │
+│  ║                                                                      ║ │
+│  ║ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐            ║ │
+│  ║ │ biz-user │ │biz-admin │ │biz-attrac│ │   biz-ai     │            ║ │
+│  ║ │ 用户模块  │ │ 管理后台  │ │ 景点管理  │ │ AI核心对话   │            ║ │
+│  ║ └──────────┘ └──────────┘ └──────────┘ └──────┬───────┘            ║ │
+│  ║                                                │                     ║ │
+│  ║ ┌──────────────────────┐ ┌──────────────────┐ │ ┌──────────────┐   ║ │
+│  ║ │ markitdown-worker    │ │ 中间件 (Docker)   │ │ │JDBC/MyBatis  │   ║ │
+│  ║ │ (文档格式转换)        │ │ MySQL · Redis     │ │ │              │   ║ │
+│  ║ │ 消费 doc.convert 队列 │ │ RabbitMQ          │ │ │              │   ║ │
+│  ║ └──────────────────────┘ └──────────────────┘ │ └──────────────┘   ║ │
+│  ╚══════════════════════════════════════════════════════════════════════╝ │
+└──────────────────────────────────────────────────────────────────────────┘
+       │                                │
+       │  ┌─────────────────────────────┤
+       │  │ WebSocket (公网)            │ WebSocket (公网)
+       │  │ AutoDL 代理端口              │ AutoDL 代理端口
+       │  │                             │
+       ▼  ▼                             ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ╔════════════════════════ AutoDL RTX 5090 算力实例 ═══════════════════╗ │
+│  ║                                                                      ║ │
+│  ║  ┌──────────────────────────┐    ┌──────────────────────────────┐   ║ │
+│  ║  │ SoVITS / CosyVoice       │    │        MuseTalk              │   ║ │
+│  ║  │ (Python FastAPI)         │    │    (Python FastAPI)           │   ║ │
+│  ║  │ Port 6008 · /ws/tts      │    │    Port 6006 · /ws/infer     │   ║ │
+│  ║  │                          │    │                              │   ║ │
+│  ║  │ CosyVoice3 零样本        │    │ MuseTalk UNet + VAE          │   ║ │
+│  ║  │ TTS 语音合成              │    │ Whisper-tiny 音频特征提取    │   ║ │
+│  ║  │ 24kHz → 16kHz 重采样     │    │ 音频驱动唇形 → 视频帧输出   │   ║ │
+│  ║  └──────────────────────────┘    └──────────────────────────────┘   ║ │
+│  ║                                                                      ║ │
+│  ║  数据盘: /root/autodl-tmp/                                           ║ │
+│  ║  模型 & 代码均存放于此                                               ║ │
+│  ╚══════════════════════════════════════════════════════════════════════╝ │
+│                                                                          │
+│  注：MuseTalk 启动时连接 CPU 服务器上的 RabbitMQ（公网或 AutoDL          │
+│       内网穿透），消费 video.preload.queue / video.delete.queue          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**关键数据流**（跨主机 WebSocket 串联）：
+
+```
+用户输入文本
+  → Java 后端 (CPU 云服务器)
+    → [公网] SoVITS /ws/tts  → CosyVoice3 生成语音 (16kHz PCM)
+      ← 音频 PCM 回传 Java 后端
+        → [公网] MuseTalk /ws/infer
+          → MuseTalk 生成数字人视频帧 (JPEG)
+            ← JPEG 帧回传 Java 后端
+              → Java 后端 WebSocket 推流至客户端
+```
+
+### 2.2 微服务职责说明
+
+| 服务 | 技术栈 | 职责 |
+| --- | --- | --- |
+| **ai-guide-backend** | Java 21 / Spring Boot 4.0.4 / MyBatis-Plus / Spring AI 2.0.0-M3 | 核心业务后端。承载用户认证 (JWT + Redis)、景点 CRUD (OSS 文件上传)、AI 对话编排 (RAG 向量检索 + LLM)、WebSocket 会话管理、管理员数据分析。上下文路径 `/ai-project`，端口 `8080` |
+| **SoVITS / CosyVoice** | Python 3.11 / FastAPI / CosyVoice3 | AI 语音合成服务。接收 Java 后端通过 `/ws/tts` WebSocket 发来的文本，调用 CosyVoice3 零样本模型生成 24kHz 语音，重采样为 16kHz s16le PCM 后流式回传。通过 `/voices/reload` 热加载音色文件 |
+| **MuseTalk** | Python 3.11 / FastAPI / MuseTalk UNet | 数字人生成服务。通过 `/ws/infer` WebSocket 接收 Java 后端转发的 16kHz PCM 音频，使用 Whisper-tiny 提取音频特征后驱动预加载的头像视频生成口型同步帧，以 JPEG 二进制流推送回 Java 后端。启动时自动扫描视频目录预加载并预热 |
+| **markitdown-worker** | Python 3.13 / pika / MarkItDown | 文档解析 Worker。消费 RabbitMQ 队列 `doc.convert.request`，从 OSS 下载用户上传的 PDF/Word/Excel 等文件，使用 Microsoft MarkItDown 转换为 Markdown 文本，将结果投递到 `doc.convert.result` 队列供 Java 后端入库 |
+| **MySQL** | 8.0+ (Docker) | 主数据库。存储用户、景点、FAQ、管理员等业务数据（库名 `ai_guide`） |
+| **Redis Stack** | 7.x (Docker) | 缓存 / 会话管理 / 向量存储。JWT Token 存储、Spring AI 向量索引 (`attraction_index`)、热点 FAQ 统计 |
+| **RabbitMQ** | 4.x Management (Docker) | 消息队列。承载文档向量化异步任务、FAQ 落库、数字人视频预加载指令、markitdown 文档转换等异步消息 |
+
+---
+
+## 3. 环境变量配置
+
+本项目采用 **`.env` 文件** 统一管理敏感配置。部署前须在项目根目录创建 `.env` 文件。
+
+> **注意**：下方示例占位符（如 `your-xxx-here`）均须替换为实际值。严禁将真实的 `.env` 提交至版本控制系统。
+
+### 3.1 Docker Compose 中间件环境变量
+
+以下变量由 `docker-compose.yml` 中的中间件服务直接消费。
+
+| 变量名 | 所属服务 | 含义 | 示例值 | 必填 |
+| --- | --- | --- | --- | --- |
+| `MYSQL_ROOT_PASSWORD` | mysql-dev | MySQL root 用户密码 | `MySql_Secur3_P@ss!2026` | **是** |
+| `REDIS_ARGS` | redis-dev | Redis 启动参数（密码、内存上限、淘汰策略、AOF） | `--requirepass R3dis_St@ck_S3cure!2026 --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes` | **是** |
+| `RABBITMQ_DEFAULT_USER` | rabbitmq-dev | RabbitMQ 管理员用户名 | `rmq_super_admin` | **是** |
+| `RABBITMQ_DEFAULT_PASS` | rabbitmq-dev | RabbitMQ 管理员密码 | `R@bbit_Adm1n_!2026` | **是** |
+| `RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS` | rabbitmq-dev | RabbitMQ 内存高水位线（百分比） | `-rabbit vm_memory_high_watermark 0.15` | 否 |
+| `RABBITMQ_HOST` | markitdown-worker | RabbitMQ 主机名或 IP | `rabbitmq-dev` | **是** |
+| `RABBITMQ_USER` | markitdown-worker | RabbitMQ 连接用户名 | `rmq_super_admin` | **是** |
+| `RABBITMQ_PASS` | markitdown-worker | RabbitMQ 连接密码 | `R@bbit_Adm1n_!2026` | **是** |
+
+### 3.2 Java 后端业务环境变量
+
+Java 后端使用 Spring Boot 的 `application-{profile}.yml` 配置文件，其内占位符 `${cpp.xxx}` 可通过**操作系统环境变量**或 **JVM 启动参数**注入。生产环境建议通过环境变量统一管理。
+
+#### 3.2.1 数据库与中间件连接
+
+| 环境变量 | 对应配置项 | 含义 | 示例值 | 必填 |
+| --- | --- | --- | --- | --- |
+| `CPP_DATASOURCE_HOST` | `cpp.datasource.host` | MySQL 主机地址 | `127.0.0.1` 或 `mysql-dev`（Docker 网络内） | **是** |
+| `CPP_DATASOURCE_PORT` | `cpp.datasource.port` | MySQL 端口 | `3306` | 否（默认 3306） |
+| `CPP_DATASOURCE_DATABASE` | `cpp.datasource.database` | MySQL 数据库名 | `ai_guide` | **是** |
+| `CPP_DATASOURCE_USERNAME` | `cpp.datasource.username` | MySQL 用户名 | `root` | **是** |
+| `CPP_DATASOURCE_PASSWORD` | `cpp.datasource.password` | MySQL 密码 | 与 `MYSQL_ROOT_PASSWORD` 一致 | **是** |
+| `CPP_REDIS_HOST` | `cpp.redis.host` | Redis 主机地址 | `127.0.0.1` 或 `redis-dev` | **是** |
+| `CPP_REDIS_PORT` | `cpp.redis.port` | Redis 端口 | `6379` | 否（默认 6379） |
+| `CPP_REDIS_PASSWORD` | `cpp.redis.password` | Redis 密码 | 与 `REDIS_ARGS` 中 `--requirepass` 一致 | **是** |
+| `CPP_RABBITMQ_HOST` | `cpp.rabbitmq.host` | RabbitMQ 主机地址 | `127.0.0.1` 或 `rabbitmq-dev` | **是** |
+| `CPP_RABBITMQ_PORT` | `cpp.rabbitmq.port` | RabbitMQ 端口 | `5672` | 否（默认 5672） |
+| `CPP_RABBITMQ_VIRTUAL_HOST` | `cpp.rabbitmq.virtual-host` | RabbitMQ 虚拟主机 | `/` | 否（默认 `/`） |
+| `CPP_RABBITMQ_USERNAME` | `cpp.rabbitmq.username` | RabbitMQ 用户名 | 与 `RABBITMQ_DEFAULT_USER` 一致 | **是** |
+| `CPP_RABBITMQ_PASSWORD` | `cpp.rabbitmq.password` | RabbitMQ 密码 | 与 `RABBITMQ_DEFAULT_PASS` 一致 | **是** |
+
+#### 3.2.2 AI 模型与外部 API
+
+| 环境变量 | 对应配置项 | 含义 | 示例值 | 必填 |
+| --- | --- | --- | --- | --- |
+| `CPP_AI_OPENAI_BASE_URL` | `cpp.ai.openai.base-url` | LLM API 端点地址 | `https://dashscope.aliyuncs.com/compatible-mode` | **是** |
+| `CPP_AI_OPENAI_API_KEY` | `cpp.ai.openai.api-key` | LLM API 密钥 (DashScope / 通义千问) | `sk-xxxxxxxxxxxxxxxx` | **是** |
+| `CPP_JWT_SECRET` | `cpp.jwt.secret` | JWT 签名密钥 | 不小于 256 位的随机字符串 | **是** |
+
+#### 3.2.3 阿里云服务
+
+| 环境变量 | 对应配置项 | 含义 | 示例值 | 必填 |
+| --- | --- | --- | --- | --- |
+| `CPP_ALIYUN_APP_KEY` | `cpp.aliyun.app-key` | 阿里云 NLS 语音识别 AppKey | `By3oQ0OyAEXj7HXZ` | 否（不使用实时语音识别时可留空） |
+| `CPP_ALIYUN_ACCESS_KEY_ID` | `cpp.aliyun.access-key-id` | 阿里云 RAM AccessKey ID（同时用于 NLS 与 OSS） | `LTAI5txxxxxxxxxxxxx` | **是**（OSS 文件上传必需） |
+| `CPP_ALIYUN_ACCESS_KEY_SECRET` | `cpp.aliyun.access-key-secret` | 阿里云 RAM AccessKey Secret | — | **是**（OSS 文件上传必需） |
+
+#### 3.2.4 AI 微服务连接
+
+> **跨主机部署重要警告**：MuseTalk 和 SoVITS 部署在独立的 AutoDL GPU 实例上，与 Java 后端**不在同一台主机**。因此这两项环境变量**绝对不能**填写 `127.0.0.1` 或 `localhost`，必须填写 AutoDL 实例暴露的**公网自定义服务地址和端口**。
+>
+> AutoDL 自定义服务地址获取方式：登录 AutoDL 控制台 → 实例列表 → 更多 → 自定义服务 → 添加端口映射（6006 和 6008），系统将自动分配对应的公网代理地址（格式形如 `http://<instance-id>.c2.guangzhou.gpuhub.com:<mapped-port>`）。WebSocket 协议使用 `ws://` 前缀替换 `http://` 即可。
+
+| 环境变量 | 对应配置项 | 含义 | 示例值 | 必填 |
+| --- | --- | --- | --- | --- |
+| `CPP_MUSETALK_WS_URL` | `cpp.museTalk.ws-url` | MuseTalk 数字人服务 WebSocket 地址（**必须填 AutoDL 公网地址**） | `ws://abc123.c2.guangzhou.gpuhub.com:6006/ws/infer` | 否（不使用数字人功能时可留空） |
+| `CPP_COSYVOICE_WS_URL` | `cpp.cosyVoice.ws-url` | CosyVoice TTS 服务 WebSocket 地址（**必须填 AutoDL 公网地址**） | `ws://abc123.c2.guangzhou.gpuhub.com:6008/ws/tts` | 否（不使用 AI 语音合成时可留空） |
+
+### 3.3 SoVITS / CosyVoice 服务环境变量
+
+由 `SoVITS/config.py` 读取。
+
+| 环境变量 | 含义 | 默认值 | 必填 |
+| --- | --- | --- | --- |
+| `COSYVOICE_REPO` | CosyVoice 源码仓库根目录 | `/root/autodl-tmp/CosyVoice` | 否 |
+| `COSYVOICE_MODEL_DIR` | CosyVoice3 预训练模型目录 | `/root/autodl-tmp/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B` | 否 |
+| `COSYVOICE_VOICES_DIR` | 音色样本 (`.wav` + `prompt.txt`) 存储目录 | `/root/autodl-tmp/voices` | 否 |
+| `COSYVOICE_DEFAULT_VOICE` | 默认音色 ID（对应 `{VOICES_DIR}/{id}.wav`） | `default` | 否 |
+| `COSYVOICE_WARMUP_TEXT` | 模型预热时使用的文本 | `你好，欢迎使用语音合成服务...` | 否 |
+| `TTS_SPEED` | 语速因子，值越小越慢 | `0.9` | 否 |
+| `ENABLE_AUDIO_NATURALIZATION` | 是否启用音频自然化处理（影响 Whisper 识别准确率） | `true` | 否 |
+| `COSYVOICE_LOG_LEVEL` | 日志级别 | `INFO` | 否 |
+
+### 3.4 MuseTalk 服务环境变量
+
+由 `MuseTalk/config.py` 读取。
+
+| 环境变量 | 含义 | 默认值 | 必填 |
+| --- | --- | --- | --- |
+| `PROJECT_ROOT` | 项目根目录 | `/root/autodl-tmp/DigitalHuman` | 否 |
+| `MUSETALK_ROOT` | MuseTalk 源码仓库根目录 | `/root/autodl-tmp/MuseTalk` | 否 |
+| `BASE_VIDEO_DIR` | 头像底模视频 (`.mp4`) 存储目录 | `/root/autodl-tmp/videos` | 否 |
+| `VOICES_DIR` | 音色文件目录（与 SoVITS 共用） | `/root/autodl-tmp/voices` | 否 |
+| `COSYVOICE_URL` | SoVITS/CosyVoice HTTP 地址（预热等场景，**跨主机须填 AutoDL 实例内网地址或 localhost**，因为 SoVITS 和 MuseTalk 在同一台 AutoDL 实例上） | `http://localhost:6008` | 否 |
+| `DEVICE` | PyTorch 推理设备 | `cuda` | 否 |
+| `MQ_URL` | RabbitMQ 连接地址（接收视频预加载/删除指令，**必须填 CPU 云服务器的公网 IP 或内网穿透地址**） | `amqp://rmq_super_admin:...@<CPU服务器公网IP>:5672/` | 否 |
+| `MQ_QUEUE_NAME` | 视频预加载消息队列名 | `video.preload.queue` | 否 |
+| `MQ_DELETE_QUEUE_NAME` | 视频删除消息队列名 | `video.delete.queue` | 否 |
+| `HOST` | FastAPI 监听地址 | `0.0.0.0` | 否 |
+| `PORT` | FastAPI 监听端口 | `6006` | 否 |
+
+### 3.5 `.env` 文件完整模板
+
+```ini
+# ==================== Docker Compose 中间件 ====================
+MYSQL_ROOT_PASSWORD=MySql_Secur3_P@ss!2026
+REDIS_ARGS=--requirepass R3dis_St@ck_S3cure!2026 --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+RABBITMQ_DEFAULT_USER=rmq_super_admin
+RABBITMQ_DEFAULT_PASS=R@bbit_Adm1n_!2026
+
+# ==================== Java 后端 ====================
+CPP_DATASOURCE_HOST=mysql-dev
+CPP_DATASOURCE_PORT=3306
+CPP_DATASOURCE_DATABASE=ai_guide
+CPP_DATASOURCE_USERNAME=root
+CPP_DATASOURCE_PASSWORD=MySql_Secur3_P@ss!2026
+
+CPP_REDIS_HOST=redis-dev
+CPP_REDIS_PORT=6379
+CPP_REDIS_PASSWORD=R3dis_St@ck_S3cure!2026
+
+CPP_RABBITMQ_HOST=rabbitmq-dev
+CPP_RABBITMQ_PORT=5672
+CPP_RABBITMQ_VIRTUAL_HOST=/
+CPP_RABBITMQ_USERNAME=rmq_super_admin
+CPP_RABBITMQ_PASSWORD=R@bbit_Adm1n_!2026
+
+CPP_AI_OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode
+CPP_AI_OPENAI_API_KEY=sk-your-dashscope-api-key-here
+
+CPP_JWT_SECRET=YourVeryLongRandomSecretStringAtLeast256Bits
+
+CPP_ALIYUN_APP_KEY=your-nls-app-key
+CPP_ALIYUN_ACCESS_KEY_ID=LTAI5txxxxxxxxxxxxx
+CPP_ALIYUN_ACCESS_KEY_SECRET=your-aliyun-access-key-secret
+
+# 【跨主机部署】以下两个地址必须填 AutoDL 实例的公网自定义服务地址，绝对不能填 127.0.0.1！
+CPP_MUSETALK_WS_URL=ws://abc123.c2.guangzhou.gpuhub.com:6006/ws/infer
+CPP_COSYVOICE_WS_URL=ws://abc123.c2.guangzhou.gpuhub.com:6008/ws/tts
+
+# ==================== Python AI 微服务（如有自定义需求，按需配置） ====================
+# --- SoVITS / CosyVoice ---
+COSYVOICE_MODEL_DIR=/root/autodl-tmp/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B
+COSYVOICE_VOICES_DIR=/root/autodl-tmp/voices
+TTS_SPEED=0.9
+
+# --- MuseTalk ---
+BASE_VIDEO_DIR=/root/autodl-tmp/videos
+MQ_URL=amqp://rmq_super_admin:R@bbit_Adm1n_!2026@rabbitmq-dev:5672/
+DEVICE=cuda
+PORT=6006
+```
+
+---
+
+## 4. 部署与启动
+
+### 4.1 启动顺序概览
+
+```
+ ┌──── CPU 云服务器 ────┐                       ┌─ AutoDL GPU 实例 ─┐
+ │                       │                       │                    │
+ │ Step 1      Step 2    │                       │     Step 3         │
+ │ ┌──────┐   ┌───────┐  │   Step 2.5             │  ┌─────────────┐  │
+ │ │中间件 │→  │Java   │  │   ~~~~~~~~             │  │ AI 微服务   │  │
+ │ │docker │   │后端   │  │   AutoDL 控制台          │  │ SoVITS +    │  │
+ │ │compose│   │mvn    │  │   配置自定义服务          │  │ MuseTalk    │  │
+ │ │up -d  │   │package│  │   暴露 6006/6008 端口     │  │ python      │  │
+ │ │       │   │+ java │  │                       │  │ main.py     │  │
+ │ └──────┘   │-jar   │  │                       │  └─────────────┘  │
+ │            └───────┘  │                       │                    │
+ └───────────────────────┘                       └────────────────────┘
+```
+
+> 注意：Step 1 和 Step 2 在 CPU 云服务器上执行；Step 3 在 AutoDL GPU 实例上执行。Step 2 之前需先在 AutoDL 控制台完成自定义服务端口映射（见 4.3.1）。
+
+### 4.2 Step 1：启动中间件容器（CPU 云服务器）
+
+```bash
+# 在项目根目录执行（docker-compose.yml 所在目录）
+cd /path/to/ai-guide-master
+
+# 创建 .env 文件（参考 3.5 节模板）
+cp .env.example .env   # 然后编辑 .env 填入真实值
+
+# 启动所有中间件
+docker compose up -d mysql-dev redis-dev rabbitmq-dev markitdown-worker
+```
+
+### 4.3 Step 2：构建并启动 Java 后端（CPU 云服务器）
+
+#### 4.3.1 前置步骤：获取 AutoDL 公网服务地址
+
+在启动 Java 后端之前，须先在 AutoDL 控制台为 AI 微服务暴露公网端口：
+
+1. 登录 [AutoDL 控制台](https://www.autodl.com/console) → 实例列表 → 找到 GPU 实例 → **更多** → **自定义服务**。
+2. 添加两条端口映射：
+   - 端口 `6006`（MuseTalk）→ 获得公网代理地址，形如 `http://<instance-id>.c2.guangzhou.gpuhub.com:<mapped-port>`
+   - 端口 `6008`（SoVITS/CosyVoice）→ 同上格式
+3. 将上述地址的 `http://` 替换为 `ws://`，填入环境变量 `CPP_MUSETALK_WS_URL` 和 `CPP_COSYVOICE_WS_URL`（参考 [3.2.4 节](#324-ai-微服务连接)）。
+
+#### 4.3.2 Maven 打包与启动
+
+```bash
+# 进入 Java 后端目录
+cd ai-guide-backend
+
+# 1. Maven 打包（跳过测试加速部署，如需测试请移除 -DskipTests）
+./mvnw clean package -DskipTests
+
+# 2. 确认 JAR 包生成
+ls -lh ai-start/target/ai-start-0.0.1-SNAPSHOT.jar
+
+# 3. 以 prod profile 启动（环境变量需已配置，含 AutoDL 公网地址，见 3.5 节）
+java -jar ai-start/target/ai-start-0.0.1-SNAPSHOT.jar \
+    --spring.profiles.active=prod \
+    --server.port=8080
+
+# 或者直接使用 Maven 插件启动（开发/调试场景）
+./mvnw spring-boot:run -pl ai-start -Dspring-boot.run.profiles=prod
+```
+
+> **注意**：`application-prod.yml` 文件中缺少 `museTalk.ws-url`、`cosyVoice.ws-url` 和 `jwt.secret` 配置项。首次部署生产环境前，**必须在 `application-prod.yml` 中补充这三项配置**，或通过环境变量注入（见 3.2.4 节）。
+
+### 4.4 Step 3：启动 AI 微服务（AutoDL GPU 实例）
+
+以下操作全部在 AutoDL 实例的 **JupyterLab 终端** 或 **SSH 终端** 中完成。
+
+> **AutoDL 平台关键注意事项**：
+> - **所有代码和模型必须放在数据盘 `/root/autodl-tmp` 下**，系统盘空间有限（通常 30-50G），模型权重轻易就会占满。
+> - AutoDL 实例已预装 CUDA、PyTorch 和 Python，**不需要使用 Docker**，直接激活虚拟环境运行即可。
+> - 启动前须确保已在 AutoDL 控制台的 **"自定义服务"** 中暴露目标端口（6006、6008），否则外部无法通过公网访问。
+
+#### 4.4.1 目录结构建议
+
+```
+/root/autodl-tmp/
+├── MuseTalk/                  # MuseTalk 源码（从项目仓库 clone 或 scp 上传）
+├── SoVITS/                    # SoVITS/CosyVoice 源码
+├── CosyVoice/                 # CosyVoice 官方仓库
+│   └── pretrained_models/
+│       └── Fun-CosyVoice3-0.5B/   # CosyVoice3 模型权重
+├── videos/                    # 数字人底模视频（{attraction_id}.mp4）
+│   ├── attraction_001.mp4
+│   └── attraction_002.mp4
+└── voices/                    # 音色样本文件
+    ├── default.wav
+    ├── guide1.wav
+    └── prompt.txt             # 全局提示文本（所有音色共享）
+```
+
+#### 4.4.2 SoVITS / CosyVoice（AI 语音合成）
+
+```bash
+# 1. 进入数据盘目录
+cd /root/autodl-tmp/SoVITS
+
+# 2. 创建并激活虚拟环境
+python -m venv .venv
+source .venv/bin/activate
+
+# 3. 安装依赖
+pip install -r requirements.txt
+
+# 4. 配置环境变量
+export COSYVOICE_MODEL_DIR=/root/autodl-tmp/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B
+export COSYVOICE_VOICES_DIR=/root/autodl-tmp/voices
+export COSYVOICE_DEFAULT_VOICE=default
+export TTS_SPEED=0.9
+
+# 5. 启动（监听 0.0.0.0:6008，配合 AutoDL 自定义服务对外暴露）
+python main.py
+```
+
+**前置准备**：
+1. 将代码 clone 至 `/root/autodl-tmp/SoVITS`。
+2. 确保 `COSYVOICE_MODEL_DIR` 指向已下载的 CosyVoice3 模型目录。
+3. 确保 `COSYVOICE_VOICES_DIR` 下有音色文件：`{id}.wav` 及全局 `prompt.txt`。
+   - `prompt.txt` 文件为对应 `.wav` 提示音频的**准确文本转录**，CosyVoice3 零样本质量极大依赖此文本的准确性。
+
+#### 4.4.3 MuseTalk（数字人生成）
+
+```bash
+# 1. 进入数据盘目录
+cd /root/autodl-tmp/MuseTalk
+
+# 2. 创建并激活虚拟环境
+python -m venv .venv
+source .venv/bin/activate
+
+# 3. 安装依赖
+pip install -r requirements.txt
+
+# 4. 配置环境变量（MQ_URL 须指向 CPU 云服务器的 RabbitMQ 公网地址）
+export BASE_VIDEO_DIR=/root/autodl-tmp/videos
+export MQ_URL=amqp://rmq_super_admin:R@bbit_Adm1n_!2026@<CPU服务器公网IP>:5672/
+export DEVICE=cuda
+export PORT=6006
+export HOST=0.0.0.0
+
+# 5. 启动（监听 0.0.0.0:6006，配合 AutoDL 自定义服务对外暴露）
+python main.py
+```
+
+**前置准备**：
+1. 将代码和模型 (`pytorch_model.bin`, `tiny.pt`) clone 至 `/root/autodl-tmp/MuseTalk`。
+2. 确保 `BASE_VIDEO_DIR` 下有各景点的头像底模视频（命名格式 `{attraction_id}.mp4`）。
+3. **`MQ_URL` 必须填写 CPU 云服务器的公网 IP**（或已做好内网穿透的地址），确保 AutoDL 实例能连接到 RabbitMQ。
+4. 启动后服务会自动扫描视频目录并预加载所有头像资源到 GPU。
+
+> **markitdown-worker 已在 Step 1 中通过 Docker Compose 在 CPU 服务器上启动**，无需在 AutoDL 实例上部署。
+
+### 4.5 完整启动流程参考
+
+```
+ ┌─ CPU 云服务器 ─────────────────────────────────────────────────────────┐
+ │                                                                         │
+ │  1. docker compose up -d mysql-dev redis-dev rabbitmq-dev markitdown-worker
+ │  2. 在 AutoDL 控制台配置自定义服务（暴露 6006/6008）获取公网地址          │
+ │  3. 设置 CPP_MUSETALK_WS_URL / CPP_COSYVOICE_WS_URL 为 AutoDL 公网地址    │
+ │  4. cd ai-guide-backend && ./mvnw clean package -DskipTests             │
+ │  5. java -jar ai-start/target/ai-start-0.0.1-SNAPSHOT.jar \            │
+ │         --spring.profiles.active=prod                                   │
+ │                                                                         │
+ └─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+ ┌─ AutoDL GPU 实例（JupyterLab 终端 / SSH）───────────────────────────────┐
+ │                                                                         │
+ │  1. cd /root/autodl-tmp/SoVITS                                          │
+ │     source .venv/bin/activate && python main.py          # Port 6008   │
+ │                                                                         │
+ │  2. cd /root/autodl-tmp/MuseTalk                                        │
+ │     source .venv/bin/activate && python main.py          # Port 6006   │
+ │                                                                         │
+ └─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. 验证与排错
+
+### 5.1 服务验证清单
+
+| 服务 | 执行位置 | 验证方式 | 预期结果 |
+| --- | --- | --- | --- |
+| MySQL | CPU 云服务器 | `docker exec mysql-dev mysql -uroot -p -e "SELECT 1;"` | 输出 `1` |
+| Redis | CPU 云服务器 | `docker exec redis-dev redis-cli -a "yourpassword" PING` | `PONG` |
+| RabbitMQ | 浏览器 | 访问 `http://<CPU服务器公网IP>:15672` | 出现 RabbitMQ 管理界面（用配置的用户名密码登录） |
+| Java 后端 | 浏览器 | 访问 `http://<CPU服务器公网IP>:8080/ai-project/swagger-ui/index.html` | 展示 Swagger API 文档页面 |
+| markitdown-worker | CPU 云服务器 | `docker logs markitdown-worker` | 日志包含 `Python Worker 已就绪！坐等 Java 老哥发包...` |
+| SoVITS | 浏览器 / CPU 服务器 | `curl http://<AutoDL公网地址>:6008/health` | `{"status":"ok","voices":["default",...]}` |
+| SoVITS | 浏览器 / CPU 服务器 | `curl http://<AutoDL公网地址>:6008/voices` | `{"voices":["default",...]}` |
+| MuseTalk | AutoDL 实例 | 查看启动日志 `tail -f /root/autodl-tmp/MuseTalk/logs/*.log` | 包含 `Uvicorn running on http://0.0.0.0:6006` 及 `预加载全部完成` |
+
+> **验证顺序提示**：中间件（MySQL/Redis/RabbitMQ）→ AI 微服务（SoVITS/MuseTalk）→ Java 后端。Java 后端启动时会尝试连接各 AI 服务，故 AI 服务须先于 Java 后端或与之同步启动。
+
+### 5.2 常见排错
+
+#### 问题 1：Java 后端启动时报 `Communications link failure`
+
+**症状**：应用日志出现 `com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure`
+
+**排查步骤**：
+1. 确认 MySQL 容器已启动且健康：`docker ps | grep mysql-dev`
+2. 确认主机地址配置正确——若 Java 后端在宿主机运行且 MySQL 在 Docker 内，应使用 `127.0.0.1`；若同在 Docker 网络中，应使用容器名 `mysql-dev`
+3. 检查 `CPP_DATASOURCE_USERNAME` 和 `CPP_DATASOURCE_PASSWORD` 是否与 `MYSQL_ROOT_PASSWORD` 一致
+4. 确认数据库 `ai_guide` 是否已创建：`docker exec mysql-dev mysql -uroot -p -e "CREATE DATABASE IF NOT EXISTS ai_guide DEFAULT CHARACTER SET utf8mb4;"`
+
+#### 问题 2：MuseTalk 启动后 GPU 显存溢出（OOM）
+
+**症状**：日志出现 `CUDA out of memory` 或 `torch.cuda.OutOfMemoryError`
+
+**排查步骤**：
+1. 检查当前 GPU 显存使用：`nvidia-smi`
+2. 减少 `BASE_VIDEO_DIR` 中预加载的视频数量（每个视频都会占用一定显存）
+3. 降低视频分辨率或帧数预处理
+4. 在 `MuseTalk/config.py` 中确认 `DEVICE=cuda`（非 `cpu`），CPU 模式可能因内存不足而崩溃
+
+#### 问题 3：markitdown-worker 无法连接 RabbitMQ
+
+**症状**：`docker logs markitdown-worker` 显示 `pika.exceptions.AMQPConnectionError`
+
+**排查步骤**：
+1. 确认 `docker-compose.yml` 中 `markitdown-worker` 的 `RABBITMQ_HOST` 值为 `rabbitmq-dev`（容器名），非 `localhost`
+2. 确认用户名密码与 RabbitMQ 配置一致
+3. 检查 RabbitMQ 是否完全启动：`docker logs rabbitmq-dev | grep "Server startup complete"`
+
+#### 问题 4：CosyVoice 启动报错 `FileNotFoundError: prompt text not found`
+
+**症状**：日志出现 `prompt text not found: /root/autodl-tmp/voices/prompt.txt`
+
+**排查步骤**：
+1. 确认 `COSYVOICE_VOICES_DIR` 目录下存在 `prompt.txt` 文件
+2. `prompt.txt` 内容应为对应音色样本 `.wav` 的精确中文/英文文本转录，不可为空
+3. 如有多个音色文件（如 `default.wav`、`guide1.wav`），它们的提示文本共享同一个 `prompt.txt`
+
+#### 问题 5：Java 后端无法连接 MuseTalk / SoVITS WebSocket
+
+**症状**：Java 后端日志出现 `Connection refused` 或 WebSocket 连接超时
+
+**排查步骤**：
+1. 确认 `CPP_MUSETALK_WS_URL` / `CPP_COSYVOICE_WS_URL` **没有**填写 `127.0.0.1` 或 `localhost`——跨主机部署时这些地址指向的是 Java 服务器自身，而非 AutoDL 实例
+2. 在 CPU 服务器上用 `curl` 测试 AutoDL 公网地址是否可达：
+   ```bash
+   curl -v http://<AutoDL公网地址>:6008/health
+   ```
+   若超时或无响应，检查 AutoDL 控制台自定义服务是否已正确配置且服务已启动
+3. 确认 AutoDL 实例内服务已监听 `0.0.0.0`（非 `127.0.0.1`）：在 AutoDL 终端执行 `ss -tlnp | grep -E "6006|6008"`
+4. 检查 AutoDL 实例是否已关机或欠费停服
+
+#### 问题 6：MuseTalk 无法连接 CPU 服务器的 RabbitMQ
+
+**症状**：MuseTalk 启动日志出现 `pika.exceptions.AMQPConnectionError` 或 `ProbableAccessDeniedError`
+
+**排查步骤**：
+1. 确认 `MQ_URL` 中填写的 RabbitMQ 地址是 **CPU 服务器的公网 IP**（非 `127.0.0.1`）
+2. 在 AutoDL 实例终端测试端口连通性：
+   ```bash
+   python -c "import socket; s=socket.socket(); s.settimeout(5); s.connect(('<CPU服务器公网IP>', 5672)); print('OK'); s.close()"
+   ```
+3. 确认 CPU 服务器安全组已对 AutoDL 实例的出口 IP 开放 5672 端口
+4. 检查 RabbitMQ 用户权限：登录管理界面 → Admin → 用户 → 确认 `rmq_super_admin` 有 `/` 虚拟主机的访问权限
+
+#### 问题 7：AutoDL 实例系统盘写满
+
+**症状**：服务运行中出现 `No space left on device` 或 `OSError: [Errno 28]`
+
+**排查步骤**：
+1. 检查磁盘使用：`df -h` —— 系统盘（`/`）使用率是否接近 100%
+2. 将代码、模型、数据迁移至数据盘 `/root/autodl-tmp`（通常挂载为独立分区，空间充裕）
+3. 清理 pip 缓存：`pip cache purge`
+4. 清理系统临时文件：`rm -rf /tmp/*`（注意仅删除可安全清理的文件）
+
+---
+
+## 6. 附录：端口规划总表
+
+| 端口 | 所属节点 | 协议 | 服务 | 说明 |
+| --- | --- | --- | --- | --- |
+| 3306 | CPU 云服务器 (Docker) | TCP | MySQL | 数据库连接 |
+| 6379 | CPU 云服务器 (Docker) | TCP | Redis | 缓存 / 向量检索 |
+| 8001 | CPU 云服务器 (Docker) | TCP | Redis Stack (RedisInsight) | Redis 可视化管理界面（可选） |
+| 5672 | CPU 云服务器 (Docker) | TCP | RabbitMQ | AMQP 消息队列（MuseTalk 通过公网连接此端口） |
+| 15672 | CPU 云服务器 (Docker) | TCP | RabbitMQ Management | Web 管理控制台 |
+| 8080 | CPU 云服务器 | TCP | Java 后端 (Spring Boot) | HTTP API + WebSocket，Context-Path: `/ai-project` |
+| 6006 | AutoDL GPU 实例 | TCP | MuseTalk | FastAPI + WebSocket (`/ws/infer`)，须在 AutoDL 控制台配置自定义服务暴露 |
+| 6008 | AutoDL GPU 实例 | TCP | SoVITS / CosyVoice | FastAPI + WebSocket (`/ws/tts`)，须在 AutoDL 控制台配置自定义服务暴露 |
+
+> **安全提示**：CPU 云服务器安全组应仅对外开放 8080（Java 后端）和 15672（RabbitMQ 管理，建议仅限管理员 IP）；AutoDL 实例的 6006/6008 通过平台自定义服务代理暴露，无需直接配置安全组。MySQL（3306）和 Redis（6379）仅限服务器内部访问，**严禁直接暴露到公网**。
+
+---
+
+> **文档维护**：本手册随项目版本迭代更新，最新版以项目根目录 `DEPLOYMENT.md` 为准。如有疑问请联系项目架构组。
