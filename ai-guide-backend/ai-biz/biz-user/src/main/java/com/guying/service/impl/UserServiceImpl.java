@@ -25,6 +25,7 @@ import com.guying.pojo.vo.UserRegisterVO;
 import com.guying.pojo.vo.UserTourHistoryPageVO;
 import com.guying.service.UserService;
 import com.guying.utils.JwtUtil;
+import com.guying.utils.PasswordUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -64,10 +65,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public UserLoginVO login(LoginDTO loginDto) {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUsername, loginDto.getUsername())
-                    .eq(User::getPassword, loginDto.getPassword());
+        queryWrapper.eq(User::getUsername, loginDto.getUsername());
         User user = userMapper.selectOne(queryWrapper);
-        if (user == null) {
+        if (user == null || !PasswordUtil.matches(loginDto.getPassword(), user.getPassword())) {
             throw new ServiceException("用户名或密码错误");
         }
         String uuid = UUID.randomUUID().toString();
@@ -134,9 +134,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public UserRegisterVO userRegister(RegisterDTO registerDTO) {
-        //TODO 账号注册要二次确认密码，然后加密保存
-
+        if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())) {
+            throw new ServiceException("两次输入的密码不一致");
+        }
         User user = userConverter.toUser(registerDTO);
+        user.setPassword(PasswordUtil.encode(registerDTO.getPassword()));
         try {
             userMapper.insert(user);
         } catch (Exception e) {

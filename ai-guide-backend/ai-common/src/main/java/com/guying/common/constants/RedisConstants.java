@@ -26,4 +26,10 @@ public class RedisConstants {
 
     public static final String FAQ_TAG = "1";
     public static final String DOC_TAG = "2";
+
+    public static final String DIGITAL_HUMAN_PRELOAD_KEY = "digital_human:preload_status:";
+    public static final Long DIGITAL_HUMAN_PRELOAD_EXPIRE_TIME = 30L;
+
+    public static final String DIGITAL_HUMAN_TEST_VIDEO_KEY = "digital_human:test_video_status:";
+    public static final Long DIGITAL_HUMAN_TEST_VIDEO_EXPIRE_TIME = 30L;
 }

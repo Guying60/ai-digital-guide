@@ -4,8 +4,13 @@ import logging
 
 import aio_pika
 import aiohttp
+import redis.asyncio as aioredis
 
-from config import MQ_URL, MQ_QUEUE_NAME, MQ_DELETE_QUEUE_NAME, BASE_VIDEO_DIR, VOICES_DIR, COSYVOICE_URL
+from config import (
+    MQ_URL, MQ_QUEUE_NAME, MQ_DELETE_QUEUE_NAME, MQ_TEST_QUEUE_NAME,
+    BASE_VIDEO_DIR, VOICES_DIR, TEST_VIDEO_DIR, COSYVOICE_URL,
+    REDIS_TEST_VIDEO_KEY, REDIS_TEST_VIDEO_TTL, DEFAULT_TEST_TEXT_PATH,
+)
 from utils.helper import download_video
 
 logger = logging.getLogger(__name__)
@@ -41,6 +46,65 @@ async def notify_cosyvoice_reload() -> None:
         logger.warning(f"[MQ] 通知 CosyVoice 热加载失败（不影响主流程）: {e}")
 
 
+_redis: aioredis.Redis | None = None
+
+
+async def _set_preload_status(attraction_id: str, status: str) -> None:
+    """将预加载状态写入 Java 后端 Redis，供前端轮询。
+
+    status 值需与 Java TaskStatusEnum 一致: PROCESSING, SUCCESS, FAILED
+    """
+    global _redis
+    if _redis is None:
+        from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
+        _redis = await aioredis.from_url(
+            f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+            decode_responses=True,
+        )
+    from config import REDIS_PRELOAD_STATUS_KEY, REDIS_PRELOAD_STATUS_TTL
+    key = f"{REDIS_PRELOAD_STATUS_KEY}{attraction_id}"
+    try:
+        await _redis.set(key, status, ex=REDIS_PRELOAD_STATUS_TTL)
+        logger.info(f"[Redis] 设置预加载状态: {key} -> {status}")
+    except Exception as e:
+        logger.warning(f"[Redis] 设置状态失败（不影响主流程）: {e}")
+
+
+async def _clear_preload_status(attraction_id: str) -> None:
+    """删除预加载状态 key，用于删除数字人时清理"""
+    global _redis
+    if _redis is None:
+        from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
+        _redis = await aioredis.from_url(
+            f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+            decode_responses=True,
+        )
+    from config import REDIS_PRELOAD_STATUS_KEY
+    key = f"{REDIS_PRELOAD_STATUS_KEY}{attraction_id}"
+    try:
+        await _redis.delete(key)
+        logger.info(f"[Redis] 已清除预加载状态: {key}")
+    except Exception as e:
+        logger.warning(f"[Redis] 清除状态失败（不影响主流程）: {e}")
+
+
+async def _set_test_video_status(attraction_id: str, status: str) -> None:
+    """将测试视频生成状态写入 Redis。"""
+    global _redis
+    if _redis is None:
+        from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
+        _redis = await aioredis.from_url(
+            f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+            decode_responses=True,
+        )
+    key = f"{REDIS_TEST_VIDEO_KEY}{attraction_id}"
+    try:
+        await _redis.set(key, status, ex=REDIS_TEST_VIDEO_TTL)
+        logger.info(f"[Redis] 设置测试视频状态: {key} -> {status}")
+    except Exception as e:
+        logger.warning(f"[Redis] 设置测试视频状态失败（不影响主流程）: {e}")
+
+
 async def start_consumer(engine) -> None:
     while True:
         try:
@@ -56,7 +120,11 @@ async def start_consumer(engine) -> None:
                     MQ_DELETE_QUEUE_NAME,
                     durable=True,
                 )
-                logger.info(f"[MQ] 开始监听队列: {MQ_QUEUE_NAME}, {MQ_DELETE_QUEUE_NAME}")
+                test_queue = await channel.declare_queue(
+                    MQ_TEST_QUEUE_NAME,
+                    durable=True,
+                )
+                logger.info(f"[MQ] 开始监听队列: {MQ_QUEUE_NAME}, {MQ_DELETE_QUEUE_NAME}, {MQ_TEST_QUEUE_NAME}")
 
                 async def handle_preload(message: aio_pika.IncomingMessage):
                     async with message.process():
@@ -67,6 +135,7 @@ async def start_consumer(engine) -> None:
                             dest = str(BASE_VIDEO_DIR / f"{attraction_id}.mp4")
 
                             logger.info(f"[MQ] 收到预加载消息: attractionId={attraction_id}")
+                            await _set_preload_status(attraction_id, "PROCESSING")
                             await download_video(video_url, dest)
                             logger.info(f"[MQ] 下载完成: {dest}")
 
@@ -75,6 +144,7 @@ async def start_consumer(engine) -> None:
 
                             await asyncio.to_thread(engine.load_avatar, attraction_id)
                             logger.info(f"[MQ] 预加载完成: {attraction_id}")
+                            await _set_preload_status(attraction_id, "SUCCESS")
 
                             try:
                                 audio_path = await extract_audio(dest, attraction_id)
@@ -84,6 +154,7 @@ async def start_consumer(engine) -> None:
                                 logger.warning(f"[MQ] 音频抽取失败（不影响主流程）: {e}", exc_info=True)
                         except Exception as e:
                             logger.error(f"[MQ] 处理预加载消息失败: {e}", exc_info=True)
+                            await _set_preload_status(attraction_id, "FAILED")
 
                 async def handle_delete(message: aio_pika.IncomingMessage):
                     async with message.process():
@@ -105,11 +176,63 @@ async def start_consumer(engine) -> None:
                                 audio_path.unlink()
                                 logger.info(f"[MQ] 已删除音频: {audio_path}")
                                 await notify_cosyvoice_reload()
+                            await _clear_preload_status(attraction_id)
                         except Exception as e:
                             logger.error(f"[MQ] 处理删除消息失败: {e}", exc_info=True)
 
+                async def handle_test_video(message: aio_pika.IncomingMessage):
+                    async with message.process():
+                        try:
+                            body = json.loads(message.body.decode())
+                            attraction_id = str(body["attractionId"])
+                            test_text = body.get("testText") or ""
+
+                            if not test_text.strip():
+                                if DEFAULT_TEST_TEXT_PATH.exists():
+                                    test_text = DEFAULT_TEST_TEXT_PATH.read_text(encoding="utf-8").strip()
+                                else:
+                                    test_text = "你好，欢迎参观本景区。"
+
+                            logger.info(f"[MQ] 收到测试视频消息: attractionId={attraction_id}, text={test_text[:60]}")
+
+                            await _set_test_video_status(attraction_id, "PROCESSING")
+
+                            # 调用 SoVITS REST 接口获取 TTS 音频
+                            timeout = aiohttp.ClientTimeout(total=60)
+                            async with aiohttp.ClientSession(timeout=timeout) as session:
+                                async with session.post(
+                                    f"{COSYVOICE_URL}/tts/offline",
+                                    json={"text": test_text, "attraction_id": attraction_id},
+                                ) as resp:
+                                    if resp.status != 200:
+                                        raise RuntimeError(f"TTS 请求失败: HTTP {resp.status}")
+                                    wav_bytes = await resp.read()
+
+                            # 从 WAV 提取 PCM（跳过 44 字节 WAV 头）
+                            if len(wav_bytes) < 44:
+                                raise RuntimeError("TTS 返回的 WAV 数据太短")
+                            pcm = wav_bytes[44:]
+
+                            output_path = str(TEST_VIDEO_DIR / f"{attraction_id}.mp4")
+                            # 清除旧测试视频（如果存在）
+                            import os as _os
+                            try:
+                                _os.unlink(output_path)
+                            except OSError:
+                                pass
+
+                            await asyncio.to_thread(
+                                engine.generate_video_file, pcm, attraction_id, output_path
+                            )
+                            logger.info(f"[MQ] 测试视频生成完成: {attraction_id}")
+                            await _set_test_video_status(attraction_id, "SUCCESS")
+                        except Exception as e:
+                            logger.error(f"[MQ] 测试视频生成失败: {e}", exc_info=True)
+                            await _set_test_video_status(attraction_id, "FAILED")
+
                 await preload_queue.consume(handle_preload)
                 await delete_queue.consume(handle_delete)
+                await test_queue.consume(handle_test_video)
 
                 # 保持连接存活
                 await asyncio.Future()

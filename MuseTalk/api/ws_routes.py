@@ -18,6 +18,10 @@ PING_TIMEOUT = 45
 JPEG_QUALITY = 80
 YIELD_EVERY = 16  # 每发送 N 帧让一次 CPU
 
+# 视频帧率（MuseTalk 标准输出帧率）
+FPS = 25
+_MS_PER_FRAME = 1000 // FPS  # 40ms/帧
+
 
 async def ping_loop(ws: WebSocket, last_pong: dict, shutdown_event: asyncio.Event):
     try:
@@ -37,21 +41,33 @@ async def _send_jpegs(
     ws: WebSocket,
     jpeg_list: List[bytes],
     frame_index: int,
+    sentence_id: int,
     is_last_batch: bool,
     shutdown_event: asyncio.Event,
 ) -> int:
-    """把一批 JPEG 推到 WS。返回更新后的 frame_index。最后一批的最后一帧打 is_last=1。"""
-    last_pos = len(jpeg_list) - 1
+    """
+    把一批 JPEG 推到 WS，返回更新后的 frame_index。
+
+    二进制帧格式（Java MuseTalkConnector 会在最前面再加 0x02，安卓最终收到）：
+      [sentence_id]   2 字节  big-endian，同一句话所有帧相同，与音频 sentence_id 对应
+      [pts_ms]        4 字节  big-endian，该帧在本句中的显示时间（毫秒）
+      [JPEG data]     N 字节  原始 JPEG 图像数据
+
+    安卓最终收到（含 Java 添加的 0x02）：
+      [0x02][sentence_id: 2B][pts_ms: 4B][JPEG...]
+    """
     for k, jpeg in enumerate(jpeg_list):
-        # 发每帧前先检查连接是否已关闭
         if shutdown_event.is_set():
             return frame_index
-        is_last = 1 if (is_last_batch and k == last_pos) else 0
-        header = struct.pack(">IB", frame_index, is_last)
+
+        pts_ms = frame_index * _MS_PER_FRAME
+        # ">HI": H=2字节 big-endian sentence_id，I=4字节 big-endian pts_ms
+        header = struct.pack(">HI", sentence_id, pts_ms)
         await ws.send_bytes(header + jpeg)
         frame_index += 1
         if frame_index % YIELD_EVERY == 0:
             await asyncio.sleep(0)
+
     return frame_index
 
 
@@ -66,6 +82,7 @@ async def websocket_endpoint(ws: WebSocket):
     last_pong = {"ts": time.time()}
     shutdown_event = asyncio.Event()
 
+    # (full_audio, attraction_id, sentence_id)
     inference_queue: asyncio.Queue = asyncio.Queue()
 
     async def inference_worker():
@@ -75,7 +92,6 @@ async def websocket_endpoint(ws: WebSocket):
                 if task_data is None:
                     break
 
-                # 取出任务后先检查连接是否已断开，是则清空队列退出
                 if shutdown_event.is_set():
                     logger.info("[ws] 连接已断开，丢弃剩余推理任务")
                     inference_queue.task_done()
@@ -87,10 +103,10 @@ async def websocket_endpoint(ws: WebSocket):
                             pass
                     break
 
-                full_audio, attr_id = task_data
+                full_audio, attr_id, sentence_id = task_data
                 logger.info(
-                    f"[ws] 从队列取出任务，开始推理！音频长度: {len(full_audio)}，"
-                    f"当前排队任务数: {inference_queue.qsize()}"
+                    f"[ws] 从队列取出任务，sentence_id={sentence_id}，"
+                    f"音频长度: {len(full_audio)}，当前排队任务数: {inference_queue.qsize()}"
                 )
                 TAIL_SILENCE_MS = 160
                 tail_silence = b'\x00\x00' * int(16000 * TAIL_SILENCE_MS / 1000)
@@ -109,6 +125,7 @@ async def websocket_endpoint(ws: WebSocket):
                         if pending_jpegs is not None:
                             frame_index = await _send_jpegs(
                                 ws, pending_jpegs, frame_index,
+                                sentence_id=sentence_id,
                                 is_last_batch=False,
                                 shutdown_event=shutdown_event,
                             )
@@ -118,13 +135,17 @@ async def websocket_endpoint(ws: WebSocket):
                     if pending_jpegs is not None and not shutdown_event.is_set():
                         frame_index = await _send_jpegs(
                             ws, pending_jpegs, frame_index,
+                            sentence_id=sentence_id,
                             is_last_batch=True,
                             shutdown_event=shutdown_event,
                         )
 
                 if not shutdown_event.is_set():
-                    await ws.send_json({"type": "done"})
-                    logger.info(f"[ws] 单句推理完成，共发送 {frame_index} 帧")
+                    # sentence_id 透传，安卓用于确认哪句视频推完
+                    await ws.send_json({"type": "done", "sentence_id": sentence_id})
+                    logger.info(
+                        f"[ws] sentence_id={sentence_id} 推理完成，共发送 {frame_index} 帧"
+                    )
 
                 inference_queue.task_done()
 
@@ -132,7 +153,6 @@ async def websocket_endpoint(ws: WebSocket):
                 break
             except Exception as e:
                 logger.error(f"推理工作线程异常: {e}", exc_info=True)
-                # 异常后若连接已断开则退出 worker
                 if shutdown_event.is_set():
                     break
 
@@ -178,19 +198,22 @@ async def websocket_endpoint(ws: WebSocket):
                     full_audio = bytes(audio_buffer)
                     audio_buffer.clear()
 
-                    await inference_queue.put((full_audio, attraction_id))
-                    logger.info(f"[ws] 已将一条音频推入推理队列，继续监听网络...")
+                    # sentence_id 由 Java CosyVoiceConnector 转发 chunk_end 时携带
+                    # Java 尚未更新时默认 0，不影响现有逻辑
+                    sentence_id: int = msg.get("sentence_id", 0)
+                    await inference_queue.put((full_audio, attraction_id, sentence_id))
+                    logger.info(
+                        f"[ws] sentence_id={sentence_id} 音频已推入推理队列，继续监听网络..."
+                    )
                     continue
 
                 if msg.get("type") == "interrupt":
                     logger.info(
                         "[ws] 收到 interrupt，丢弃 audio_buffer + 清空推理队列 + 取消当前推理"
                     )
-                    # 1) 清空尚未 flush 进队列的 PCM 缓冲
                     audio_buffer.clear()
-                    # 2) 标记 engine 取消当前正在生成的批次（worker 会在下一次循环退出）
                     engine.cancel()
-                    # 3) 抽干队列中尚未开始推理的任务
+                    engine.reset_cancel()
                     drained = 0
                     while not inference_queue.empty():
                         try:
@@ -217,7 +240,7 @@ async def websocket_endpoint(ws: WebSocket):
             except Exception:
                 pass
     finally:
-        shutdown_event.set()  # 确保 worker 能感知到连接已断开
+        shutdown_event.set()
         ping_task.cancel()
         await inference_queue.put(None)
         worker_task.cancel()

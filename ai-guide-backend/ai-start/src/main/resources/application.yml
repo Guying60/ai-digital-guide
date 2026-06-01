@@ -102,6 +102,7 @@ spring:
   # ---- autoDL MuseTalk服务器地址 ----
   museTalk:
     ws-url: ${cpp.museTalk.ws-url}
+    http-url: ${cpp.museTalk.http-url}
 
   # ---- autoDL cosyVoice服务器地址 ----
   cosyVoice:

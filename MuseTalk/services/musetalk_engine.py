@@ -63,7 +63,16 @@ class MuseTalkEngine:
         )
         self.vae.vae = self.vae.vae.half().to(self.device)
         self.unet.model = self.unet.model.half().to(self.device)
+        self.vae.vae = self.vae.vae.to(memory_format=torch.channels_last)
+        self.unet.model = self.unet.model.to(memory_format=torch.channels_last)
         self.unet.model.eval()
+        try:
+            self.unet.model.fuse_qkv_projections()
+            logger.info("[engine] UNet QKV projections 已融合")
+        except AttributeError:
+            logger.debug("[engine] 当前 UNet 不支持 fuse_qkv_projections，跳过")
+        except Exception as e:
+            logger.warning(f"[engine] fuse_qkv_projections 失败: {e}")
         self.vae.vae.eval()
 
         # 探测 sd-vae 的 scaling factor，decode 时需要用 latents / scale
@@ -76,6 +85,7 @@ class MuseTalkEngine:
 
         # 懒编译 + 第二条 CUDA 流（后处理）
         self._unet_compiled: Optional[Callable] = None
+        self._vae_compiled = None
         try:
             self._post_stream: Optional[torch.cuda.Stream] = torch.cuda.Stream()
         except Exception as e:
@@ -88,6 +98,10 @@ class MuseTalkEngine:
         )
 
         self._warmed_up = False
+
+        self._tea_cache_audio: Optional[torch.Tensor] = None   # 上一 batch 的 audio embedding
+        self._tea_cache_latents: Optional[torch.Tensor] = None  # 上一 batch 的 UNet 输出
+        self.tea_cache_threshold: float = 0.97  # 相似度阈值，可调
 
         logger.info("MuseTalk 模型加载完毕！")
 
@@ -280,6 +294,8 @@ class MuseTalkEngine:
 
     def reset_cancel(self):
         self._cancel_flag = False
+        self._tea_cache_audio = None
+        self._tea_cache_latents = None
 
     def cancel(self):
         self._cancel_flag = True
@@ -302,6 +318,24 @@ class MuseTalkEngine:
             logger.warning(f"[engine] torch.compile 失败，使用 eager UNet：{e}")
             self._unet_compiled = self.unet.model
         return self._unet_compiled
+
+    # --------------------------------------------------------------
+    # VAE decoder 懒编译 + 失败回落
+    # --------------------------------------------------------------
+    def _get_or_compile_vae(self) -> Callable:
+        if self._vae_compiled is not None:
+            return self._vae_compiled
+        try:
+            self._vae_compiled = torch.compile(
+                self.vae.vae.decode,
+                mode="reduce-overhead",
+                fullgraph=False,
+            )
+            logger.info("[engine] VAE torch.compile 已启用")
+        except Exception as e:
+            logger.warning(f"[engine] VAE torch.compile 失败，使用 eager VAE：{e}")
+            self._vae_compiled = self.vae.vae.decode
+        return self._vae_compiled
 
     # --------------------------------------------------------------
     # 端到端预热：触发 torch.compile/CUDAGraph、VAE decode kernel 选择、
@@ -346,7 +380,9 @@ class MuseTalkEngine:
     @torch.inference_mode()
     def _vae_decode_tensor(self, latents: torch.Tensor) -> torch.Tensor:
         """latents: (B,4,32,32) fp16 → (B,3,256,256) fp16 in [0,1] RGB."""
-        imgs = self.vae.vae.decode(latents / self._vae_scale).sample  # fp16 in [-1,1]
+        vae_fn = self._get_or_compile_vae()
+        imgs = vae_fn(latents / self._vae_scale).sample  # fp16 in [-1,1]
+        imgs = imgs.to(memory_format=torch.contiguous_format)
         imgs = (imgs.clamp(-1.0, 1.0) + 1.0) * 0.5
         return imgs
 
@@ -483,17 +519,36 @@ class MuseTalkEngine:
             k_list_full = [indices[(idx0 + i + j) % nN] for j in range(BATCH)]
             sel = torch.as_tensor(k_list_full, device=self.device, dtype=torch.long)
             latent_batch = latents_gpu.index_select(0, sel).contiguous()  # (B,4,32,32)
+            latent_batch = latent_batch.to(memory_format=torch.channels_last)
             audio_batch = torch.from_numpy(np.stack(batch_chunks)).to(
                 self.device, dtype=torch.float16, non_blocking=True
             )
 
+            # TeaCache：检查本 batch audio 是否与上一批高度相似
+            _use_cache = False
+            if self._tea_cache_audio is not None and self._tea_cache_latents is not None:
+                _sim = F.cosine_similarity(
+                    audio_batch.to(torch.float32).flatten(1),
+                    self._tea_cache_audio.to(torch.float32).flatten(1),
+                    dim=1
+                ).mean().item()
+                if _sim >= self.tea_cache_threshold:
+                    pred_latents = self._tea_cache_latents
+                    _use_cache = True
+                    logger.debug(f"[engine] TeaCache 命中，相似度={_sim:.4f}，跳过 UNet")
+
             with torch.inference_mode():
-                pred_latents = unet_fn(
-                    latent_batch, 0, encoder_hidden_states=audio_batch
-                ).sample
-                if self._unet_compiled is not self.unet.model:
-                    pred_latents = pred_latents.clone()
-                recon = self._vae_decode_tensor(pred_latents)  # (B,3,256,256) fp16 RGB
+                if not _use_cache:
+                    pred_latents = unet_fn(
+                        latent_batch, 0, encoder_hidden_states=audio_batch
+                    ).sample
+                    if self._unet_compiled is not self.unet.model:
+                        pred_latents = pred_latents.clone()
+                    # 更新 TeaCache
+                    self._tea_cache_audio = audio_batch.detach()
+                    self._tea_cache_latents = pred_latents.detach()
+
+                recon = self._vae_decode_tensor(pred_latents)
 
             # 在 post_stream 上排布本批 blend：等默认流的 recon 就绪后开跑
             if post_stream is not None and default_stream is not None:
@@ -529,3 +584,63 @@ class MuseTalkEngine:
                 prev_event.synchronize()
             yield prev_blend
             avatar["current_idx"] = (avatar["current_idx"] + prev_bs) % nN
+
+    # --------------------------------------------------------------
+    # generate_video_file：离线生成测试视频 MP4
+    # --------------------------------------------------------------
+    def generate_video_file(self, audio_pcm: bytes, attraction_id: str, output_path: str) -> None:
+        """收集 generate_frames 的所有帧，通过 ffmpeg 合成为 H.264 MP4。"""
+        import wave
+        import tempfile
+        import subprocess
+
+        from config import TEST_VIDEO_DIR, TARGET_W, TARGET_H
+
+        TEST_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+        frames = []
+        for batch in self.generate_frames(audio_pcm, attraction_id):
+            for frame in batch:
+                frames.append(frame.permute(1, 2, 0).cpu().numpy())
+
+        if not frames:
+            raise RuntimeError(f"未生成任何帧: attraction_id={attraction_id}")
+
+        logger.info(f"[test-video] 共收集 {len(frames)} 帧，开始 ffmpeg 合成...")
+
+        fd, wav_path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        try:
+            with wave.open(wav_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(16000)
+                wf.writeframes(audio_pcm)
+
+            ffmpeg_cmd = [
+                "ffmpeg", "-y",
+                "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{TARGET_W}x{TARGET_H}",
+                "-r", "25", "-i", "pipe:0",
+                "-i", wav_path,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-c:a", "aac", "-b:a", "128k",
+                "-pix_fmt", "yuv420p", "-shortest",
+                output_path,
+            ]
+
+            proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
+            for frame in frames:
+                proc.stdin.write(frame.tobytes())
+            proc.stdin.close()
+            ret = proc.wait(timeout=120)
+            if ret != 0:
+                stderr = proc.stderr.read().decode(errors="ignore")
+                raise RuntimeError(f"ffmpeg 退出码 {ret}: {stderr[-500:]}")
+        finally:
+            try:
+                os.unlink(wav_path)
+            except OSError:
+                pass
+
+        logger.info(f"[test-video] MP4 生成完成: {output_path}")

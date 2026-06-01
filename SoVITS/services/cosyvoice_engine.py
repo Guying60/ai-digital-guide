@@ -17,6 +17,7 @@ from config import (
     OUTPUT_SAMPLE_RATE,
     VOICES_DIR,
     WARMUP_TEXT, TTS_SPEED,
+    ENABLE_AUDIO_NATURALIZATION,
 )
 
 if COSYVOICE_REPO not in sys.path:
@@ -155,11 +156,66 @@ class CosyVoiceEngine:
             f"voice '{attraction_id}' not loaded and no default voice available"
         )
 
+    def _naturalize_tts_audio(self, speech: torch.Tensor) -> torch.Tensor:
+        """
+        让TTS音频更接近真人特征，提高Whisper识别准确率。
+        目标：余弦相似度从0.64提升到0.75+。
+
+        调参说明（对照相似度数值调整）：
+          - 相似度仍在0.64附近：适当上调 noise_level / jitter_amp / mod_amp
+          - 听感出现明显噪声/失真：下调对应参数
+        """
+        sr = self.model_sample_rate  # 24000Hz
+
+        # ── 1. 背景噪声 ──────────────────────────────────────────────
+        # Whisper在真人语音（含环境底噪）上训练，纯净TTS缺少这层随机性。
+        # 0.008 ≈ SNR 42dB，人耳基本感知不到，但对mel谱影响显著。
+        noise_level = 0.008
+        speech = speech + torch.randn_like(speech) * noise_level
+
+        # ── 2. 音高微颤（vibrato）──────────────────────────────────────
+        # 真人声带5-8Hz的自然颤动；振幅0.005可在mel谱上产生可见纹理。
+        t = torch.linspace(0, speech.shape[-1] / sr, speech.shape[-1],
+                           device=speech.device)
+        jitter_amp = 0.005   # 原值0.002，加大以产生更多mel变化
+        speech = speech * (1.0 + jitter_amp * torch.sin(2 * 3.14159 * 5.5 * t))
+
+        # ── 3. 振幅调制（模拟呼吸/共鸣）────────────────────────────────
+        # 叠加低频调制使能量包络更接近真人。
+        mod_amp = 0.03       # 原值0.015，加大
+        speech = speech * (1.0 + mod_amp * torch.sin(2 * 3.14159 * 2.8 * t))
+
+        # ── 4. 预加重（pre-emphasis）─────────────────────────────────────
+        # 标准语音预加重：y[n] = x[n] - 0.97*x[n-1]
+        # 作用：提升高频能量，使辅音(s/f/sh)更突出，与真人录音特征对齐。
+        # 原来的卷积核 [-0.05,-0.1,1.0,-0.1,-0.05] 是带通而非预加重，效果有限。
+        if speech.shape[-1] > 1:
+            pre_emph = 0.97
+            # 向量化实现，避免逐点循环
+            speech_shifted = torch.cat([speech[..., :1], speech[..., :-1]], dim=-1)
+            speech = speech - pre_emph * speech_shifted
+
+        # ── 5. 轻微非线性（声道谐波）────────────────────────────────────
+        # 幅度略微压缩+谐波，模拟声道非线性。系数从0.01→0.008保持听感。
+        speech = speech + 0.008 * torch.tanh(speech * 4.0)
+
+        # ── 6. 归一化，防止削波 ──────────────────────────────────────────
+        peak = speech.abs().max()
+        if peak > 0.98:
+            speech = speech / peak * 0.95
+
+        return speech
+
     def _to_pcm16_bytes(self, speech: torch.Tensor) -> bytes:
         """speech: float tensor [1, T] at MODEL_SAMPLE_RATE -> 16kHz s16le bytes."""
         if speech.dim() == 2:
             speech = speech.squeeze(0)
         speech = speech.detach().to("cpu", dtype=torch.float32)
+
+        # 应用音频自然化处理（提高Whisper识别准确率）
+        if ENABLE_AUDIO_NATURALIZATION:
+            speech = self._naturalize_tts_audio(speech)
+
         if self.model_sample_rate != OUTPUT_SAMPLE_RATE:
             speech = torchaudio.functional.resample(
                 speech, orig_freq=self.model_sample_rate, new_freq=OUTPUT_SAMPLE_RATE

@@ -7,6 +7,7 @@ import com.guying.pojo.dto.RegisterDTO;
 import com.guying.pojo.vo.AdminLoginVO;
 import com.guying.pojo.vo.AdminRegisterVO;
 import com.guying.utils.JwtUtil;
+import com.guying.utils.PasswordUtil;
 import com.guying.converter.AdminConverter;
 import com.guying.mapper.AdminMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +40,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
     @Override
     public AdminLoginVO login(LoginDTO loginDto) {
         LambdaQueryWrapper<Admin> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Admin::getUsername, loginDto.getUsername())
-                .eq(Admin::getPassword, loginDto.getPassword());
+        queryWrapper.eq(Admin::getUsername, loginDto.getUsername());
         Admin admin = adminMapper.selectOne(queryWrapper);
-        if (admin == null) {
+        if (admin == null || !PasswordUtil.matches(loginDto.getPassword(), admin.getPassword())) {
             throw new ServiceException("用户名或密码错误");
         }
         String uuid = UUID.randomUUID().toString();
@@ -58,7 +58,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     @Override
     public AdminRegisterVO register(RegisterDTO registerDto) {
+        if (!registerDto.getPassword().equals(registerDto.getConfirmPassword())) {
+            throw new ServiceException("两次输入的密码不一致");
+        }
         Admin admin = adminConverter.toAdmin(registerDto);
+        admin.setPassword(PasswordUtil.encode(registerDto.getPassword()));
         try {
             adminMapper.insert(admin);
         } catch (Exception e) {

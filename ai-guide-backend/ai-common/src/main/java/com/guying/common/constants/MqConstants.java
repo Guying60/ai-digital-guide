@@ -42,5 +42,10 @@ public class MqConstants {
      */
     public static final String VIDEO_DELETE_QUEUE = "video.delete.queue";
 
+    /**
+     * 测试视频生成队列
+     */
+    public static final String VIDEO_TEST_QUEUE = "video.test.queue";
+
 }
 

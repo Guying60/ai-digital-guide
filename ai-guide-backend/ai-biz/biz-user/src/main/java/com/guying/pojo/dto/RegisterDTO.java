@@ -16,5 +16,7 @@ public class RegisterDTO {
     @NotBlank(message = "密码不能为空")
     @Pattern(regexp = "^[a-zA-Z0-9!@#$%^&*()_+]{6,20}$", message = "密码长度必须为6-20位")
     private String password;
+    @NotBlank(message = "确认密码不能为空")
+    private String confirmPassword;
 
 }

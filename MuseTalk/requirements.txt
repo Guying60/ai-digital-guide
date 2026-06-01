@@ -19,6 +19,9 @@ Pillow>=10.0.0
 # Performance
 flash-attn>=2.7.0
 
+# Redis (async status reporting)
+redis>=5.0.0,<6.0.0
+
 # ------------------------------------------------------------------
 # FlashHead project dependencies
 # ------------------------------------------------------------------

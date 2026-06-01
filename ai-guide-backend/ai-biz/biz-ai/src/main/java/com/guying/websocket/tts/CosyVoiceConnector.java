@@ -26,8 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * CosyVoice TTS 客户端：
  *  - connect：与 Python TTS 建立 WS 连接，发 init 握手；
  *  - synthesize：把单句文本投递给 TTS，由其异步合成；
- *  - 内部 handler：把 PCM 加 0x01 头转给 Android，同时缓冲整句 PCM，
- *    收到 chunk_end 后把整句 PCM + audio_end 一并转给 MuseTalk。
+ *  - 内部 handler：
+ *      * 二进制帧直接透传给 Android（Python 已包含完整 header）；
+ *      * 同时剥离 7 字节 header 后缓冲裸 PCM，
+ *        收到 chunk_end 后把整句裸 PCM + 带 sentence_id 的 audio_end 转给 MuseTalk。
+ *
+ * Python 发来的二进制帧格式（tts_routes.py）：
+ *   [0x01][sentence_id: 2B big-endian][pts_ms: 4B big-endian][raw PCM...]
+ *   共 7 字节 header，Java 直接透传给 Android，无需再加头。
  */
 @Component
 @Slf4j
@@ -46,6 +52,9 @@ public class CosyVoiceConnector {
 
     /** sid → handler 注册表，用于 interrupt 时清空对应会话的 PCM 缓冲。 */
     private final ConcurrentHashMap<String, CosyVoiceHandler> handlers = new ConcurrentHashMap<>();
+
+    /** Python 音频帧 header 长度：0x01(1) + sentence_id(2) + pts_ms(4) = 7 字节 */
+    private static final int AUDIO_HEADER_LEN = 7;
 
     public void connect(ChatSessionContext ctx) {
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -150,7 +159,11 @@ public class CosyVoiceConnector {
                             objectMapper.createObjectNode().put("type", "pong").toString()));
                     log.debug("[CosyVoice WS] ← ping，已回 pong");
                 }
-                case "chunk_end" -> forwardSentenceToMuseTalk();
+                case "chunk_end" -> {
+                    // sentence_id 由 Python tts_routes.py 生成，透传给 MuseTalk 的 audio_end
+                    int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
+                    forwardSentenceToMuseTalk(sentenceId);
+                }
                 case "error" -> {
                     String errMsg = node.has("message") ? node.get("message").asText() : "unknown";
                     log.error("[CosyVoice WS] 报错：{}", errMsg);
@@ -159,22 +172,36 @@ public class CosyVoiceConnector {
             }
         }
 
+        /**
+         * Python 发来的二进制帧已包含完整 header：
+         *   [0x01][sentence_id: 2B][pts_ms: 4B][raw PCM...]
+         *
+         * 1. 直接透传给 Android（不再手动加 0x01 头）；
+         * 2. 剥离前 7 字节 header，只把裸 PCM 写入 pcmBuffer，
+         *    供 chunk_end 时整句拼完后发给 MuseTalk。
+         */
         @Override
         protected void handleBinaryMessage(WebSocketSession cosySession, BinaryMessage message) {
-            byte[] rawPcm = message.getPayload().array();
-            synchronized (pcmBuffer) {
-                pcmBuffer.write(rawPcm, 0, rawPcm.length);
-            }
-            // 实时加 0x01 头转给 Android
+            byte[] payload = message.getPayload().array();
+
+            // 1) 透传给 Android（Python 已包含 0x01 + sentence_id + pts_ms header）
             if (ctx.getUserSession().isOpen()) {
-                byte[] androidPayload = new byte[rawPcm.length + 1];
-                androidPayload[0] = 0x01;
-                System.arraycopy(rawPcm, 0, androidPayload, 1, rawPcm.length);
-                sender.send(ctx, new BinaryMessage(androidPayload));
+                sender.send(ctx, new BinaryMessage(payload));
+            }
+
+            // 2) 剥离 header，只缓冲裸 PCM 供 MuseTalk 使用
+            if (payload.length > AUDIO_HEADER_LEN) {
+                synchronized (pcmBuffer) {
+                    pcmBuffer.write(payload, AUDIO_HEADER_LEN, payload.length - AUDIO_HEADER_LEN);
+                }
             }
         }
 
-        private void forwardSentenceToMuseTalk() {
+        /**
+         * 整句 PCM 攒完后转给 MuseTalk，并附上 sentence_id，
+         * 使 MuseTalk 能为对应视频帧打上相同的 sentence_id 供安卓对齐。
+         */
+        private void forwardSentenceToMuseTalk(int sentenceId) {
             byte[] sentencePcm;
             synchronized (pcmBuffer) {
                 sentencePcm = pcmBuffer.toByteArray();
@@ -189,7 +216,11 @@ public class CosyVoiceConnector {
                     museTalkSession.sendMessage(new BinaryMessage(sentencePcm));
                 }
                 museTalkSession.sendMessage(new TextMessage(
-                        objectMapper.createObjectNode().put("type", "audio_end").toString()));
+                        objectMapper.createObjectNode()
+                                .put("type", "audio_end")
+                                .put("sentence_id", sentenceId)
+                                .toString()));
+                log.debug("[CosyVoice→MuseTalk] 转发 sentence_id={} PCM {} bytes", sentenceId, sentencePcm.length);
             } catch (IOException e) {
                 log.error("发送 PCM/audio_end 到 MuseTalk 失败 sid={}", ctx.getSid(), e);
             }

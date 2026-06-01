@@ -34,5 +34,10 @@ WARMUP_TEXT = os.environ.get(
     "COSYVOICE_WARMUP_TEXT",
     "你好，欢迎使用语音合成服务，这是一段用于预热模型的测试文本。",
 )
-TTS_SPEED = float(os.getenv("TTS_SPEED", "0.85"))
+TTS_SPEED = float(os.getenv("TTS_SPEED", "0.9"))
+
+# 音频自然化处理开关（提高Whisper识别准确率）
+# 当Whisper对TTS音频的特征相似度<0.5时，需要启用此功能
+ENABLE_AUDIO_NATURALIZATION = os.getenv("ENABLE_AUDIO_NATURALIZATION", "true").lower() == "true"
+
 LOG_LEVEL = os.environ.get("COSYVOICE_LOG_LEVEL", "INFO")

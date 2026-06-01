@@ -19,8 +19,10 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 /**
  * 数字人（Python MuseTalk）连接器：
  *  - 建立 WS 连接并发送 init 协议；
- *  - 文本：透传 ready/done 给 Android；ping 回 pong；
- *  - 二进制：把 JPEG 视频帧加 0x02 头转给 Android。
+ *  - 文本：ready/done 透传给 Android（done 含 sentence_id）；ping 回 pong；
+ *  - 二进制：Python 发来 [sentence_id:2B][pts_ms:4B][JPEG...]，
+ *    Java 在最前面加 0x02 后转给 Android，
+ *    安卓最终收到：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]。
  */
 @Component
 @Slf4j
@@ -106,8 +108,16 @@ public class MuseTalkConnector {
                     sender.sendJson(ctx, "ready", null);
                 }
                 case "done" -> {
-                    log.info("[Python WS] 这句话生成完毕，通知 Android");
-                    sender.sendJson(ctx, "done", null);
+                    // sentence_id 透传给 Android，用于通知安卓哪一句视频已全部推完
+                    int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
+                    log.info("[Python WS] 这句话生成完毕 sentence_id={}，通知 Android", sentenceId);
+                    String doneJson = objectMapper.createObjectNode()
+                            .put("type", "done")
+                            .put("sentence_id", sentenceId)
+                            .toString();
+                    if (ctx.getUserSession().isOpen()) {
+                        ctx.getUserSession().sendMessage(new TextMessage(doneJson));
+                    }
                 }
                 case "error" -> {
                     String errMsg = node.get("message").asText();
@@ -117,6 +127,13 @@ public class MuseTalkConnector {
             }
         }
 
+        /**
+         * Python 发来的二进制帧格式（ws_routes.py）：
+         *   [sentence_id: 2B big-endian][pts_ms: 4B big-endian][JPEG bytes...]
+         *
+         * 在最前面加 0x02 类型头后透传给 Android，
+         * 安卓最终收到：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]
+         */
         @Override
         protected void handleBinaryMessage(WebSocketSession museTalkSession, BinaryMessage message) {
             if (!ctx.getUserSession().isOpen()) return;

@@ -1,16 +1,24 @@
 import asyncio
+import io
 import json
 import logging
+import struct
 import uuid
+import wave
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
 
 from services.cosyvoice_engine import get_engine
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# 音频格式常量：16kHz 单声道 s16le
+# pts_ms = cumulative_pcm_bytes // (16000 * 1 * 2 / 1000) = cumulative_pcm_bytes // 32
+_PCM_BYTES_PER_MS = 32
 
 
 @router.get("/health")
@@ -33,6 +41,26 @@ async def reload_voices() -> dict:
     return {"reloaded": report}
 
 
+@router.post("/tts/offline")
+async def tts_offline(request: dict) -> Response:
+    """离线 TTS：返回完整 WAV 文件，供测试视频生成等离线场景使用。"""
+    text = (request.get("text") or "").strip()
+    attraction_id = str(request.get("attraction_id")) if request.get("attraction_id") else None
+    if not text:
+        return Response(content=b"", media_type="audio/wav", status_code=400)
+
+    engine = get_engine()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(16000)
+        async for pcm in engine.stream_pcm(text, attraction_id):
+            wf.writeframes(pcm)
+
+    return Response(content=buf.getvalue(), media_type="audio/wav")
+
+
 @router.websocket("/ws/tts")
 async def ws_tts(ws: WebSocket) -> None:
     await ws.accept()
@@ -42,26 +70,48 @@ async def ws_tts(ws: WebSocket) -> None:
 
     # 单连接内的会话上下文
     attraction_id: Optional[str] = None
-    job_queue: asyncio.Queue = asyncio.Queue()        # (text, attraction_id, session_id)
+    # job_queue: (text, attraction_id, session_id, sentence_id)
+    job_queue: asyncio.Queue = asyncio.Queue()
     interrupt_flag = asyncio.Event()                   # 当前句中断信号
     current_task: Optional[asyncio.Task] = None        # 当前 worker 正在跑的句子任务
     shutdown = asyncio.Event()
+    # 每个 synthesize 请求递增，用于音视频对齐（0-65535 循环）
+    sentence_counter = 0
 
     async def synthesize_one(
-        text: str, attr: Optional[str], session_id: Optional[str]
+        text: str,
+        attr: Optional[str],
+        session_id: Optional[str],
+        sentence_id: int,
     ) -> None:
+        """
+        流式推理并发送带时间戳 header 的二进制帧给 Java 后端（最终到安卓）。
+
+        二进制帧格式：
+          [0x01]           1 字节  类型标识（音频）
+          [sentence_id]    2 字节  big-endian，同一句话所有 chunk 相同
+          [pts_ms]         4 字节  big-endian，该 chunk 在本句中的起始毫秒偏移
+          [PCM data]       N 字节  16kHz 单声道 s16le 裸 PCM
+        """
+        cumulative_bytes = 0
         try:
             async for pcm in engine.stream_pcm(text, attr):
                 if interrupt_flag.is_set() or shutdown.is_set():
-                    logger.info("[tts] sid=%s 中断当前句，停止发送 PCM", sid)
+                    logger.info("[tts] sid=%s sentence_id=%d 中断，停止发送 PCM", sid, sentence_id)
                     break
-                await ws.send_bytes(pcm)
+
+                pts_ms = cumulative_bytes // _PCM_BYTES_PER_MS
+                # struct.pack: B=1字节, H=2字节 big-endian, I=4字节 big-endian
+                header = struct.pack(">BHI", 0x01, sentence_id, pts_ms)
+                await ws.send_bytes(header + pcm)
+                cumulative_bytes += len(pcm)
+
             if not interrupt_flag.is_set() and not shutdown.is_set():
-                await _send_chunk_end(ws, session_id)
+                await _send_chunk_end(ws, session_id, sentence_id)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            logger.exception("[tts] synth failed sid=%s", sid)
+            logger.exception("[tts] synth failed sid=%s sentence_id=%d", sid, sentence_id)
             try:
                 await _send_error(ws, str(exc), session_id)
             except Exception:
@@ -71,11 +121,13 @@ async def ws_tts(ws: WebSocket) -> None:
         nonlocal current_task
         while not shutdown.is_set():
             try:
-                text, attr, session_id = await job_queue.get()
+                text, attr, session_id, sentence_id = await job_queue.get()
             except asyncio.CancelledError:
                 break
             interrupt_flag.clear()
-            current_task = asyncio.create_task(synthesize_one(text, attr, session_id))
+            current_task = asyncio.create_task(
+                synthesize_one(text, attr, session_id, sentence_id)
+            )
             try:
                 await current_task
             except asyncio.CancelledError:
@@ -145,13 +197,15 @@ async def ws_tts(ws: WebSocket) -> None:
                 )
                 session_id: Optional[str] = msg.get("session_id")
                 if not text.strip():
-                    await _send_chunk_end(ws, session_id)
+                    await _send_chunk_end(ws, session_id, sentence_counter)
                     continue
+                # 递增句子计数器（2字节上限循环）
+                sentence_counter = (sentence_counter + 1) & 0xFFFF
                 logger.info(
-                    "[tts] sid=%s session=%s attraction=%s text=%r",
-                    sid, session_id, attr, text[:60],
+                    "[tts] sid=%s session=%s sentence_id=%d attraction=%s text=%r",
+                    sid, session_id, sentence_counter, attr, text[:60],
                 )
-                await job_queue.put((text, attr, session_id))
+                await job_queue.put((text, attr, session_id, sentence_counter))
                 continue
 
             await _send_error(ws, f"unsupported type: {mtype}")
@@ -175,8 +229,15 @@ async def ws_tts(ws: WebSocket) -> None:
             pass
 
 
-async def _send_chunk_end(ws: WebSocket, session_id: Optional[str]) -> None:
-    payload = {"type": "chunk_end"}
+async def _send_chunk_end(
+    ws: WebSocket, session_id: Optional[str], sentence_id: int = 0
+) -> None:
+    """
+    通知 Java 后端一整句 PCM 推送完毕。
+    sentence_id 透传给 Java，Java 需将其写入 audio_end 消息转发给 MuseTalk，
+    以便 MuseTalk 为视频帧打上相同的 sentence_id，安卓才能做音视频对齐。
+    """
+    payload = {"type": "chunk_end", "sentence_id": sentence_id}
     if session_id:
         payload["session_id"] = session_id
     await ws.send_text(json.dumps(payload))

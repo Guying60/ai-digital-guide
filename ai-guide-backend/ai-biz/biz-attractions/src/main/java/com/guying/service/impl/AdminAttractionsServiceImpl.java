@@ -217,6 +217,7 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
      */
     @Override
     public ScrollResult<AttractionListVO> getAttractionList(AttractionListQueryDTO attractionListQueryDTO) {
+        //TODO展示景点平均分和评论数？
         Long adminId = AdminContext.getAdminId();
         LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Attraction::getAdminId, adminId)
