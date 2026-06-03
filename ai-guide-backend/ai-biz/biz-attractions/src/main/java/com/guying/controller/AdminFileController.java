@@ -132,7 +132,6 @@ public class AdminFileController {
         FileInfo fileInfo = fileStorageService.of(file)
                 .setPath(path)
                 .upload();
-        //发送消息到算力服务器
         if (fileInfo != null) {
             return Result.success(fileInfo.getUrl());
         }

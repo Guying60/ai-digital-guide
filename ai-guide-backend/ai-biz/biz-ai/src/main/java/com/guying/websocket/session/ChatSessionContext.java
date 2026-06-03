@@ -23,11 +23,13 @@ public class ChatSessionContext {
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
 
+
     @Setter private volatile WebSocketSession museTalkSession;
     @Setter private volatile WebSocketSession cosyVoiceSession;
     @Setter private volatile SpeechTranscriber transcriber;
     @Setter private volatile ExecutorService ttsExecutor;
 
+    @Setter
     private volatile String pendingImage;
     private volatile long lastActiveTime;
 
@@ -47,10 +49,6 @@ public class ChatSessionContext {
         this.lastActiveTime = System.currentTimeMillis();
     }
 
-    public void setPendingImage(String base64) {
-        this.pendingImage = base64;
-    }
-
     /** 取出并清空待处理图片，保证只消费一次 */
     public String consumePendingImage() {
         String img = this.pendingImage;
@@ -61,4 +59,6 @@ public class ChatSessionContext {
     public void clearPendingImage() {
         this.pendingImage = null;
     }
+
+    // ★ 删除了 recordSentenceAudioOrigin 和 getSentenceAudioOrigin 两个方法
 }

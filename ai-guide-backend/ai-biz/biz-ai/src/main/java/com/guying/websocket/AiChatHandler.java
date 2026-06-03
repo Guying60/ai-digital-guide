@@ -89,6 +89,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.error("会话初始化失败 sid={}", ctx.getSid(), e);
             throw new ServiceException("会话初始化失败");
         }
+        sender.startVideoDrain(ctx);
         log.info("所有初始化完成 sid={}", ctx.getSid());
         sender.sendJson(ctx, "allDone", null);
     }
@@ -147,6 +148,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     }
 
     public void cleanup(String sid) {
+        sender.stopVideoDrain(sid);
         ChatSessionContext ctx = registry.remove(sid);
         if (ctx == null) {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());

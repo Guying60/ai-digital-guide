@@ -12,6 +12,7 @@ import java.util.function.BiConsumer;
  */
 @Component
 public class ChatSessionRegistry {
+    //TODO 复用会话
 
     private final Map<String, ChatSessionContext> contexts = new ConcurrentHashMap<>();
 

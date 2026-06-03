@@ -23,13 +23,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public Result handleRuntimeException(RuntimeException e) {
-        log.error("运行时异常:"+e.getMessage());
+        log.error("运行时异常:"+e);
         return Result.error("服务器未知错误，请稍后再试");
     }
 
     @ExceptionHandler(ServiceException.class)
     public Result handleServiceException(ServiceException e) {
-        log.warn("业务异常:"+e.getMessage());
+        log.warn("业务异常:"+e);
         return Result.fail(e.getMessage());
     }
 

@@ -594,7 +594,7 @@ class MuseTalkEngine:
         import tempfile
         import subprocess
 
-        from config import TEST_VIDEO_DIR, TARGET_W, TARGET_H
+        from config import TEST_VIDEO_DIR
 
         TEST_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 

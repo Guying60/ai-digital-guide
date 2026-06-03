@@ -1,5 +1,6 @@
 package com.guying.websocket.musetalk;
 
+import org.springframework.web.socket.CloseStatus;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import com.guying.websocket.protocol.WsMessageSender;
@@ -16,13 +17,11 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * 数字人（Python MuseTalk）连接器：
- *  - 建立 WS 连接并发送 init 协议；
- *  - 文本：ready/done 透传给 Android（done 含 sentence_id）；ping 回 pong；
- *  - 二进制：Python 发来 [sentence_id:2B][pts_ms:4B][JPEG...]，
- *    Java 在最前面加 0x02 后转给 Android，
- *    安卓最终收到：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]。
+ * 数字人（Python MuseTalk）连接器：纯透传模式 (Zero-Delay Forwarding)
+ * 取消后端定时器，将排队与音画同步职责下放给 Android/Web 客户端的 Jitter Buffer。
  */
 @Component
 @Slf4j
@@ -35,31 +34,28 @@ public class MuseTalkConnector {
     private WsMessageSender sender;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ConcurrentHashMap<String, MuseTalkHandler> handlers = new ConcurrentHashMap<>();
 
     public void connect(ChatSessionContext ctx) {
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-        container.setDefaultMaxBinaryMessageBufferSize(1024 * 1024);
-        container.setDefaultMaxTextMessageBufferSize(1024 * 1024);
+        container.setDefaultMaxBinaryMessageBufferSize(5000 * 1024);
+        container.setDefaultMaxTextMessageBufferSize(5000 * 1024);
 
         StandardWebSocketClient client = new StandardWebSocketClient(container);
         try {
-            WebSocketSession museTalkSession = client
-                    .execute(new MuseTalkHandler(ctx), pythonWsUrl)
-                    .get();
+            MuseTalkHandler handler = new MuseTalkHandler(ctx);
+            WebSocketSession museTalkSession = client.execute(handler, pythonWsUrl).get();
             ctx.setMuseTalkSession(museTalkSession);
+            handlers.put(ctx.getSid(), handler);
         } catch (Exception e) {
             log.error("连接 Python 炼丹炉失败！", e);
         }
     }
 
-    /**
-     * 通知 MuseTalk 端：停止当前用户的视频帧生成、并清空待推理任务队列。
-     * 任何异常均被吞掉（仅 log.warn），避免影响 CosyVoice 那一路的打断。
-     */
     public void interrupt(ChatSessionContext ctx) {
+        sender.clearVideoQueue(ctx.getSid());
         WebSocketSession museTalkSession = ctx.getMuseTalkSession();
         if (museTalkSession == null || !museTalkSession.isOpen()) {
-            log.warn("MuseTalk session 不可用，跳过 interrupt sid={}", ctx.getSid());
             return;
         }
         try {
@@ -85,7 +81,7 @@ public class MuseTalkConnector {
 
         @Override
         public void afterConnectionEstablished(WebSocketSession museTalkSession) throws Exception {
-            log.info("建立连接{}", ctx.getAttractionId());
+            log.info("建立连接 attractionId={}", ctx.getAttractionId());
             String initJson = objectMapper.createObjectNode()
                     .put("type", "init")
                     .put("attraction_id", String.valueOf(ctx.getAttractionId()))
@@ -101,47 +97,37 @@ public class MuseTalkConnector {
                 case "ping" -> {
                     museTalkSession.sendMessage(new TextMessage(
                             objectMapper.createObjectNode().put("type", "pong").toString()));
-                    log.debug("[Python WS] ← ping，已回 pong");
                 }
-                case "ready" -> {
-                    log.info("[Python WS] 准备好了，通知 Android");
-                    sender.sendJson(ctx, "ready", null);
-                }
+                case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
-                    // sentence_id 透传给 Android，用于通知安卓哪一句视频已全部推完
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    log.info("[Python WS] 这句话生成完毕 sentence_id={}，通知 Android", sentenceId);
-                    String doneJson = objectMapper.createObjectNode()
-                            .put("type", "done")
-                            .put("sentence_id", sentenceId)
-                            .toString();
-                    if (ctx.getUserSession().isOpen()) {
-                        ctx.getUserSession().sendMessage(new TextMessage(doneJson));
-                    }
+                    // 直接下发 done。客户端收到后，即使缓冲区还有视频，也会等播完再处理后续逻辑。
+                    log.info("[Python WS] 句子完毕 sentence_id={}，立即透传给客户端", sentenceId);
+                    sender.enqueueDone(ctx, sentenceId);
                 }
-                case "error" -> {
-                    String errMsg = node.get("message").asText();
-                    log.error("[Python WS] 报错：{}", errMsg);
-                }
+                case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);
             }
         }
 
-        /**
-         * Python 发来的二进制帧格式（ws_routes.py）：
-         *   [sentence_id: 2B big-endian][pts_ms: 4B big-endian][JPEG bytes...]
-         *
-         * 在最前面加 0x02 类型头后透传给 Android，
-         * 安卓最终收到：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]
-         */
         @Override
         protected void handleBinaryMessage(WebSocketSession museTalkSession, BinaryMessage message) {
             if (!ctx.getUserSession().isOpen()) return;
-            byte[] rawVideoBytes = message.getPayload().array();
-            byte[] androidPayload = new byte[rawVideoBytes.length + 1];
+            byte[] raw = message.getPayload().array();
+            if (raw.length < 6) return;
+
+            // 组装 Android payload：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]
+            byte[] androidPayload = new byte[raw.length + 1];
             androidPayload[0] = 0x02;
-            System.arraycopy(rawVideoBytes, 0, androidPayload, 1, rawVideoBytes.length);
-            sender.send(ctx, new BinaryMessage(androidPayload));
+            System.arraycopy(raw, 0, androidPayload, 1, raw.length);
+
+            // ★ 直接透传！不再做任何定时调度，把时间戳交给前端/安卓解析并排队
+            sender.sendVideoFrame(ctx, new BinaryMessage(androidPayload));
+        }
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession museTalkSession, CloseStatus status) {
+            handlers.remove(ctx.getSid(), this);
         }
     }
 }
