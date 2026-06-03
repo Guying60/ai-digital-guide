@@ -1,15 +1,53 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", "/root/autodl-tmp/DigitalHuman"))
-MUSETALK_ROOT = Path(os.getenv("MUSETALK_ROOT", "/root/autodl-tmp/MuseTalk"))
+load_dotenv()
+
+# ── 路径配置 ──────────────────────────────────────────────
+PROJECT_ROOT   = Path(os.getenv("PROJECT_ROOT",   "/root/autodl-tmp/DigitalHuman"))
+MUSETALK_ROOT  = Path(os.getenv("MUSETALK_ROOT",  "/root/autodl-tmp/MuseTalk"))
 BASE_VIDEO_DIR = Path(os.getenv("BASE_VIDEO_DIR", "/root/autodl-tmp/videos"))
-VOICES_DIR = Path(os.getenv("VOICES_DIR", "/root/autodl-tmp/voices"))
+VOICES_DIR     = Path(os.getenv("VOICES_DIR",     "/root/autodl-tmp/voices"))
+TEST_VIDEO_DIR = Path(os.getenv("TEST_VIDEO_DIR", "/root/autodl-tmp/test_videos"))
+
+# ── 推理配置 ──────────────────────────────────────────────
 COSYVOICE_URL = os.getenv("COSYVOICE_URL", "http://localhost:6008")
-DEVICE = os.getenv("DEVICE", "cuda")
+DEVICE        = os.getenv("DEVICE", "cuda")
 
-MQ_URL = os.getenv("MQ_URL", "amqp://<username>:<password>@<host>:5672/")
-MQ_QUEUE_NAME = os.getenv("MQ_QUEUE_NAME", "video.preload.queue")
+# ── RabbitMQ（敏感，请在 .env 中配置）────────────────────
+# MQ_URL 格式：amqp://<username>:<password>@<host>:<port>/
+MQ_URL               = os.getenv("MQ_URL")
+MQ_QUEUE_NAME        = os.getenv("MQ_QUEUE_NAME",        "video.preload.queue")
+MQ_DELETE_QUEUE_NAME = os.getenv("MQ_DELETE_QUEUE_NAME", "video.delete.queue")
+MQ_TEST_QUEUE_NAME   = os.getenv("MQ_TEST_QUEUE_NAME",   "video.test.queue")
 
+# ── Redis（敏感，请在 .env 中配置）───────────────────────
+REDIS_HOST     = os.getenv("REDIS_HOST")
+REDIS_PORT     = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB       = int(os.getenv("REDIS_DB",   "0"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+
+REDIS_PRELOAD_STATUS_KEY = "digital_human:preload_status:"
+REDIS_PRELOAD_STATUS_TTL = 1800  # 30 分钟
+
+REDIS_TEST_VIDEO_KEY = "digital_human:test_video_status:"
+REDIS_TEST_VIDEO_TTL = 1800  # 30 分钟
+
+DEFAULT_TEST_TEXT_PATH = VOICES_DIR / "prompt.txt"
+
+# ── 服务配置 ──────────────────────────────────────────────
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "6006"))
+
+# ── 启动校验 ──────────────────────────────────────────────
+_required = {
+    "MQ_URL":         MQ_URL,
+    "REDIS_HOST":     REDIS_HOST,
+    "REDIS_PASSWORD": REDIS_PASSWORD,
+}
+_missing = [k for k, v in _required.items() if not v]
+if _missing:
+    raise EnvironmentError(
+        f"缺少必要的环境变量，请复制 config.py.example 为 config.py 并填写 .env 文件：{', '.join(_missing)}"
+    )
