@@ -1,0 +1,735 @@
+package com.example.digitaltourguide.view.admin;
+
+import android.Manifest;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.provider.MediaStore;
+import android.text.TextUtils;
+import android.util.Log;
+import android.util.SparseArray;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.bumptech.glide.Glide;
+import com.example.digitaltourguide.R;
+import com.example.digitaltourguide.databinding.ActivityScenicEditBinding;
+import com.example.digitaltourguide.model.admin.AddAttractionRequest;
+import com.example.digitaltourguide.model.admin.AdminAttraction;
+import com.example.digitaltourguide.model.BaseResponse;
+import com.example.digitaltourguide.model.admin.FileItem;
+import com.example.digitaltourguide.network.RetrofitClient;
+import com.example.digitaltourguide.utils.FileUploadUtil;
+import com.example.digitaltourguide.utils.SpUtils;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+public class ScenicEditActivity extends AppCompatActivity {
+    private Handler pollHandler=new Handler();//用于切换线程
+    private Runnable pollRunnable;
+    private SparseArray<String> fileIdMap=new SparseArray<>();
+    private int pendingUploadCount = 0;   // 待上传的文件数量
+    private int uploadedCount = 0;        // 已上传成功的文件数量
+    private boolean isWaitingForUpload = false; // 是否处于等待上传完成的状态
+    // 当前景点信息（回显后存储）
+    private AdminAttraction currentAttraction;
+    // 封面URL（上传后赋值）
+    private String coverUrl = "";
+    private String currentAttractionId,token;
+    private ImageView ivCover;
+    private Button btnSave;
+    private LinearLayout llUpload;
+    private TextView tvAIHuman,tvEditCover;
+    private Spinner spinnerType;
+    private EditText etAttractionName;
+    private boolean isCoverChanged = false; // 封面是否修改
+    private boolean isFileChanged = false;
+    private boolean isNameChanged = false;
+    private boolean isContentChanged = false;
+    private boolean isTypeChanged = false;
+    int currentFileIndex=0;
+    private List<File> fileList = new ArrayList<>();
+    private String selectedCoverUrl; // 选中的图片本地路径/上传后的coverUrl
+    private FileUploadUtil fileUploadUtil;
+    private static final String TAG="ScenicEditActivity";
+    private ActivityScenicEditBinding binding;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_scenic_edit);
+        binding= ActivityScenicEditBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        initView();
+        initTypeSpinner();//初始化
+        updateSaveButtonState();//初始化按钮
+
+        token = SpUtils.getAdminToken(this);
+        Log.d(TAG,"token:"+token);
+        String passedId = getIntent().getStringExtra("attraction_id");
+        if (!TextUtils.isEmpty(passedId)) {
+            this.currentAttractionId = passedId;   // 赋给成员变量
+        } else {
+            this.currentAttractionId = null;       // 明确为新增模式
+        }
+        String adminId=SpUtils.getAdminId(this);
+        Log.d(TAG,"attractionId:"+currentAttractionId);
+        Log.d(TAG,"attractionId:"+adminId);
+        fetchAttractionData();//数据回显
+
+        fileList.add(null);
+        fileList.add(null);
+        fileList.add(null);
+        fileList.add(null);
+
+        tvEditCover.setOnClickListener(v -> checkPermissionAndOpenGallery());
+
+        btnSave.setOnClickListener(v -> saveAttractionToServer());
+
+
+        tvAIHuman.setOnClickListener(v->{
+            Intent intent = new Intent(ScenicEditActivity.this, ManageAIHumanActivity.class);
+            intent.putExtra("attraction_id", currentAttractionId);
+            startActivity(intent);
+        });
+    }
+
+    private void uploadSingleFile(int fileIndex,File file){
+        if (currentAttractionId == null || currentAttractionId.isEmpty()) {
+            Toast.makeText(this, "景点ID未加载，请稍后重试", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Log.d(TAG, "准备上传文件，attractionId=" + currentAttractionId);
+        FileUploadUtil util=new FileUploadUtil(this, token, currentAttractionId, fileIndex) {
+            @Override
+            public void onUploadFailure(Exception e) {
+                Toast.makeText(ScenicEditActivity.this, "文件上传失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onUploadSuccess(String ossUrl,String taskId) {
+                //startPollingTask(taskId);
+                Toast.makeText(ScenicEditActivity.this, "文件上传成功", Toast.LENGTH_SHORT).show();
+            }
+        };
+        util.uploadFileToOss(file);
+    }
+
+    private void startPollingTask(String taskId) {
+        // 停止之前的轮询（如果有）
+        if (pollRunnable != null) {
+            pollHandler.removeCallbacks(pollRunnable);
+        }
+        pollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                RetrofitClient.getAdminApiService()
+                        .checkDocumentStatus("Bearer " + token, taskId)
+                        .enqueue(new Callback<BaseResponse<String>>() {
+                            @Override
+                            public void onResponse(Call<BaseResponse<String>> call, Response<BaseResponse<String>> response) {
+                                if (response.isSuccessful() && response.body() != null) {
+                                    BaseResponse<String> result = response.body();
+                                    if (result.getCode() == 1 && result.getData() != null) {
+                                        String status = result.getData();
+                                        switch (status) {
+                                            case "PROCESSING":
+                                                // 继续轮询，2秒后再查
+                                                pollHandler.postDelayed(pollRunnable, 2000);
+                                                break;
+                                            case "SUCCESS":
+                                                Toast.makeText(ScenicEditActivity.this, "解析成功", Toast.LENGTH_SHORT).show();
+                                                fetchFileList(); // 刷新文件列表
+                                                break;
+                                            case "FAILED":
+                                                Toast.makeText(ScenicEditActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+                                                fetchFileList(); // 刷新文件列表
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    } else {
+                                        // 未知错误，停止轮询
+                                        Toast.makeText(ScenicEditActivity.this, "解析状态查询失败：" + result.getMsg(), Toast.LENGTH_SHORT).show();
+                                    }
+                                } else {
+                                    // 请求失败，停止轮询
+                                    Toast.makeText(ScenicEditActivity.this, "解析状态查询网络错误", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<BaseResponse<String>> call, Throwable t) {
+                                Toast.makeText(ScenicEditActivity.this, "解析状态查询失败：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+        };
+        // 开始第一次轮询（立即执行）
+        pollHandler.post(pollRunnable);
+    }
+    //上传文件后ui更新
+    public void updateFileUI(int fileIndex,String ossUrl,String fileName,String fileType,String fileId){
+        if (fileIndex == 0) return;
+        if(fileId!=null && !fileId.isEmpty()){
+            fileIdMap.put(fileIndex,fileId);
+        }
+        // 获取对应槽位的控件
+        TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
+        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
+
+        if (tvFileName != null) {
+            tvFileName.setText(fileName);
+            tvFileName.setTextColor(getColor(R.color.black)); // 正常颜色
+        }
+        if (tvDelete != null) {
+            tvDelete.setVisibility(View.VISIBLE);
+            tvDelete.setText("移除");
+        }
+        if (ivFileIcon != null) {
+            ivFileIcon.setVisibility(View.VISIBLE);
+            ivFileIcon.setImageResource(fileType.equals("pdf") ? R.drawable.ic_pdf : R.drawable.ic_word);
+        }
+
+        // 处理等待上传计数（如果仍在批量上传流程中）
+        if (isWaitingForUpload) {
+            uploadedCount++;
+            if (uploadedCount >= pendingUploadCount) {
+                isWaitingForUpload = false;
+                for (int i = 0; i < fileList.size(); i++) fileList.set(i, null);
+                isFileChanged = false;
+                updateSaveButtonState();
+                fetchAttractionData();
+            }
+        }
+    }
+
+    //删除后恢复ui
+    private void resetFileUI(int fileIndex) {
+        // 弹窗确认删除
+        new AlertDialog.Builder(this)
+                .setTitle("确认删除")
+                .setMessage("确定要删除这个文件吗？")
+                .setPositiveButton("确定", (dialog, which) -> {
+                            String fileId=fileIdMap.get(fileIndex);
+                            if(fileId!=null && !fileId.isEmpty()){
+                                deleteFileFromServer(fileId,fileIndex);
+                            }else{
+                                removeLocalFile(fileIndex);
+                            }
+        })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+    private void deleteFileFromServer(String fileId,int fileIndex){
+        RetrofitClient.getAdminApiService()
+                .deleteDocument("Bearer " + token, fileId)
+                .enqueue(new Callback<BaseResponse<Void>>() {
+                    @Override
+                    public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            BaseResponse<Void> result = response.body();
+                            if (result.getCode() == 1) {
+                                Toast.makeText(ScenicEditActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+                                removeLocalFile(fileIndex);
+                                fileIdMap.remove(fileIndex);
+                            } else {
+                                Toast.makeText(ScenicEditActivity.this, "删除失败：" + result.getMsg(), Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(ScenicEditActivity.this, "删除失败，请重试", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                        Toast.makeText(ScenicEditActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+
+    private void removeLocalFile(int fileIndex) {
+        if (fileIndex - 1 < fileList.size()) {
+            fileList.set(fileIndex - 1, null);
+        }
+        fileIdMap.remove(fileIndex);
+
+        // 恢复 UI
+        TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
+        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
+
+        if (tvFileName != null) {
+            tvFileName.setText("暂无文件");
+        }
+        if (tvDelete != null) {
+            tvDelete.setVisibility(View.GONE);
+        }
+        if (ivFileIcon != null) {
+            ivFileIcon.setVisibility(View.GONE);
+        }
+
+        isFileChanged = true;
+        updateSaveButtonState();
+        Toast.makeText(this, "已删除文件", Toast.LENGTH_SHORT).show();
+    }
+
+    public void onFileSelected(int index, File file) {
+        // 直接调用已有的上传方法
+        uploadSingleFile(index, file);
+    }
+
+    //处理文件选择结果
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void fetchAttractionData() {
+        if (TextUtils.isEmpty(currentAttractionId)) {
+            // 新增模式：清空表单，按钮文字改为“添加景点”
+            etAttractionName.setText("");
+            spinnerType.setSelection(0);
+            isCoverChanged = false;
+            isFileChanged = false;
+            isNameChanged = false;
+            isTypeChanged = false;
+            updateSaveButtonState();
+            btnSave.setText("添加景点");
+            // 如果封面没有上传，按钮可能不可用，但这里让按钮可用（后续保存时会校验封面）
+            btnSave.setEnabled(true);
+            return;
+        }
+        // 2. 用Retrofit发起请求（严格使用Retrofit的Callback，不是OkHttp的）
+        RetrofitClient.getAdminApiService()
+                .getAttractionDetail("Bearer " + token,currentAttractionId)
+                .enqueue(new retrofit2.Callback<BaseResponse<AdminAttraction>>() { // 必须是retrofit2.Callback！
+                    @Override
+                    public void onResponse(retrofit2.Call<BaseResponse<AdminAttraction>> call,
+                                           retrofit2.Response<BaseResponse<AdminAttraction>> response) {
+
+                        if (!response.isSuccessful()) {
+                            Toast.makeText(ScenicEditActivity.this, "请求失败：" + response.code(), Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        BaseResponse<AdminAttraction> result = response.body();
+                        if (result == null) {
+                            Toast.makeText(ScenicEditActivity.this, "服务器返回空数据", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Log.d(TAG, "业务code：" + result.getCode());
+                        Log.d(TAG, "返回消息：" + result.getMsg());
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            if (result.getCode() == 1 && result.getData() != null) {
+                                currentAttraction = result.getData();
+                                currentAttractionId=currentAttraction.getId();
+                                Log.d(TAG,"景点id："+currentAttractionId);
+                                  fetchFileList();
+                                coverUrl = currentAttraction.getCoverUrl();
+                                if(coverUrl!=null && !coverUrl.isEmpty()){
+                                    selectedCoverUrl=coverUrl;
+                                    isCoverChanged=false;
+                                }
+                                etAttractionName.setText(currentAttraction.getAttractionName());
+                                // 填充UI
+                                Glide.with(ScenicEditActivity.this)
+                                        .load(coverUrl)
+                                        .placeholder(R.drawable.ic_add)
+                                        .into(ivCover);
+                               spinnerType.setSelection(currentAttraction.getType());
+
+                                Toast.makeText(ScenicEditActivity.this, "回显成功", Toast.LENGTH_SHORT).show();
+                                // 重置所有修改标志
+                                isCoverChanged = false;
+                                isFileChanged = false;
+                                isNameChanged = false;
+                                isContentChanged = false;
+                                isTypeChanged = false;
+                                updateSaveButtonState();
+                            }// 2. 无景点（code=400）：弹窗提示msg
+                            else if (result.getCode() == 400) {
+                                new AlertDialog.Builder(ScenicEditActivity.this)
+                                        .setTitle("提示")
+                                        .setMessage(result.getMsg())
+                                        .setPositiveButton("确定", null)
+                                        .show();
+                                etAttractionName.setText("");
+                                spinnerType.setSelection(0);
+
+                                isCoverChanged = false;
+                                isFileChanged = false;
+                                isNameChanged = false;
+                                isContentChanged = false;
+                                isTypeChanged = false;
+                                updateSaveButtonState();
+                                btnSave.setText("添加景点");
+                                btnSave.setEnabled(false);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<BaseResponse<AdminAttraction>> call, Throwable t) {
+                        if (token.isEmpty() ) {
+                            Toast.makeText(ScenicEditActivity.this, "登录信息失效，请重新登录", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    private void fetchFileList() {
+        if (currentAttractionId == null || currentAttractionId.isEmpty()) {
+            Log.e(TAG, "currentAttractionId 为空，无法获取文件列表");
+            return;
+        }
+        Log.d(TAG, "fetchFileList, currentAttractionId=" + currentAttractionId);
+        RetrofitClient.getAdminApiService()
+                .getFileList("Bearer " + token,currentAttractionId)
+                .enqueue(new Callback<BaseResponse<List<FileItem>>>() {
+                    @Override
+                    public void onResponse(Call<BaseResponse<List<FileItem>>> call,
+                                           Response<BaseResponse<List<FileItem>>> response) {
+                        Log.d(TAG, "文件回显 response.code() = " + response.code());
+                        if (response.isSuccessful() && response.body() != null) {
+                            BaseResponse<List<FileItem>> result = response.body();
+                            Log.d(TAG, "文件回显 result.code = " + result.getCode());
+                            Log.d(TAG, "文件回显 result.msg = " + result.getMsg());
+                            if(result.getData()!=null){
+                                Log.d(TAG,"文件回显data size="+result.getData().size());
+                            }else{
+                                Log.d(TAG,"文件回显data为null");
+                            }
+                            if (result.getData() != null && !result.getData().isEmpty()) {
+                                List<FileItem> files = result.getData();
+                                int fileIndex = 0;
+                                for (int i = 0; i < files.size() && i < 4; i++) {
+                                    FileItem item = files.get(i);
+                                    updateFileUI(fileIndex + 1, item.getOssUrl(),
+                                            item.getFileName(), item.getFileType(),String.valueOf(item.getId()));
+                                    fileIndex++;
+                                }
+                            }else{
+                                Log.d(TAG,"文件列表为空或data为null");
+                            }
+                        }else {
+                            Log.e(TAG,"文件回显请求失败："+response.code());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<BaseResponse<List<FileItem>>> call, Throwable t) {
+                        // 必须实现 onFailure 处理网络错误
+                        Toast.makeText(ScenicEditActivity.this, "请求失败：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void saveAttractionToServer() {
+        String attractionName = etAttractionName.getText().toString().trim();
+        int type = spinnerType.getSelectedItemPosition();
+
+        if (selectedCoverUrl == null || selectedCoverUrl.isEmpty()) {
+            Toast.makeText(this, "请选择封面图片", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (attractionName.isEmpty()) {
+            Toast.makeText(this, "请输入景点名称", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+
+        Call<BaseResponse<AdminAttraction>> call;
+        if (currentAttractionId != null && !currentAttractionId.isEmpty()) {
+            // 更新模式：使用 PUT 接口，必须传 id
+            AddAttractionRequest request = new AddAttractionRequest(
+                    currentAttractionId,
+                    selectedCoverUrl,
+                    attractionName,
+                    type
+            );
+            call = RetrofitClient.getAdminApiService().updateAttraction("Bearer " + token, request);
+        } else {
+            // 新增模式：使用 POST 接口，不传 id
+            AddAttractionRequest request = new AddAttractionRequest(
+                    selectedCoverUrl,
+                    attractionName,
+                    type
+            );
+            call = RetrofitClient.getAdminApiService().addAttraction("Bearer " + token, request);
+        }
+
+        call.enqueue(new retrofit2.Callback<BaseResponse<AdminAttraction>>() {
+            @Override
+            public void onResponse(Call<BaseResponse<AdminAttraction>> call, Response<BaseResponse<AdminAttraction>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    BaseResponse<AdminAttraction> result = response.body();
+                    if (result.getCode() == 1 && result.getData() != null) {
+                        AdminAttraction data = result.getData();
+                        // 新增成功后，更新 currentAttractionId
+                        if (currentAttractionId == null || currentAttractionId.isEmpty()) {
+                            currentAttractionId = data.getId();
+                            SpUtils.saveAttractionId(ScenicEditActivity.this,currentAttractionId);
+                        }
+                        Toast.makeText(ScenicEditActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
+                        fetchAttractionData(); // 重新回显
+                        setResult(RESULT_OK);  // 设置成功结果
+                        finish();
+                    } else {
+                        Toast.makeText(ScenicEditActivity.this, "保存失败：" + result.getMsg(), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(ScenicEditActivity.this, "保存失败，请重试", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<BaseResponse<AdminAttraction>> call, Throwable t) {
+                Toast.makeText(ScenicEditActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void checkPermissionAndOpenGallery() {
+        permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES);
+    }
+    private final ActivityResultLauncher<String> permissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            isGranted -> {
+                if (isGranted) {
+                    openGallery();
+                }
+            }
+    );
+
+    private void openGallery() {
+        Intent intent=new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        galleryLauncher.launch(intent);
+    }
+    private final ActivityResultLauncher<Intent> galleryLauncher=registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result->{
+                if(result.getResultCode()==RESULT_OK && result.getData()!=null){
+                    Uri imageUri=result.getData().getData();
+                    if (imageUri != null) {
+                        // 1. 校验 MIME 类型
+                        String mimeType = getContentResolver().getType(imageUri);
+                        if (!"image/jpeg".equals(mimeType) && !"image/png".equals(mimeType)) {
+                            Toast.makeText(this, "仅支持 JPG 或 PNG 格式的图片", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        // 2. 显示预览
+                        ivCover.setImageURI(imageUri);
+                        // 3. 转换为 File 并上传
+                        File coverFile = uriToFile(imageUri,mimeType);
+                        if (coverFile != null) {
+                            uploadCoverToOss(coverFile);
+                        } else {
+                            Toast.makeText(this, "无法获取图片文件", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            }
+    );
+
+    private File uriToFile(Uri uri,String mimeType) {
+        String extension="";
+        if ("image/jpeg".equals(mimeType)) {
+            extension = ".jpg";   // 统一用 .jpg，后端能识别
+        } else if ("image/png".equals(mimeType)) {
+            extension = ".png";
+        } else {
+            // 不支持的格式，返回 null
+            return null;
+        }
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            File file = new File(getCacheDir(), "cover_" + System.currentTimeMillis()+extension);
+            FileOutputStream fos = new FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+            fos.close();
+            is.close();
+            return file;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    // 上传封面到 OSS，成功后更新 selectedCoverUrl
+    private void uploadCoverToOss(File coverFile) {
+        /*if (currentAttractionId == null || currentAttractionId.isEmpty()) {
+            Toast.makeText(this, "景点ID未加载，无法上传封面", Toast.LENGTH_SHORT).show();
+            return;
+        }*/
+
+        String name = coverFile.getName().toLowerCase();
+        Toast.makeText(this, "封面上传中...", Toast.LENGTH_SHORT).show();
+
+        MediaType mediaType = name.endsWith(".png") ? MediaType.parse("image/png") : MediaType.parse("image/jpeg");
+        // 构建请求体
+        RequestBody requestFile = RequestBody.create(mediaType, coverFile);
+        MultipartBody.Part body = MultipartBody.Part.createFormData("file", coverFile.getName(), requestFile);
+
+        RetrofitClient.getAdminApiService()
+                .uploadCover("Bearer " + token,body)
+                .enqueue(new retrofit2.Callback<BaseResponse<String>>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<BaseResponse<String>> call, retrofit2.Response<BaseResponse<String>> response) {
+                        Log.d(TAG, "onResponse 被调用，response.code = " + response.code());
+                        if (response.isSuccessful() && response.body() != null) {
+                            BaseResponse<String> result = response.body();
+                            if (result.getCode() == 1 && result.getData() != null) {
+                                String ossUrl = result.getData();
+                                selectedCoverUrl = ossUrl;
+                                isCoverChanged = true;
+                                updateSaveButtonState();
+                                Toast.makeText(ScenicEditActivity.this, "封面上传成功", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(ScenicEditActivity.this, "封面上传失败：" + result.getMsg(), Toast.LENGTH_SHORT).show();
+                                updateSaveButtonState();
+                            }
+                        } else {
+                            Toast.makeText(ScenicEditActivity.this, "封面上传失败，请重试", Toast.LENGTH_SHORT).show();
+                            updateSaveButtonState();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<BaseResponse<String>> call, Throwable t) {
+                        Log.d(TAG, "onFailure 被调用，t = " + t.getMessage());
+                        Toast.makeText(ScenicEditActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                        updateSaveButtonState();
+                    }
+                });
+    }
+
+    //按钮状态修改
+    private void updateSaveButtonState() {
+        boolean hasAnyChange = isCoverChanged || isFileChanged || isNameChanged || isContentChanged || isTypeChanged;
+        btnSave.setEnabled(hasAnyChange);
+        btnSave.setAlpha(hasAnyChange ? 1.0f : 0.5f);
+    }
+
+    private void initTypeSpinner() {
+        String[] typeNames = {
+                "主题乐园", "博物馆与展馆", "自然公园",
+                "风景名胜与休闲度假", "历史文化", "古镇水乡",
+                "动植物园与水族馆", "现代地标"
+        };
+
+        ArrayAdapter<String> adapter=new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,typeNames);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerType.setAdapter(adapter);
+    }
+
+    private void initView() {
+        ivCover = findViewById(R.id.iv_cover);
+        tvEditCover = findViewById(R.id.tv_edit_cover);
+        btnSave = findViewById(R.id.btn_save);
+        spinnerType = findViewById(R.id.spinner_type);
+        etAttractionName = findViewById(R.id.et_title);
+        tvAIHuman=findViewById(R.id.tab_digital_edit);
+        llUpload = findViewById(R.id.ll_upload);
+
+
+        llUpload.setOnClickListener(v -> {
+            if (currentAttractionId == null || currentAttractionId.isEmpty()) {
+                Toast.makeText(this, "请等待景点加载完成", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 找到第一个空槽位（文件名显示“暂无文件”）
+            int firstEmptySlot = findFirstEmptySlot();
+            if (firstEmptySlot == -1) {
+                Toast.makeText(this, "最多上传4个文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            currentFileIndex = firstEmptySlot;
+            fileUploadUtil = new FileUploadUtil(this, token, currentAttractionId, currentFileIndex) {
+                @Override
+                public void onUploadSuccess(String ossUrl, String taskId) {
+                    // 上传成功后由 FileUploadUtil 回调 onFileSelected
+                }
+                @Override
+                public void onUploadFailure(Exception e) {
+                    Log.e(TAG, "文件上传失败: " + e.getMessage());
+                }
+            };
+            fileUploadUtil.openFileChooser();
+        });
+        // 为每个删除按钮设置监听
+        setupDeleteButton(R.id.tv_delete_1, 1);
+        setupDeleteButton(R.id.tv_delete_2, 2);
+        setupDeleteButton(R.id.tv_delete_3, 3);
+        setupDeleteButton(R.id.tv_delete_4, 4);
+
+        etAttractionName.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void afterTextChanged(android.text.Editable s) {
+                isNameChanged = true;
+                updateSaveButtonState();
+            }
+        });
+
+        spinnerType.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                isTypeChanged = true;
+                updateSaveButtonState();
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+    }
+
+    private int findFirstEmptySlot() {
+        for (int i = 1; i <= 4; i++) {
+            TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + i, "id", getPackageName()));
+            if (tvFileName != null && "暂无文件".equals(tvFileName.getText().toString())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    private void setupDeleteButton(int btnId, final int slotIndex) {
+        TextView tvDelete = findViewById(btnId);
+        tvDelete.setOnClickListener(v -> resetFileUI(slotIndex));
+    }
+}

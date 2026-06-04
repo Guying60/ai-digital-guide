@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center">
+
+    <!-- 用户名输入框 -->
+    <EditText
+        android:id="@+id/et_nickname"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="昵称"
+        android:inputType="text"/>
+
+    <!-- 密码输入框 -->
+    <EditText
+        android:id="@+id/et_userSetting"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="用户设定"
+        android:inputType="textPassword"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/et_gender"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="性别（女0，男1）"
+        android:inputType="text"/>
+
+    <!-- 密码输入框 -->
+    <EditText
+        android:id="@+id/et_age"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="年龄"
+        android:inputType="textPassword"
+        android:layout_marginTop="16dp"/>
+
+    <!-- 登录按钮 -->
+    <Button
+        android:id="@+id/btn_update"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="修改"
+        android:layout_marginTop="24dp"/>
+
+</LinearLayout>

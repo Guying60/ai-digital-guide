@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- 灰色实心圆 -->
+    <solid android:color="#DDDDDD" />
+
+    <!-- 让它变成正圆 -->
+    <size
+        android:width="100dp"
+        android:height="100dp" />
+</shape>

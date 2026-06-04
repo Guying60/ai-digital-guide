@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F8F8F8">
+
+    <!-- 顶部搜索+标签区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_marginTop="20dp"
+        >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <!-- 搜索栏 -->
+            <EditText
+                android:id="@+id/et_search"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="48dp"
+                android:hint="搜索景点"
+                android:background="@drawable/bg_search"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:drawableStart="@drawable/ic_search_fit"
+                android:inputType="text"
+                android:maxLines="1"/>
+
+            <Button
+                android:id="@+id/btn_search"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="搜索"
+                android:backgroundTint="#35CBCB"
+                android:textColor="#FFFFFF"
+                android:layout_marginStart="8dp"/>
+
+
+        </LinearLayout>
+
+        <!-- 横向滚动标签栏 -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tag_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="全部"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_theme_park"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="主题乐园"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_museum"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="博物馆与展馆"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_nature_park"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_tag"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="自然公园"
+                    android:textColor="#004B4B"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_scenic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="风景名胜与休闲度假"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:textColor="#004B4B"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_history"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="历史文化"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_ally"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="古镇水乡"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_zoo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="动植物园与水族馆"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tag_morden"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="现代地标"
+                    android:textColor="#004B4B"
+                    android:background="@drawable/bg_tag"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center"/>
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <!-- 纵向滚动双列景点列表 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_scenic"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"/>
+
+    <!-- 底部固定导航栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- 出游记录 -->
+        <LinearLayout
+            android:id="@+id/tv_history"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_travel_record"
+               />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="出游记录"
+                android:textColor="#35CBCB"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="3dp"
+            android:gravity="center">
+
+        <!-- 中间新建对话按钮（关键：凸起来） -->
+        <ImageView
+            android:id="@+id/iv_add"
+            android:layout_width="64dp"
+            android:layout_height="66dp"
+            android:src="@drawable/ic_add"
+            android:clickable="true"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="新建对话"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <!-- 我的 -->
+        <LinearLayout
+            android:id="@+id/tv_mine"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_profile_normal"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="我的"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

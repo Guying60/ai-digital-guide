@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_bottom">
+
+    <!-- 顶部拖动条 -->
+    <View
+        android:layout_width="80dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:background="#CCCCCC"
+        android:radius="2dp"/>
+
+    <!-- 选项列表 -->
+    <TextView
+        android:id="@+id/tv_gender_male"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="男"
+        android:textSize="18sp"
+        android:textColor="#000000"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:clickable="true"
+        android:background="?attr/selectableItemBackground"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E0E0E0"/>
+
+    <TextView
+        android:id="@+id/tv_gender_female"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="女"
+        android:textSize="18sp"
+        android:textColor="#000000"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:clickable="true"
+        android:background="?attr/selectableItemBackground"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E0E0E0"/>
+
+    <TextView
+        android:id="@+id/tv_gender_secret"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="保密"
+        android:textSize="18sp"
+        android:textColor="#000000"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:clickable="true"
+        android:background="?attr/selectableItemBackground"/>
+
+</LinearLayout>

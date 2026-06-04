@@ -1,0 +1,40 @@
+<resources>
+    <string name="app_name">DigitalTourGuide</string>
+    <string name="mic_button">麦克风</string>
+    <string name="photo_button">拍照</string>
+    <string name="camera_button">拍摄</string>
+
+    <style name="BottomDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <!-- 去掉默认标题栏 -->
+        <item name="windowNoTitle">true</item>
+        <!-- 去掉默认背景（避免白边） -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- 允许弹窗浮在Activity之上 -->
+        <item name="android:windowIsFloating">true</item>
+        <!-- 点击外部可关闭（可选） -->
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <!-- 去掉背景遮罩（如果要保留遮罩，设为#80000000） -->
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <string-array name="date_options">
+        <item>昨日</item>
+        <item>近7天</item>
+        <item>近30天</item>
+    </string-array>
+
+    <string-array name="time_range_options">
+        <item>近7天</item>
+        <item>近30天</item>
+    </string-array>
+
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 状态栏颜色（把紫色换掉） -->
+        <item name="android:statusBarColor">#666666</item> <!-- 红色，可改别的 -->
+        <!-- 状态栏文字颜色：true=黑字，false=白字 -->
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+</resources>
+
+

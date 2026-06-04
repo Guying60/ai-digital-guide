@@ -16,7 +16,6 @@ router = APIRouter()
 PING_INTERVAL = 20
 PING_TIMEOUT = 45
 JPEG_QUALITY = 80
-YIELD_EVERY = 16  # 每发送 N 帧让一次 CPU
 
 # 视频帧率（MuseTalk 标准输出帧率）
 FPS = 25
@@ -42,11 +41,13 @@ async def _send_jpegs(
     jpeg_list: List[bytes],
     frame_index: int,
     sentence_id: int,
-    is_last_batch: bool,
+    max_frames: int,
     shutdown_event: asyncio.Event,
 ) -> int:
     """
-    把一批 JPEG 推到 WS，返回更新后的 frame_index。
+    把一批 JPEG 全量 burst 推到 WS，返回更新后的 frame_index。
+    超过 max_frames 的帧会被丢弃，防止视频超出音频时长。
+    视频同步由客户端 PTS 驱动渲染循环负责，服务端不再限速。
 
     二进制帧格式（Java MuseTalkConnector 会在最前面再加 0x02，安卓最终收到）：
       [sentence_id]   2 字节  big-endian，同一句话所有帧相同，与音频 sentence_id 对应
@@ -59,15 +60,12 @@ async def _send_jpegs(
     for k, jpeg in enumerate(jpeg_list):
         if shutdown_event.is_set():
             return frame_index
-
+        if frame_index >= max_frames:
+            return frame_index
         pts_ms = frame_index * _MS_PER_FRAME
-        # ">HI": H=2字节 big-endian sentence_id，I=4字节 big-endian pts_ms
         header = struct.pack(">HI", sentence_id, pts_ms)
         await ws.send_bytes(header + jpeg)
         frame_index += 1
-        if frame_index % YIELD_EVERY == 0:
-            await asyncio.sleep(0)
-
     return frame_index
 
 
@@ -108,12 +106,13 @@ async def websocket_endpoint(ws: WebSocket):
                     f"[ws] 从队列取出任务，sentence_id={sentence_id}，"
                     f"音频长度: {len(full_audio)}，当前排队任务数: {inference_queue.qsize()}"
                 )
-                TAIL_SILENCE_MS = 160
-                tail_silence = b'\x00\x00' * int(16000 * TAIL_SILENCE_MS / 1000)
-                full_audio = full_audio + tail_silence
 
                 engine.reset_cancel()
                 frame_index = 0
+                # 根据音频实际时长计算视频帧数上界，防止 feature2chunks 向上取整导致视频长于音频
+                sample_count = len(full_audio) // 2  # int16 PCM
+                audio_duration_ms = sample_count * 1000 // 16000
+                max_frames = audio_duration_ms // _MS_PER_FRAME  # floor: 视频 ≤ 音频
                 async with engine._lock:
                     pending_jpegs: Optional[List[bytes]] = None
                     for blended_list in engine.generate_frames(full_audio, attr_id):
@@ -126,7 +125,7 @@ async def websocket_endpoint(ws: WebSocket):
                             frame_index = await _send_jpegs(
                                 ws, pending_jpegs, frame_index,
                                 sentence_id=sentence_id,
-                                is_last_batch=False,
+                                max_frames=max_frames,
                                 shutdown_event=shutdown_event,
                             )
 
@@ -136,7 +135,7 @@ async def websocket_endpoint(ws: WebSocket):
                         frame_index = await _send_jpegs(
                             ws, pending_jpegs, frame_index,
                             sentence_id=sentence_id,
-                            is_last_batch=True,
+                            max_frames=max_frames,
                             shutdown_event=shutdown_event,
                         )
 

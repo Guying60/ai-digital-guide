@@ -42,6 +42,25 @@ Desktop.ini
 *.log
 logs/
 
+# === Gradle / Android ===
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+*.hprof
+*.dex
+*.zip
+
+# === SoVITS config (环境相关，类似 MuseTalk/config.py) ===
+SoVITS/config.py
+
+# === Docker (含敏感信息) ===
+docker-compose.yml
+
+# === 临时日志文件 ===
+cosyvoice日志.md
+
 # === Temp files ===
 *~
 *.swp

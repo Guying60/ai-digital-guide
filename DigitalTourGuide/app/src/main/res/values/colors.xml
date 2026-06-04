@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="tab_normal">#999999</color>
+    <color name="tab_selected">#165EFE</color>
+
+    <color name="nav_pressed_bg">#33000000</color>   <!-- 半透明黑色，产生加深效果 -->
+    <color name="nav_text_normal">#666666</color>
+    <color name="nav_text_selected">#FF5722</color>
+
+</resources>

@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- 顶部用户信息区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/iv_avatar"
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:background="@drawable/shape_circle_gray"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="16dp"
+            />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="16dp"
+            >
+
+        <TextView
+            android:id="@+id/tv_nickname"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="昵称"
+            android:textSize="20sp"
+            android:textColor="#000000"
+            android:padding="12dp"
+            />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/tv_age"
+                android:layout_width="140dp"
+                android:layout_height="wrap_content"
+                android:text="年龄:(输入数字)"
+                android:gravity="center"
+                android:textSize="14sp"
+                android:textColor="#999999"
+                android:background="@drawable/label_bg"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:layout_marginEnd="8dp"/>
+
+
+            <TextView
+                android:id="@+id/tv_gender"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="性别"
+                android:gravity="center"
+                android:textSize="14sp"
+                android:textColor="#999999"
+                android:background="@drawable/label_bg"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"/>
+        </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 个人设定标题 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="喜好设定"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#000000"
+        android:paddingLeft="20dp"
+        android:paddingBottom="8dp"
+        android:layout_marginTop="16dp"/>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_white"
+        android:layout_marginHorizontal="20dp"
+        android:padding="12dp">
+
+    <!-- 个人设定卡片 -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginBottom="12dp">
+
+    <LinearLayout
+        android:id="@+id/ll_tags_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"/>
+
+    </HorizontalScrollView>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="200dp">
+
+            <!-- 输入框 -->
+            <EditText
+                android:id="@+id/et_intro"
+                android:layout_width="match_parent"
+                android:layout_height="206dp"
+                android:background="@null"
+                android:gravity="top"
+                android:hint="请输入文本..."
+                android:maxLength="100"
+                android:paddingEnd="80dp"
+                android:textColor="#000000"
+                android:textSize="18sp" /> <!-- 给按钮留右边距，避免文字被遮挡 -->
+
+            <!-- 右下角：字数统计 + 保存按钮 容器 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp">
+
+                <!-- 字数统计 -->
+                <TextView
+                    android:id="@+id/tv_word_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0/100"
+                    android:textSize="15sp"
+                    android:textColor="#999999"
+                    android:layout_marginEnd="12dp"/>
+
+                <!-- 🔴 新增：保存按钮 -->
+                <Button
+                    android:id="@+id/btn_save"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="保存"
+                    android:textSize="18sp"
+                    android:textColor="#2962FF"
+                    android:padding="10dp"
+                    app:backgroundTint="#E3EDFF"
+                    />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+    
+    <Button
+        android:id="@+id/out_login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="退出登录"
+        android:textColor="#FF0000"
+        android:textSize="18sp"
+        android:padding="10dp"
+        android:backgroundTint="#F5F5F5	"
+        android:layout_marginBottom="100dp"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"/>
+
+
+    <!-- 底部固定导航栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- 出游记录 -->
+        <LinearLayout
+            android:id="@+id/tag_history"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_travel_record_normal"
+                />
+
+            <TextView
+                android:id="@+id/tv_travel_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="出游记录"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="3dp"
+            android:gravity="center">
+
+            <!-- 中间新建对话按钮（关键：凸起来） -->
+            <ImageView
+                android:id="@+id/iv_add"
+                android:layout_width="64dp"
+                android:layout_height="66dp"
+                android:src="@drawable/ic_add"
+                android:clickable="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="新建对话"
+                android:textColor="@color/black"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <!-- 我的 -->
+        <LinearLayout
+            android:id="@+id/tv_mine"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_profile_selected"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="我的"
+                android:textColor="#35CBCB"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

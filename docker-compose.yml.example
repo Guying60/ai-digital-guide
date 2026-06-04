@@ -1,3 +1,12 @@
+# ===================================================
+# docker-compose.yml.example
+#
+# 使用方式：
+#   1. cp docker-compose.yml.example docker-compose.yml
+#   2. 将占位符替换为你的真实配置
+#   3. docker-compose.yml 已被 .gitignore 忽略
+# ===================================================
+
 services:
   mysql-dev:
     image: mysql:latest
@@ -6,8 +15,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: MySql_Secur3_P@ss!2026
-    # 【优化：全面限制全局和线程级内存，并关闭不必要的缓存】
+      MYSQL_ROOT_PASSWORD: <CHANGE_ME>
     command: >
       --innodb-buffer-pool-size=128M
       --innodb-log-buffer-size=8M
@@ -18,7 +26,6 @@ services:
       --read-buffer-size=256K
       --read-rnd-buffer-size=256K
       --performance-schema=OFF
-    # 【优化：使用 v2 格式的硬限制，确保普通 docker-compose 也能生效】
     mem_limit: 450M
     volumes:
       - ./mysql_data:/var/lib/mysql
@@ -31,8 +38,7 @@ services:
       - "6379:6379"
       - "8001:8001"
     environment:
-      # 【修改：追加 --maxmemory 限制 Redis 占用】
-      - REDIS_ARGS=--requirepass R3dis_St@ck_S3cure!2026 --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+      - REDIS_ARGS=--requirepass <CHANGE_ME> --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
     deploy:
       resources:
         limits:
@@ -48,9 +54,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: rmq_super_admin
-      RABBITMQ_DEFAULT_PASS: R@bbit_Adm1n_!2026
-      # 【新增：内存水位线，超过 300MB 就不再接收新消息】
+      RABBITMQ_DEFAULT_USER: <CHANGE_ME>
+      RABBITMQ_DEFAULT_PASS: <CHANGE_ME>
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit vm_memory_high_watermark 0.15"
     deploy:
       resources:
@@ -61,15 +66,15 @@ services:
       - ./plugins/rabbitmq_delayed_message_exchange-4.2.0.ez:/plugins/rabbitmq_delayed_message_exchange-4.2.0.ez
     command: >
       sh -c "rabbitmq-plugins enable rabbitmq_delayed_message_exchange && docker-entrypoint.sh rabbitmq-server"
-      
+
   markitdown-worker:
     build: ./markitdown-worker
     container_name: markitdown-worker
     restart: unless-stopped
     environment:
       RABBITMQ_HOST: rabbitmq-dev
-      RABBITMQ_USER: rmq_super_admin
-      RABBITMQ_PASS: R@bbit_Adm1n_!2026
+      RABBITMQ_USER: <CHANGE_ME>
+      RABBITMQ_PASS: <CHANGE_ME>
     deploy:
       resources:
         limits:

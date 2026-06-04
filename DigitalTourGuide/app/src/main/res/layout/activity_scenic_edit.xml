@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- 顶部导航栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="取消"
+            android:textSize="20sp"
+            />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"/>
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            android:text="保存"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:backgroundTint="#2962FF"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"/>
+    </LinearLayout>
+
+    <!-- 主体卡片 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_white"
+        android:layout_margin="16dp"
+        android:padding="0dp">
+
+        <!-- 标签切换 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tab_scenic"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="景点编辑"
+                android:textColor="#2962FF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="@drawable/tab_selected_bg"/>
+
+            <TextView
+                android:id="@+id/tab_digital_edit"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="数字人编辑"
+                android:textColor="#666666"
+                android:textSize="18sp"
+                android:gravity="center"
+                android:background="@drawable/tab_normal_bg"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/white"
+            android:padding="16dp">
+
+            <ImageView
+                android:id="@+id/iv_cover"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:background="@drawable/scenic_cover"
+                android:scaleType="centerCrop"/>
+
+            <TextView
+                android:id="@+id/tv_edit_cover"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="更换图片"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textColor="@color/white"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/edit_cover"/>
+
+
+        </LinearLayout>
+
+        <!-- 景区标题 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="景区标题"
+                android:textColor="#333333"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <EditText
+                android:id="@+id/et_title"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:hint="请输入景区标题"
+                android:background="@drawable/bg_card_white"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:layout_marginStart="16dp"
+                android:maxLength="50"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0/50"
+                android:textColor="#999999"
+                android:textSize="14sp"
+                android:layout_marginStart="8dp"/>
+        </LinearLayout>
+
+        <!-- 景区类型 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="景区类型"
+                android:textColor="#333333"
+                android:textSize="16sp"
+                android:paddingRight="20dp"
+                android:textStyle="bold"/>
+
+            <Spinner
+                android:id="@+id/spinner_type"
+                android:layout_width="250dp"
+                android:layout_height="45dp"
+                android:paddingLeft="20dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_card_white"
+                android:gravity="center"/>
+        </LinearLayout>
+
+        <!-- 知识库上传 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="知识库上传"
+                android:textColor="#333333"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="最大支持上传 4 个 10MB 以内的 doc/pdf 文件"
+                android:textColor="#999999"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"/>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="180dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:orientation="vertical"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginBottom="10dp">
+
+            <!-- 已上传文件1 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card_white"
+                android:paddingHorizontal="12dp"
+                android:layout_marginBottom="8dp">
+
+                <ImageView
+                    android:id="@+id/iv_file_icon_1"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="文件图标"/>
+
+                <TextView
+                    android:id="@+id/file_name_1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="暂无文件"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_delete_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="移除"
+                    android:gravity="center"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_search_admin"
+                    android:paddingHorizontal="12dp"/>
+            </LinearLayout>
+
+            <!-- 已上传文件2 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card_white"
+                android:paddingHorizontal="12dp"
+                android:layout_marginBottom="8dp">
+
+                <ImageView
+                    android:id="@+id/iv_file_icon_2"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="文件图标"/>
+
+                <TextView
+                    android:id="@+id/file_name_2"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="暂无文件"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_delete_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="移除"
+                    android:gravity="center"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_search_admin"
+                    android:paddingHorizontal="12dp"/>
+            </LinearLayout>
+
+            <!-- 已上传文件3 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card_white"
+                android:paddingHorizontal="12dp"
+                android:layout_marginBottom="12dp">
+
+                <ImageView
+                    android:id="@+id/iv_file_icon_3"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="文件图标"/>
+
+                <TextView
+                    android:id="@+id/file_name_3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="暂无文件"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_delete_3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="移除"
+                    android:gravity="center"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_search_admin"
+                    android:paddingHorizontal="12dp"/>
+            </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_card_white"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginBottom="12dp">
+
+                    <ImageView
+                        android:id="@+id/iv_file_icon_4"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="文件图标"/>
+
+                    <TextView
+                        android:id="@+id/file_name_4"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="暂无文件"
+                        android:textColor="#333333"
+                        android:textSize="14sp"
+                        android:layout_marginStart="8dp"/>
+
+                    <TextView
+                        android:id="@+id/tv_delete_4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="移除"
+                        android:gravity="center"
+                        android:textColor="#666666"
+                        android:textSize="12sp"
+                        android:background="@drawable/bg_search_admin"
+                        android:paddingHorizontal="12dp"/>
+                </LinearLayout>
+
+            </LinearLayout>
+            </ScrollView>
+
+            <!-- 上传文件按钮 -->
+            <LinearLayout
+                android:id="@+id/ll_upload"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@drawable/bg_upload_dashed">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="上传文件"
+                    android:textColor="#999999"
+                    android:textSize="16sp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 删除景点按钮 -->
+    <TextView
+        android:id="@+id/btn_delete_scenic"
+        android:layout_width="300dp"
+        android:layout_height="48dp"
+        android:text="删除景点"
+        android:textColor="#FF0000"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_card_white" />
+
+</LinearLayout>

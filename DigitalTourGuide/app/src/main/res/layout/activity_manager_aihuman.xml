@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- 顶部导航栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="10dp"
+        android:background="#F5F5F5">
+
+        <TextView
+            android:id="@+id/tv_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="取消"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"/>
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:backgroundTint="#165EFE"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:text="保存"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_margin="8dp"
+        android:padding="0dp"
+        android:background="@drawable/bg_card_white">
+
+    <!-- 标签切换 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tab_scenic"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="景点编辑"
+            android:textColor="#666666"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:background="@drawable/tab_normal_bg"/>
+
+        <TextView
+            android:id="@+id/tab_digital_edit"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="数字人编辑"
+            android:textStyle="bold"
+            android:textColor="#2962FF"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:background="@drawable/tab_selected_bg"/>
+    </LinearLayout>
+
+    <!-- 主内容卡片 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="13dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/white"
+            android:padding="13dp">
+
+            <ImageView
+                android:id="@+id/iv_cover"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:background="@drawable/scenic_cover"
+                android:src="@drawable/ic_aihuman_video"
+                android:scaleType="centerInside"
+                />
+
+            <TextView
+                android:id="@+id/tv_upsert"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="更换数字人形象"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textColor="@color/white"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/edit_cover"/>
+
+            <VideoView
+                android:id="@+id/video_view"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginBottom="16dp" />
+
+        </LinearLayout>
+
+            <!-- 文件大小提示 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="*最大支持上传 50MB 以内的 mp4 文件"
+                android:textSize="13sp"
+                android:textColor="#999999"
+                android:layout_marginTop="12dp"/>
+
+            <!-- 朗读文本要求 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="对朗读文本的要求:"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:textStyle="bold"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="(朗读以下文本进行录制)"
+                android:textSize="16sp"
+                android:textColor="#666666"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="欢迎来到本景区，我是您的专属导游。\n这里山水秀丽，历史底蕴深厚，\n每一处风景都值得细细品味。\n希望今天的游览能给您留下美好的记忆。"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="4dp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginVertical="16dp"/>
+
+            <!-- 视频录制要求 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="对视频录制的要求:"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="· 正对摄像头，面部清晰无遮挡\n· 光线均匀，避免逆光\n· 自然语速朗读，不要刻意放慢\n· 录制时长建议 15 ~ 30 秒"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="4dp"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_generate_test_video"
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            app:backgroundTint="#165EFE"
+            android:layout_marginLeft="25dp"
+            android:layout_marginRight="25dp"
+            android:layout_marginTop="25dp"
+            android:text="生成测试视频"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+
+
+</LinearLayout>

@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
+
+    <!-- 顶部栏：返回居左，标题水平居中 -->
+    <RelativeLayout
+        android:id="@+id/ll_tab"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:gravity="center_vertical">
+
+        <!-- 返回按钮 固定左侧 -->
+        <TextView
+            android:paddingTop="20dp"
+            android:id="@+id/tv_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="16dp"
+            android:text="← 返回"
+            android:textSize="16sp"
+            android:textColor="#333333"/>
+
+        <!-- 数据概览 整体水平居中 -->
+        <TextView
+            android:paddingTop="25dp"
+            android:id="@+id/tv_overview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="数据概览"
+            android:textSize="25sp"
+            android:textColor="#333333"
+            android:textStyle="bold"/>
+
+    </RelativeLayout>
+
+    <!-- 滚动内容区域 ✅ 修复高度报错 -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="20dp"
+        android:layout_marginHorizontal="16dp"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            >
+
+            <!-- 服务人次折线图卡片 -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card_white"
+                    android:padding="16dp">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        >
+
+                        <TextView
+                            android:id="@+id/tv_total_people"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="总人次:0"
+                            android:textSize="17sp"
+                            android:textStyle="bold"
+                            android:padding="4dp"/>
+
+                        <Spinner
+                            android:id="@+id/spinner_people"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:background="@color/white"
+                            android:entries="@array/date_options"/>
+                    </RelativeLayout>
+
+                    <!-- ✅ 折线图（不报错版本） -->
+                    <com.github.mikephil.charting.charts.LineChart
+                        android:id="@+id/line_chart_people"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginTop="16dp"
+                        android:background="#F8F8F8" />
+
+                    <ProgressBar
+                        android:id="@+id/progress_people"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- 热门问答 ✅ 替换自定义图表为普通View，解决报错 -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_card_white"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="热门问答排行"
+                            android:textSize="17sp"
+                            android:textColor="#333333"
+                            android:textStyle="bold" />
+
+                        <Spinner
+                            android:id="@+id/spinner_qa"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:background="@color/white"
+                            android:entries="@array/date_options" />
+                    </RelativeLayout>
+
+                    <ProgressBar
+                        android:id="@+id/progress_qa"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="24dp"
+                        android:visibility="gone" />
+
+                    <!-- ✅ 替换自定义图表，解决类找不到报错 -->
+                    <com.example.digitaltourguide.utils.HotFaqBarChart
+                        android:id="@+id/hot_faq_bar_chart"
+                        android:layout_width="match_parent"
+                        android:layout_height="280dp"
+                        android:layout_marginTop="8dp"
+                        android:visibility="visible" />
+
+                    <TextView
+                        android:id="@+id/tv_empty_qa"
+                        android:layout_width="match_parent"
+                        android:layout_height="120dp"
+                        android:gravity="center"
+                        android:text="暂无数据"
+                        android:textSize="14sp"
+                        android:textColor="#999999"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- 游客满意度折线图卡片 -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card_white"
+                    android:padding="16dp">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:id="@+id/tv_avg_score"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="平均分:4.6"
+                            android:textSize="17sp"
+                            android:textStyle="bold"
+                            android:textColor="#333333"
+                            android:padding="4dp"/>
+
+                        <Spinner
+                            android:id="@+id/spinner_score"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:background="@color/white"
+                            android:entries="@array/date_options"/>
+                    </RelativeLayout>
+
+                    <!-- ✅ 折线图 -->
+                    <com.github.mikephil.charting.charts.LineChart
+                        android:id="@+id/line_chart_satisfaction"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginTop="16dp"
+                        android:background="#F8F8F8" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 底部导航 -->
+    <LinearLayout
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:color/white"
+        android:paddingVertical="12dp">
+
+        <!-- 数据分析 -->
+        <LinearLayout
+            android:id="@+id/tab_data_analysis"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/iv_icon_data"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_data_selected"
+                />
+
+            <TextView
+                android:id="@+id/tv_text_data"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="数据分析"
+                android:textSize="12sp"
+                android:textColor="#007AFF"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tab_tourist_analysis"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/iv_icon_tourist"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_tourist_normal"
+                />
+
+            <TextView
+                android:id="@+id/tv_text_analysis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="游客分析"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
