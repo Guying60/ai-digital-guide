@@ -100,7 +100,7 @@ AutoDL 平台已提供预置 CUDA 和 PyTorch 的官方基础镜像，**无需�
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  ╔═════════════════════════════ CPU 云服务器 ══════════════════════════╗ │
 │  ║                                                                      ║ │
-│  ║              ai-guide-backend (Java 21)                              ║ │
+│  ║              ai-digital-guide-backend (Java 21)                              ║ │
 │  ║           Spring Boot 4.0.4  ·  Port 8080                           ║ │
 │  ║           Context-Path: /ai-project                                  ║ │
 │  ║                                                                      ║ │
@@ -161,7 +161,7 @@ AutoDL 平台已提供预置 CUDA 和 PyTorch 的官方基础镜像，**无需�
 
 | 服务 | 技术栈 | 职责 |
 | --- | --- | --- |
-| **ai-guide-backend** | Java 21 / Spring Boot 4.0.4 / MyBatis-Plus / Spring AI 2.0.0-M3 | 核心业务后端。承载用户认证 (JWT + Redis)、景点 CRUD (OSS 文件上传)、AI 对话编排 (RAG 向量检索 + LLM)、WebSocket 会话管理、管理员数据分析。上下文路径 `/ai-project`，端口 `8080` |
+| **ai-digital-guide-backend** | Java 21 / Spring Boot 4.0.4 / MyBatis-Plus / Spring AI 2.0.0-M3 | 核心业务后端。承载用户认证 (JWT + Redis)、景点 CRUD (OSS 文件上传)、AI 对话编排 (RAG 向量检索 + LLM)、WebSocket 会话管理、管理员数据分析。上下文路径 `/ai-project`，端口 `8080` |
 | **SoVITS / CosyVoice** | Python 3.11 / FastAPI / CosyVoice3 | AI 语音合成服务。接收 Java 后端通过 `/ws/tts` WebSocket 发来的文本，调用 CosyVoice3 零样本模型生成 24kHz 语音，重采样为 16kHz s16le PCM 后流式回传。通过 `/voices/reload` 热加载音色文件 |
 | **MuseTalk** | Python 3.11 / FastAPI / MuseTalk UNet | 数字人生成服务。通过 `/ws/infer` WebSocket 接收 Java 后端转发的 16kHz PCM 音频，使用 Whisper-tiny 提取音频特征后驱动预加载的头像视频生成口型同步帧，以 JPEG 二进制流推送回 Java 后端。启动时自动扫描视频目录预加载并预热 |
 | **markitdown-worker** | Python 3.13 / pika / MarkItDown | 文档解析 Worker。消费 RabbitMQ 队列 `doc.convert.request`，从 OSS 下载用户上传的 PDF/Word/Excel 等文件，使用 Microsoft MarkItDown 转换为 Markdown 文本，将结果投递到 `doc.convert.result` 队列供 Java 后端入库 |
@@ -353,7 +353,7 @@ PORT=6006
 
 ```bash
 # 在项目根目录执行（docker-compose.yml 所在目录）
-cd /path/to/ai-guide-master
+cd /path/to/ai-digital-guide
 
 # 创建 .env 文件（参考 3.5 节模板）
 cp .env.example .env   # 然后编辑 .env 填入真实值
@@ -378,7 +378,7 @@ docker compose up -d mysql-dev redis-dev rabbitmq-dev markitdown-worker
 
 ```bash
 # 进入 Java 后端目录
-cd ai-guide-backend
+cd ai-digital-guide-backend
 
 # 1. Maven 打包（跳过测试加速部署，如需测试请移除 -DskipTests）
 ./mvnw clean package -DskipTests
@@ -493,7 +493,7 @@ python main.py
  │  1. docker compose up -d mysql-dev redis-dev rabbitmq-dev markitdown-worker
  │  2. 在 AutoDL 控制台配置自定义服务（暴露 6006/6008）获取公网地址          │
  │  3. 设置 CPP_MUSETALK_WS_URL / CPP_COSYVOICE_WS_URL 为 AutoDL 公网地址    │
- │  4. cd ai-guide-backend && ./mvnw clean package -DskipTests             │
+ │  4. cd ai-digital-guide-backend && ./mvnw clean package -DskipTests             │
  │  5. java -jar ai-start/target/ai-start-0.0.1-SNAPSHOT.jar \            │
  │         --spring.profiles.active=prod                                   │
  │                                                                         │

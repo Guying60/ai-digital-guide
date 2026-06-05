@@ -11,11 +11,11 @@
     </parent>
 
     <groupId>com.guying</groupId>
-    <artifactId>ai-guide</artifactId>
+    <artifactId>ai-digital-guide</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>ai-guide</name>
-    <description>ai-guide</description>
+    <name>ai-digital-guide</name>
+    <description>ai-digital-guide</description>
     <modules>
         <module>ai-common</module>
         <module>ai-framework</module>

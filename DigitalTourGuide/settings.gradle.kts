@@ -33,6 +33,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DigitalTourGuide"
+rootProject.name = "AiDigitalGuide"
 include(":app")
  

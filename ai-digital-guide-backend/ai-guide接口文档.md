@@ -1,4 +1,4 @@
-# 	ai-guide 接口文档（完整版）
+# 	ai-digital-guide 接口文档（完整版）
 
 > **服务器后端部署地址：** `https://ai.guying.xyz`
 >

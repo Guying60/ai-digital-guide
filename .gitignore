@@ -29,8 +29,8 @@ target/
 .claude/
 
 # === Sensitive configs (contains credentials) ===
-ai-guide-backend/ai-start/src/main/resources/application-dev.yml
-ai-guide-backend/ai-start/src/main/resources/application-prod.yml
+ai-digital-guide-backend/ai-start/src/main/resources/application-dev.yml
+ai-digital-guide-backend/ai-start/src/main/resources/application-prod.yml
 MuseTalk/config.py
 
 # === OS ===
