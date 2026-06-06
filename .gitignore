@@ -13,6 +13,7 @@ target/
 *.jar
 *.war
 !.mvn/wrapper/maven-wrapper.jar
+!DigitalTourGuide/gradle/wrapper/gradle-wrapper.jar
 
 # === IDE ===
 .idea/
