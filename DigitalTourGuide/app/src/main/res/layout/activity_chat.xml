@@ -52,14 +52,12 @@
         android:padding="8dp"
         tools:ignore="MissingClass,InflatedId,,All">
 
-        <!-- 数字人区域（左侧，占满剩余空间） -->
-        <ImageView
-            android:id="@+id/iv_digital_human"
+        <!-- 数字人区域（左侧，占满剩余空间）。H.264 MediaCodec 硬解直渲到 TextureView -->
+        <TextureView
+            android:id="@+id/tv_digital_human"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:background="#333333"
             />
 
         <!-- 拍摄画面预览（右侧，固定大小） -->
