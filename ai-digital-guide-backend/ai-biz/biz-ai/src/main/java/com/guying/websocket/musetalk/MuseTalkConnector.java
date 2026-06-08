@@ -114,11 +114,12 @@ public class MuseTalkConnector {
         protected void handleBinaryMessage(WebSocketSession museTalkSession, BinaryMessage message) {
             if (!ctx.getUserSession().isOpen()) return;
             byte[] raw = message.getPayload().array();
-            if (raw.length < 6) return;
+            // 内层头现为 7 字节：[sentence_id:2B][pts_ms:4B][is_keyframe:1B]
+            if (raw.length < 7) return;
 
-            // 组装 Android payload：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]
+            // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];
-            androidPayload[0] = 0x02;
+            androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
             // ★ 直接透传！不再做任何定时调度，把时间戳交给前端/安卓解析并排队

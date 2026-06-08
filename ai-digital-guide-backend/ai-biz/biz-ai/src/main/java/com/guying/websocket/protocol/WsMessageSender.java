@@ -40,7 +40,9 @@ public class WsMessageSender {
 
     /**
      * 高频视频帧投递（由 MuseTalk NIO 线程调用）。
-     * 非阻塞，队列满时丢弃最旧帧，绝不让 NIO 线程等待网络 I/O。
+     * 非阻塞，绝不让 NIO 线程等待网络 I/O。
+     * 队列满时按 GOP 丢弃：从队首丢弃整段不完整 GOP（直到下一个关键帧），
+     * 避免丢中间 P 帧导致 H.264 参考链断裂、客户端长时间花屏。
      */
     public void sendVideoFrame(ChatSessionContext ctx, BinaryMessage message) {
         if (ctx == null) return;
@@ -52,8 +54,27 @@ public class WsMessageSender {
 
         byte[] payload = message.getPayload().array();
         while (!queue.offer(payload)) {
-            queue.poll(); // 丢弃最旧帧，为最新帧腾空间
+            dropOneGop(queue); // 队满：丢弃队首一段 GOP 腾空间
         }
+    }
+
+    /**
+     * 从队首丢弃至少一个元素，并继续丢弃后续非关键帧，直到队首为关键帧 / done 标记 / 队空。
+     * 保证丢弃后队首仍是一个可独立解码的起点（关键帧），不破坏参考链。
+     */
+    private void dropOneGop(LinkedBlockingQueue<Object> queue) {
+        if (queue.poll() == null) return; // 已空
+        Object head;
+        while ((head = queue.peek()) != null) {
+            if (head instanceof DoneMarker) break;            // 保留 done 标记
+            if (head instanceof byte[] f && isKeyFrame(f)) break; // 队首已是关键帧，停止
+            queue.poll();
+        }
+    }
+
+    /** Android payload 布局 [0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][AU...]，offset 7 为关键帧标志。 */
+    private static boolean isKeyFrame(byte[] androidPayload) {
+        return androidPayload.length > 7 && androidPayload[7] == 1;
     }
 
     /** 将 done 消息注入视频帧队列末尾，保证 done 在其所属句子的所有视频帧之后送达 Android。 */

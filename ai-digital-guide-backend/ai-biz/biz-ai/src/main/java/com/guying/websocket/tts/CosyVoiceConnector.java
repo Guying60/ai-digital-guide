@@ -147,7 +147,6 @@ public class CosyVoiceConnector {
             byte[] payload = message.getPayload().array();
             if (payload.length < AUDIO_HEADER_LEN) return;
 
-            // ★ 删除了所有拆解解析 sentenceId 和 pts_ms 并锚定时间的逻辑
 
             // 1) 完整包（含 header）直接透传给 Android
             if (ctx.getUserSession().isOpen()) {
