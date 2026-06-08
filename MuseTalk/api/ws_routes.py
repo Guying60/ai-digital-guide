@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from utils.helper import encode_frames_gpu
+from utils.h264_encoder import H264StreamEncoder
+from services.musetalk_engine import TARGET_W, TARGET_H
 
 logger = logging.getLogger(__name__)
 
@@ -36,35 +37,56 @@ async def ping_loop(ws: WebSocket, last_pong: dict, shutdown_event: asyncio.Even
         logger.debug(f"[ws] ping_loop 退出: {e}")
 
 
-async def _send_jpegs(
+async def _send_h264(
     ws: WebSocket,
-    jpeg_list: List[bytes],
+    au_list: List[tuple],
     frame_index: int,
     sentence_id: int,
     max_frames: int,
     shutdown_event: asyncio.Event,
+    send_state: dict,
 ) -> int:
     """
-    把一批 JPEG 全量 burst 推到 WS，返回更新后的 frame_index。
+    把一批 H.264 access unit 按 25fps 实时节拍推到 WS，返回更新后的 frame_index。
+    au_list: [(annexb_bytes, is_keyframe), ...]
     超过 max_frames 的帧会被丢弃，防止视频超出音频时长。
-    视频同步由客户端 PTS 驱动渲染循环负责，服务端不再限速。
 
-    二进制帧格式（Java MuseTalkConnector 会在最前面再加 0x02，安卓最终收到）：
+    整流策略：用单调时钟控制每帧发送时刻（40ms/帧），削平句内突发灌入。
+    send_state: {"next_send_ns": float}，跨批次维持发送时钟，首次调用时传 {"next_send_ns": 0}。
+
+    二进制帧格式（Java MuseTalkConnector 会在最前面再加 0x03，安卓最终收到）：
       [sentence_id]   2 字节  big-endian，同一句话所有帧相同，与音频 sentence_id 对应
       [pts_ms]        4 字节  big-endian，该帧在本句中的显示时间（毫秒）
-      [JPEG data]     N 字节  原始 JPEG 图像数据
+      [is_keyframe]   1 字节  1=IDR(含 in-band SPS/PPS)，0=非关键帧
+      [H.264 AU]      N 字节  H.264 Annex-B access unit
 
-    安卓最终收到（含 Java 添加的 0x02）：
-      [0x02][sentence_id: 2B][pts_ms: 4B][JPEG...]
+    安卓最终收到（含 Java 添加的 0x03）：
+      [0x03][sentence_id: 2B][pts_ms: 4B][is_keyframe: 1B][H.264 AU...]
     """
-    for k, jpeg in enumerate(jpeg_list):
+    frame_interval = _MS_PER_FRAME / 1000.0  # 0.04s
+    now_ns = time.monotonic_ns()
+
+    for au_bytes, is_keyframe in au_list:
         if shutdown_event.is_set():
             return frame_index
         if frame_index >= max_frames:
             return frame_index
+
+        # 整流：等到下一帧发送时刻再发
+        next_ns = send_state["next_send_ns"]
+        if next_ns > 0:
+            wait_s = (next_ns - now_ns) / 1_000_000_000.0
+            if wait_s > 0:
+                await asyncio.sleep(wait_s)
+        # 更新下一帧时刻（单调递增，不追落后的 wall clock）
+        send_state["next_send_ns"] = max(
+            now_ns, send_state.get("next_send_ns", now_ns)
+        ) + int(frame_interval * 1_000_000_000)
+        now_ns = time.monotonic_ns()
+
         pts_ms = frame_index * _MS_PER_FRAME
-        header = struct.pack(">HI", sentence_id, pts_ms)
-        await ws.send_bytes(header + jpeg)
+        header = struct.pack(">HIB", sentence_id, pts_ms, 1 if is_keyframe else 0)
+        await ws.send_bytes(header + au_bytes)
         frame_index += 1
     return frame_index
 
@@ -113,31 +135,56 @@ async def websocket_endpoint(ws: WebSocket):
                 sample_count = len(full_audio) // 2  # int16 PCM
                 audio_duration_ms = sample_count * 1000 // 16000
                 max_frames = audio_duration_ms // _MS_PER_FRAME  # floor: 视频 ≤ 音频
+                # 发送时钟：跨批次维持，首次调用时从当前时刻开始
+                send_state: dict = {"next_send_ns": 0}
                 async with engine._lock:
-                    pending_jpegs: Optional[List[bytes]] = None
-                    for blended_list in engine.generate_frames(full_audio, attr_id):
-                        if shutdown_event.is_set():
-                            logger.warning("[ws] 收到关闭信号，终止当前推理")
-                            engine.cancel()
-                            break
+                    # 每句话一个独立 H.264 编码器：首包必为带 in-band SPS/PPS 的 IDR
+                    encoder = H264StreamEncoder(width=TARGET_W, height=TARGET_H, fps=FPS)
+                    pending_aus: Optional[List[tuple]] = None  # 延迟一拍发送，重叠编码与网络 I/O
+                    try:
+                        for blended_list in engine.generate_frames(full_audio, attr_id):
+                            if shutdown_event.is_set():
+                                logger.warning("[ws] 收到关闭信号，终止当前推理")
+                                engine.cancel()
+                                break
 
-                        if pending_jpegs is not None:
-                            frame_index = await _send_jpegs(
-                                ws, pending_jpegs, frame_index,
+                            if pending_aus is not None:
+                                frame_index = await _send_h264(
+                                    ws, pending_aus, frame_index,
+                                    sentence_id=sentence_id,
+                                    max_frames=max_frames,
+                                    shutdown_event=shutdown_event,
+                                    send_state=send_state,
+                                )
+
+                            # 逐帧编码当前批次为 H.264 access unit（编码器有状态，须按序）
+                            batch_aus: List[tuple] = []
+                            for tensor in blended_list:
+                                batch_aus.extend(encoder.encode_frame(tensor))
+                            pending_aus = batch_aus
+
+                        if pending_aus is not None and not shutdown_event.is_set():
+                            frame_index = await _send_h264(
+                                ws, pending_aus, frame_index,
                                 sentence_id=sentence_id,
                                 max_frames=max_frames,
                                 shutdown_event=shutdown_event,
+                                send_state=send_state,
                             )
 
-                        pending_jpegs = encode_frames_gpu(blended_list, quality=JPEG_QUALITY)
-
-                    if pending_jpegs is not None and not shutdown_event.is_set():
-                        frame_index = await _send_jpegs(
-                            ws, pending_jpegs, frame_index,
-                            sentence_id=sentence_id,
-                            max_frames=max_frames,
-                            shutdown_event=shutdown_event,
-                        )
+                        # flush 编码器残留包（zerolatency 下通常为空）
+                        if not shutdown_event.is_set():
+                            tail_aus = encoder.close()
+                            if tail_aus:
+                                frame_index = await _send_h264(
+                                    ws, tail_aus, frame_index,
+                                    sentence_id=sentence_id,
+                                    max_frames=max_frames,
+                                    shutdown_event=shutdown_event,
+                                    send_state=send_state,
+                                )
+                    finally:
+                        encoder.close()  # 幂等，确保异常路径也释放编码器
 
                 if not shutdown_event.is_set():
                     # sentence_id 透传，安卓用于确认哪句视频推完

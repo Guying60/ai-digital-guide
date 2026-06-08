@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # 输出分辨率（W, H）。与 helper.encode_frame 默认值一致。
-TARGET_W, TARGET_H = 480, 854
+TARGET_W, TARGET_H = 720, 1280
 BATCH = 32
 
 
