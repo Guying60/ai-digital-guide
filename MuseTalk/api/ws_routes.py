@@ -3,6 +3,7 @@ import json
 import logging
 import struct
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -22,6 +23,20 @@ JPEG_QUALITY = 80
 FPS = 25
 _MS_PER_FRAME = 1000 // FPS  # 40ms/帧
 
+# H.264 编码线程池：将 CPU 密集的 libx264 编码从 asyncio 事件循环中卸载，
+# 使下一批 GPU 推理（UNet）能与当前批的 H.264 编码并行执行。
+_h264_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="h264-enc")
+
+
+def _encode_batch_sync(
+    encoder: H264StreamEncoder, blended_list: List
+) -> List[tuple]:
+    """将一批 blend 后的帧编码为 H.264 access unit（在编码线程池中运行）。
+
+    blended_list 中的 tensor 会被同步拷贝到 CPU 并编码，调用方无需额外持有 CUDA 引用。
+    """
+    return encoder.encode_frames_batch(blended_list)
+
 
 async def ping_loop(ws: WebSocket, last_pong: dict, shutdown_event: asyncio.Event):
     try:
@@ -37,58 +52,86 @@ async def ping_loop(ws: WebSocket, last_pong: dict, shutdown_event: asyncio.Even
         logger.debug(f"[ws] ping_loop 退出: {e}")
 
 
-async def _send_h264(
-    ws: WebSocket,
+def _enqueue_h264_batch(
+    frame_send_queue: asyncio.Queue,
     au_list: List[tuple],
     frame_index: int,
     sentence_id: int,
     max_frames: int,
-    shutdown_event: asyncio.Event,
-    send_state: dict,
+    pts_base_ms: int,
 ) -> int:
-    """
-    把一批 H.264 access unit 按 25fps 实时节拍推到 WS，返回更新后的 frame_index。
-    au_list: [(annexb_bytes, is_keyframe), ...]
-    超过 max_frames 的帧会被丢弃，防止视频超出音频时长。
-
-    整流策略：用单调时钟控制每帧发送时刻（40ms/帧），削平句内突发灌入。
-    send_state: {"next_send_ns": float}，跨批次维持发送时钟，首次调用时传 {"next_send_ns": 0}。
-
-    二进制帧格式（Java MuseTalkConnector 会在最前面再加 0x03，安卓最终收到）：
-      [sentence_id]   2 字节  big-endian，同一句话所有帧相同，与音频 sentence_id 对应
-      [pts_ms]        4 字节  big-endian，该帧在本句中的显示时间（毫秒）
-      [is_keyframe]   1 字节  1=IDR(含 in-band SPS/PPS)，0=非关键帧
-      [H.264 AU]      N 字节  H.264 Annex-B access unit
-
-    安卓最终收到（含 Java 添加的 0x03）：
-      [0x03][sentence_id: 2B][pts_ms: 4B][is_keyframe: 1B][H.264 AU...]
-    """
-    frame_interval = _MS_PER_FRAME / 1000.0  # 0.04s
-    now_ns = time.monotonic_ns()
-
+    """把一批编码好的 AU 放入发送队列（非阻塞），返回更新后的 frame_index。"""
     for au_bytes, is_keyframe in au_list:
-        if shutdown_event.is_set():
-            return frame_index
         if frame_index >= max_frames:
             return frame_index
-
-        # 整流：等到下一帧发送时刻再发
-        next_ns = send_state["next_send_ns"]
-        if next_ns > 0:
-            wait_s = (next_ns - now_ns) / 1_000_000_000.0
-            if wait_s > 0:
-                await asyncio.sleep(wait_s)
-        # 更新下一帧时刻（单调递增，不追落后的 wall clock）
-        send_state["next_send_ns"] = max(
-            now_ns, send_state.get("next_send_ns", now_ns)
-        ) + int(frame_interval * 1_000_000_000)
-        now_ns = time.monotonic_ns()
-
-        pts_ms = frame_index * _MS_PER_FRAME
-        header = struct.pack(">HIB", sentence_id, pts_ms, 1 if is_keyframe else 0)
-        await ws.send_bytes(header + au_bytes)
+        pts_ms = pts_base_ms + frame_index * _MS_PER_FRAME
+        frame_send_queue.put_nowait(
+            ("frame", au_bytes, is_keyframe, pts_ms, sentence_id)
+        )
         frame_index += 1
     return frame_index
+
+
+async def _send_one_frame(
+    ws: WebSocket,
+    au_bytes: bytes,
+    is_keyframe: bool,
+    pts_ms: int,
+    sentence_id: int,
+    shutdown_event: asyncio.Event,
+    send_state: dict,
+) -> bool:
+    """按 25fps 节拍发送单帧；返回 False 表示连接已关闭。"""
+    if shutdown_event.is_set():
+        return False
+
+    frame_interval_ns = int((_MS_PER_FRAME / 1000.0) * 1_000_000_000)
+    now_ns = time.monotonic_ns()
+    next_ns = send_state["next_send_ns"]
+    if next_ns > 0:
+        wait_s = (next_ns - now_ns) / 1_000_000_000.0
+        if wait_s > 0:
+            await asyncio.sleep(wait_s)
+    send_state["next_send_ns"] = max(
+        now_ns, send_state.get("next_send_ns", now_ns)
+    ) + frame_interval_ns
+
+    header = struct.pack(">HIB", sentence_id, pts_ms, 1 if is_keyframe else 0)
+    await ws.send_bytes(header + au_bytes)
+    return True
+
+
+async def frame_send_worker(
+    ws: WebSocket,
+    frame_send_queue: asyncio.Queue,
+    shutdown_event: asyncio.Event,
+    send_state: dict,
+):
+    """独立发送协程：与 GPU 推理并行，跨句维持 25fps 节拍，消除句间死区。"""
+    while True:
+        item = await frame_send_queue.get()
+        if item is None:
+            frame_send_queue.task_done()
+            break
+
+        kind = item[0]
+        try:
+            if shutdown_event.is_set():
+                continue
+            if kind == "frame":
+                _, au_bytes, is_keyframe, pts_ms, sentence_id = item
+                await _send_one_frame(
+                    ws, au_bytes, is_keyframe, pts_ms, sentence_id,
+                    shutdown_event, send_state,
+                )
+            elif kind == "eos":
+                _, sentence_id = item
+                if not shutdown_event.is_set():
+                    await ws.send_json({"type": "done", "sentence_id": sentence_id})
+        except Exception as e:
+            logger.error(f"[ws] 发送协程异常: {e}", exc_info=True)
+        finally:
+            frame_send_queue.task_done()
 
 
 @router.websocket("/ws/infer")
@@ -102,10 +145,19 @@ async def websocket_endpoint(ws: WebSocket):
     last_pong = {"ts": time.time()}
     shutdown_event = asyncio.Event()
 
-    # (full_audio, attraction_id, sentence_id)
+    # (chunks_future_or_list, full_audio_len, attraction_id, sentence_id)
+    # chunks_future_or_list: 预计算的 asyncio.Future 或已就绪的 list
     inference_queue: asyncio.Queue = asyncio.Queue()
+    # 发送队列：推理协程只负责入队，frame_send_worker 独立按 25fps 推流
+    frame_send_queue: asyncio.Queue = asyncio.Queue()
+    # 跨句共享：单调发送时钟（25fps 节拍跨句连续）
+    send_state: dict = {"next_send_ns": 0}
+    # H.264 编码器跨句复用：避免每句话重新初始化（libx264 init 约 10~20ms）
+    # 每句话 close() 后重建，保证首帧为带 SPS/PPS 的 IDR
+    encoder = H264StreamEncoder(width=TARGET_W, height=TARGET_H, fps=FPS)
 
     async def inference_worker():
+        nonlocal encoder
         while True:
             try:
                 task_data = await inference_queue.get()
@@ -123,74 +175,84 @@ async def websocket_endpoint(ws: WebSocket):
                             pass
                     break
 
-                full_audio, attr_id, sentence_id = task_data
+                chunks_future_or_list, full_audio_len, attr_id, sentence_id = task_data
                 logger.info(
                     f"[ws] 从队列取出任务，sentence_id={sentence_id}，"
-                    f"音频长度: {len(full_audio)}，当前排队任务数: {inference_queue.qsize()}"
+                    f"音频长度: {full_audio_len}，当前排队任务数: {inference_queue.qsize()}"
                 )
+
+                # 等待预计算的 audio2feat 结果（大部分情况下已在后台完成）
+                t_audio_start = time.monotonic()
+                precomputed_chunks = await chunks_future_or_list
+                t_audio_done = time.monotonic()
 
                 engine.reset_cancel()
                 frame_index = 0
                 # 根据音频实际时长计算视频帧数上界，防止 feature2chunks 向上取整导致视频长于音频
-                sample_count = len(full_audio) // 2  # int16 PCM
+                sample_count = full_audio_len // 2  # int16 PCM
                 audio_duration_ms = sample_count * 1000 // 16000
                 max_frames = audio_duration_ms // _MS_PER_FRAME  # floor: 视频 ≤ 音频
-                # 发送时钟：跨批次维持，首次调用时从当前时刻开始
-                send_state: dict = {"next_send_ns": 0}
+                # PTS 句内局部（每句从 0 开始），客户端 flushForNewSentence 重置时钟锚点
+                pts_base_ms = 0
                 async with engine._lock:
-                    # 每句话一个独立 H.264 编码器：首包必为带 in-band SPS/PPS 的 IDR
-                    encoder = H264StreamEncoder(width=TARGET_W, height=TARGET_H, fps=FPS)
-                    pending_aus: Optional[List[tuple]] = None  # 延迟一拍发送，重叠编码与网络 I/O
+                    # 延迟一拍：上一批编码 future 与当前批 GPU 推理并行
+                    pending_aus_future: Optional[asyncio.Future] = None
                     try:
-                        for blended_list in engine.generate_frames(full_audio, attr_id):
+                        for blended_list in engine.generate_frames(b"", attr_id, precomputed_chunks=precomputed_chunks):
                             if shutdown_event.is_set():
                                 logger.warning("[ws] 收到关闭信号，终止当前推理")
                                 engine.cancel()
                                 break
 
-                            if pending_aus is not None:
-                                frame_index = await _send_h264(
-                                    ws, pending_aus, frame_index,
-                                    sentence_id=sentence_id,
-                                    max_frames=max_frames,
-                                    shutdown_event=shutdown_event,
-                                    send_state=send_state,
+                            # 等待上一批编码完成并入发送队列（不阻塞在 25fps 节拍上）
+                            if pending_aus_future is not None:
+                                pending_aus = await pending_aus_future
+                                frame_index = _enqueue_h264_batch(
+                                    frame_send_queue, pending_aus, frame_index,
+                                    sentence_id, max_frames, pts_base_ms,
                                 )
 
-                            # 逐帧编码当前批次为 H.264 access unit（编码器有状态，须按序）
-                            batch_aus: List[tuple] = []
-                            for tensor in blended_list:
-                                batch_aus.extend(encoder.encode_frame(tensor))
-                            pending_aus = batch_aus
+                            # 提交当前批编码到线程池，与下一批 GPU 推理并行
+                            pending_aus_future = asyncio.wrap_future(
+                                _h264_executor.submit(_encode_batch_sync, encoder, blended_list)
+                            )
 
-                        if pending_aus is not None and not shutdown_event.is_set():
-                            frame_index = await _send_h264(
-                                ws, pending_aus, frame_index,
-                                sentence_id=sentence_id,
-                                max_frames=max_frames,
-                                shutdown_event=shutdown_event,
-                                send_state=send_state,
+                        # 等待最后一批编码完成并入队
+                        if pending_aus_future is not None and not shutdown_event.is_set():
+                            pending_aus = await pending_aus_future
+                            frame_index = _enqueue_h264_batch(
+                                frame_send_queue, pending_aus, frame_index,
+                                sentence_id, max_frames, pts_base_ms,
                             )
 
                         # flush 编码器残留包（zerolatency 下通常为空）
                         if not shutdown_event.is_set():
                             tail_aus = encoder.close()
                             if tail_aus:
-                                frame_index = await _send_h264(
-                                    ws, tail_aus, frame_index,
-                                    sentence_id=sentence_id,
-                                    max_frames=max_frames,
-                                    shutdown_event=shutdown_event,
-                                    send_state=send_state,
+                                frame_index = _enqueue_h264_batch(
+                                    frame_send_queue, tail_aus, frame_index,
+                                    sentence_id, max_frames, pts_base_ms,
                                 )
                     finally:
                         encoder.close()  # 幂等，确保异常路径也释放编码器
+                    # 下一句重建编码器（保证首包为 IDR + SPS/PPS）
+                    encoder = H264StreamEncoder(width=TARGET_W, height=TARGET_H, fps=FPS)
 
                 if not shutdown_event.is_set():
-                    # sentence_id 透传，安卓用于确认哪句视频推完
-                    await ws.send_json({"type": "done", "sentence_id": sentence_id})
+                    await frame_send_queue.put(("eos", sentence_id))
+
+                    # 性能日志：推理耗时 vs 音频时长（实时倍率）
+                    t_infer_done = time.monotonic()
+                    infer_elapsed = t_infer_done - t_audio_start
+                    audio_duration_s = full_audio_len / 2 / 16000  # int16 PCM → 秒
+                    rt_ratio = audio_duration_s / infer_elapsed if infer_elapsed > 0 else float("inf")
                     logger.info(
-                        f"[ws] sentence_id={sentence_id} 推理完成，共发送 {frame_index} 帧"
+                        f"[perf] sentence_id={sentence_id} 推理完成 | "
+                        f"帧数={frame_index} | 音频={audio_duration_s:.2f}s | "
+                        f"推理耗时={infer_elapsed:.3f}s | "
+                        f"audio2feat={t_audio_done - t_audio_start:.3f}s | "
+                        f"实时倍率={rt_ratio:.2f}x | "
+                        f"队列深度={inference_queue.qsize()}"
                     )
 
                 inference_queue.task_done()
@@ -203,6 +265,9 @@ async def websocket_endpoint(ws: WebSocket):
                     break
 
     worker_task = asyncio.create_task(inference_worker())
+    send_task = asyncio.create_task(
+        frame_send_worker(ws, frame_send_queue, shutdown_event, send_state)
+    )
     ping_task = asyncio.create_task(ping_loop(ws, last_pong, shutdown_event))
 
     try:
@@ -247,19 +312,28 @@ async def websocket_endpoint(ws: WebSocket):
                     # sentence_id 由 Java CosyVoiceConnector 转发 chunk_end 时携带
                     # Java 尚未更新时默认 0，不影响现有逻辑
                     sentence_id: int = msg.get("sentence_id", 0)
-                    await inference_queue.put((full_audio, attraction_id, sentence_id))
+
+                    # 流水线重叠：立即在后台线程启动 audio2feat 预计算（纯 CPU，不占 GPU），
+                    # 这样前一句 GPU 推理完成后可直接进入 UNet，省去 audio2feat 等待。
+                    chunks_future = asyncio.to_thread(
+                        engine.precompute_audio_chunks, full_audio
+                    )
+                    await inference_queue.put(
+                        (chunks_future, len(full_audio), attraction_id, sentence_id)
+                    )
                     logger.info(
-                        f"[ws] sentence_id={sentence_id} 音频已推入推理队列，继续监听网络..."
+                        f"[ws] sentence_id={sentence_id} 音频已推入推理队列，audio2feat 预计算已启动，继续监听网络..."
                     )
                     continue
 
                 if msg.get("type") == "interrupt":
                     logger.info(
-                        "[ws] 收到 interrupt，丢弃 audio_buffer + 清空推理队列 + 取消当前推理"
+                        "[ws] 收到 interrupt，丢弃 audio_buffer + 清空推理/发送队列 + 取消当前推理"
                     )
                     audio_buffer.clear()
                     engine.cancel()
                     engine.reset_cancel()
+                    send_state["next_send_ns"] = 0
                     drained = 0
                     while not inference_queue.empty():
                         try:
@@ -268,7 +342,18 @@ async def websocket_endpoint(ws: WebSocket):
                             drained += 1
                         except Exception:
                             break
-                    logger.info(f"[ws] interrupt 已丢弃 {drained} 个待推理任务")
+                    send_drained = 0
+                    while not frame_send_queue.empty():
+                        try:
+                            frame_send_queue.get_nowait()
+                            frame_send_queue.task_done()
+                            send_drained += 1
+                        except Exception:
+                            break
+                    logger.info(
+                        f"[ws] interrupt 已丢弃 {drained} 个待推理任务、"
+                        f"{send_drained} 个待发视频帧"
+                    )
                     continue
 
             if "bytes" in raw:
@@ -289,5 +374,7 @@ async def websocket_endpoint(ws: WebSocket):
         shutdown_event.set()
         ping_task.cancel()
         await inference_queue.put(None)
+        await frame_send_queue.put(None)
         worker_task.cancel()
+        send_task.cancel()
         logger.info("[ws] 连接清理完成")
