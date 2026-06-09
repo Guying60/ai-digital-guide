@@ -27,13 +27,6 @@ from musetalk.utils.face_parsing import FaceParsing
 from musetalk.utils.blending import get_image_prepare_material
 from scripts.realtime_inference import video2imgs
 
-# TensorRT 加速（可选）
-try:
-    from services.trt_unet import TRTUNet, find_trt_engine
-    _TRT_AVAILABLE = True
-except ImportError:
-    _TRT_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -81,20 +74,6 @@ class MuseTalkEngine:
         except Exception as e:
             logger.warning(f"[engine] fuse_qkv_projections 失败: {e}")
         self.vae.vae.eval()
-
-        # TensorRT UNet 加速（可选，优先使用）
-        self._trt_unet = None
-        if _TRT_AVAILABLE:
-            engine_path = find_trt_engine(self.musetalk_root)
-            if engine_path:
-                try:
-                    self._trt_unet = TRTUNet(str(engine_path), device=self.device)
-                    logger.info(f"[engine] TensorRT UNet 已加载: {engine_path}")
-                except Exception as e:
-                    logger.warning(f"[engine] TRT UNet 加载失败，回退 PyTorch: {e}")
-                    self._trt_unet = None
-            else:
-                logger.info("[engine] 未找到 TRT engine 文件，使用 PyTorch UNet")
 
         # 探测 sd-vae 的 scaling factor，decode 时需要用 latents / scale
         self._vae_scale: float = float(getattr(self.vae.vae.config, "scaling_factor", 0.18215))
@@ -326,9 +305,6 @@ class MuseTalkEngine:
     # UNet 懒编译 + 失败回落
     # --------------------------------------------------------------
     def _get_or_compile_unet(self) -> Callable:
-        # 优先使用 TensorRT engine
-        if self._trt_unet is not None:
-            return self._trt_unet
         if self._unet_compiled is not None:
             return self._unet_compiled
         try:
