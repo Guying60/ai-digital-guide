@@ -13,13 +13,13 @@ import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.function.LongSupplier;
 
 /**
  * H.264 硬解码器：MediaCodec(async 模式) 直渲到 TextureView 的 Surface。
  *
- * 取代旧的 MJPEG 软解(BitmapFactory)+ImageView 渲染路径。WebSocket 读线程只负责
- * {@link #feed(AccessUnit)} 把 access unit 推入有界队列，绝不阻塞；所有 MediaCodec
- * 调用都在独立的 "H264Decoder" HandlerThread 上串行执行。
+ * WebSocket 读线程只负责 {@link #feed(AccessUnit)} 把 access unit 推入有界队列，
+ * 绝不阻塞；所有 MediaCodec 调用都在独立的 "H264Decoder" HandlerThread 上串行执行。
  *
  * 协议：每句话首帧为带 in-band SPS/PPS 的 IDR。
  * - 句切换走 {@link #flushForNewSentence()}：flush 解码器 + 重置时钟 + 等待 IDR。
@@ -35,12 +35,20 @@ public class H264VideoDecoder {
     private static final int DEFAULT_W = 480;
     private static final int DEFAULT_H = 854;
 
-    /** 队列上限 ≈ 2s@25fps，满则按 GOP 丢弃到下个关键帧，避免断参考链。 */
-    private static final int MAX_PENDING_AUS = 50;
+    /** 队列上限 ≈ 3s@25fps，满则按 GOP 丢弃到下个关键帧，避免断参考链。 */
+    private static final int MAX_PENDING_AUS = 75;
     /** 启播优先级延迟：首帧渲染稍微滞后，给后续帧留缓冲。 */
-    private static final long START_LATENCY_NS = 150_000_000L; // 150ms（原80ms，容忍后端推理抖动）
+    private static final long START_LATENCY_NS = 100_000_000L; // 100ms（服务端已整流 + 全局 PTS）
     /** 严重落后阈值：超过则只丢显示不丢解码。 */
     private static final long LATE_DROP_NS = 300_000_000L; // 300ms（原80ms，容忍 burst 到达）
+    /** 网络卡顿检测阈值：自上次渲染超过此值则重置渲染时钟，避免级联丢帧。 */
+    private static final long STALL_GAP_NS = 300_000_000L; // 300ms
+    /** 匀速喂帧间隔：25fps = 40ms/帧。 */
+    private static final long FRAME_INTERVAL_MS = 40;
+    /** 积压加速阈值：队列深度超过此值时缩短喂帧间隔，加速消耗积压帧。 */
+    private static final int BURST_DEPTH_THRESHOLD = 10;
+    /** 积压加速喂帧间隔。 */
+    private static final long BURST_FRAME_INTERVAL_MS = 30;
 
     /** 解码输入单元：一个 H.264 Annex-B access unit。 */
     public static final class AccessUnit {
@@ -64,6 +72,9 @@ public class H264VideoDecoder {
 
     private final TextureView textureView;
 
+    /** 音频时钟：返回已播放毫秒数（AudioTrack.getPlaybackHeadPosition / 16）。 */
+    private volatile LongSupplier audioClockMs;
+
     // 仅在 codecThread 访问
     private final ArrayDeque<Integer> availableInputs = new ArrayDeque<>();
     // 跨线程：WS 线程 feed / codecThread drain
@@ -76,15 +87,21 @@ public class H264VideoDecoder {
     // 节奏锚点（仅 codecThread 访问）
     private long baseRenderNs = -1;
     private long basePtsUs = -1;
-    /** 上一帧实际释放时刻（用于 burst 平滑），仅 codecThread 访问 */
+    /** 上一帧实际释放时刻（用于卡顿检测），仅 codecThread 访问 */
     private long lastActualRenderNs = -1;
-    /** 最小渲染间隔：burst 时避免帧"快进"闪过 */
-    private static final long MIN_RENDER_INTERVAL_NS = 30_000_000L; // 30ms ≈ 33fps
+    /**
+     * 音频时钟基准偏移：视频比音频晚到时，记录视频启动瞬间的音频播放位置。
+     * 同步公式：diffMs = videoPtsMs - (audioMs - audioClockBaselineMs)
+     * 这样视频第一帧 PTS≈0 时，audioMs - baseline ≈ 0，不会被判为"过期"而丢弃。
+     */
+    private volatile long audioClockBaselineMs = 0;
 
     // ==== 临时诊断计测（定位卡顿用，验证后移除）====
     private static final boolean DIAG = true;
     private volatile long lastFeedNs = -1;   // 上一帧到达时刻（WS 线程）
-    private long lastRenderNs = -1;          // 上一帧 release 时刻（codecThread）
+    private long lastRenderNs = -1;
+    /** 匀速喂帧定时 Runnable。 */
+    private Runnable feedRunnable;          // 上一帧 release 时刻（codecThread）
     private int diagRenderCnt = 0;
     private int diagDropCnt = 0;
 
@@ -94,6 +111,27 @@ public class H264VideoDecoder {
 
     public H264VideoDecoder(TextureView textureView) {
         this.textureView = textureView;
+    }
+
+    /** 设置音频时钟（ChatActivity 传入 getAudioPtsMs）。 */
+    public void setAudioClock(LongSupplier clock) {
+        this.audioClockMs = clock;
+    }
+
+    /**
+     * 重置音频时钟基准：视频比音频晚到时调用。
+     * 将当前音频播放位置记录为 baseline，后续同步公式变为：
+     *   diffMs = videoPtsMs - (audioMs - baseline)
+     * 这样视频 PTS≈0 的首帧不会因 audioMs 已跑了 4 秒而被判为"过期丢弃"。
+     */
+    public void resetAudioClockBaseline() {
+        LongSupplier clock = audioClockMs;
+        if (clock != null) {
+            audioClockBaselineMs = clock.getAsLong();
+        } else {
+            audioClockBaselineMs = 0;
+        }
+        Log.d(TAG, "audioClockBaseline reset to " + audioClockBaselineMs + "ms");
     }
 
     /** TextureView Surface 就绪后调用：建线程、配置并启动 MediaCodec。 */
@@ -119,7 +157,7 @@ public class H264VideoDecoder {
         }
     }
 
-    /** 是否成功启用硬解（供 ChatActivity 决定是否回落 JPEG）。 */
+    /** 是否成功启用硬解。 */
     public boolean isReady() {
         return codec != null && !released;
     }
@@ -142,8 +180,7 @@ public class H264VideoDecoder {
             }
             pendingAUs.addLast(au);
         }
-        Handler h = codecHandler;
-        if (h != null) h.post(this::drainInputs);
+        kickFeed();
     }
 
     /** 队满时从队首丢弃整段不完整 GOP（直到下个关键帧），保护参考链。须持有 pendingAUs 锁。 */
@@ -166,6 +203,7 @@ public class H264VideoDecoder {
         if (h == null || codec == null) return;
         h.post(() -> {
             if (codec == null || released) return;
+            cancelFeed();
             try {
                 codec.flush();
                 codec.start(); // async 模式 flush 后必须 start，否则回调停发
@@ -177,6 +215,7 @@ public class H264VideoDecoder {
             baseRenderNs = -1;
             basePtsUs = -1;
             lastActualRenderNs = -1;
+            audioClockBaselineMs = 0;
         });
     }
 
@@ -194,54 +233,103 @@ public class H264VideoDecoder {
         synchronized (pendingAUs) {
             pendingAUs.clear();
         }
-        MediaCodec c = codec;
-        if (c != null) {
+        Handler h = codecHandler;
+        if (h == null || codec == null) return;
+        h.post(() -> {
+            if (codec == null || released) return;
+            cancelFeed();
             try {
-                // flush 清空 codec 内部输入/输出缓冲，但不重置 baseRenderNs/basePtsUs
-                c.flush();
+                codec.flush();
+                codec.start();
             } catch (Exception e) {
-                Log.e(TAG, "sentenceTransitionFlush flush codec 失败", e);
+                Log.e(TAG, "sentenceTransitionFlush flush/start 失败", e);
             }
-        }
-        waitingForKeyframe = true;
-        // 只 flush 了 codec 缓冲（必须），没有重置 baseRenderNs/basePtsUs → 渲染时钟跨句连续
+            availableInputs.clear();
+            waitingForKeyframe = true;
+            // 不重置 baseRenderNs/basePtsUs → 渲染时钟跨句连续
+        });
     }
 
-    /** 仅在 codecThread 执行：把可用 input buffer 喂满待发 AU。 */
+    /**
+     * 仅在 codecThread 执行：每次只喂一帧给解码器，然后定时 40ms 后喂下一帧。
+     * <p>
+     * 不依赖 onInputBufferAvailable 回调驱动（回调会一次性触发所有空闲 input buffer，
+     * 造成 burst 喂入）。改用固定 40ms 定时器匀速喂帧，形成 jitter buffer：
+     * 前端缓存 burst 帧，按 25fps 匀速喂给解码器，配合
+     * releaseOutputBuffer(index, renderAtNs) 的 PTS 排程，实现丝滑播放。
+     */
     private void drainInputs() {
         if (codec == null || released) return;
-        while (!availableInputs.isEmpty()) {
-            AccessUnit au;
-            synchronized (pendingAUs) {
-                au = pendingAUs.peekFirst();
-                if (au == null) return; // 暂无数据，保留 input index
-                if (waitingForKeyframe && !au.keyFrame) {
-                    pendingAUs.pollFirst(); // 丢弃 IDR 之前的残缺帧，防花屏
-                    continue;
-                }
-                pendingAUs.pollFirst();
-            }
-            waitingForKeyframe = false;
-            int index = availableInputs.pollFirst();
-            try {
-                ByteBuffer in = codec.getInputBuffer(index);
-                if (in == null) continue;
-                in.clear();
-                in.put(au.data);
-                int flags = au.keyFrame ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
-                codec.queueInputBuffer(index, 0, au.data.length, au.ptsMs * 1000L, flags);
-            } catch (Exception e) {
-                Log.e(TAG, "queueInputBuffer 失败", e);
+        if (availableInputs.isEmpty()) {
+            // input buffer 全占满，等 onInputBufferAvailable 恢复
+            return;
+        }
+
+        AccessUnit au;
+        synchronized (pendingAUs) {
+            au = pendingAUs.peekFirst();
+            if (au == null) return; // 队列空，定时器自然停止
+            if (waitingForKeyframe && !au.keyFrame) {
+                pendingAUs.pollFirst(); // 丢弃 IDR 之前的残缺帧，防花屏
+                kickFeed(); // 立即尝试下一帧
                 return;
             }
+            pendingAUs.pollFirst();
         }
+        waitingForKeyframe = false;
+        int index = availableInputs.pollFirst();
+        try {
+            ByteBuffer in = codec.getInputBuffer(index);
+            if (in == null) return;
+            in.clear();
+            in.put(au.data);
+            int flags = au.keyFrame ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
+            codec.queueInputBuffer(index, 0, au.data.length, au.ptsMs * 1000L, flags);
+        } catch (Exception e) {
+            Log.e(TAG, "queueInputBuffer 失败", e);
+            return;
+        }
+        // 自适应匀速：队列深时加速消耗积压帧，队列浅时保持 25fps
+        int depth;
+        synchronized (pendingAUs) { depth = pendingAUs.size(); }
+        long interval = depth > BURST_DEPTH_THRESHOLD ? BURST_FRAME_INTERVAL_MS : FRAME_INTERVAL_MS;
+        ensureFeedScheduled(interval);
+    }
+
+    /** 确保定时喂帧器在跑：延迟指定毫秒后触发 drainInputs。 */
+    private void ensureFeedScheduled(long intervalMs) {
+        Handler h = codecHandler;
+        if (h == null || released) return;
+        if (feedRunnable == null) feedRunnable = this::drainInputs;
+        h.removeCallbacks(feedRunnable);
+        h.postDelayed(feedRunnable, intervalMs);
+    }
+
+    /** 立即触发一次 drainInputs（feed 初次唤醒、input buffer 恢复时用）。 */
+    private void kickFeed() {
+        Handler h = codecHandler;
+        if (h == null || released) return;
+        if (feedRunnable == null) feedRunnable = this::drainInputs;
+        h.removeCallbacks(feedRunnable);
+        h.post(feedRunnable);
+    }
+
+    /** 取消待执行的喂帧定时器（flush/release 时调用）。 */
+    private void cancelFeed() {
+        Handler h = codecHandler;
+        if (h == null || feedRunnable == null) return;
+        h.removeCallbacks(feedRunnable);
     }
 
     private final MediaCodec.Callback callback = new MediaCodec.Callback() {
         @Override
         public void onInputBufferAvailable(@NonNull MediaCodec c, int index) {
             availableInputs.addLast(index);
-            drainInputs();
+            // 不直接 drainInputs：避免 burst 时回调链一口气灌满 input buffer。
+            // 仅在有 pending 帧且定时器未跑时唤醒。
+            synchronized (pendingAUs) {
+                if (!pendingAUs.isEmpty()) kickFeed();
+            }
         }
 
         @Override
@@ -258,14 +346,38 @@ public class H264VideoDecoder {
             }
             long ptsUs = info.presentationTimeUs;
             long nowNs = System.nanoTime();
-            if (baseRenderNs < 0) {
-                baseRenderNs = nowNs + START_LATENCY_NS;
-                basePtsUs = ptsUs;
+            long videoPtsMs = ptsUs / 1000;
+
+            // ★ 音视频同步：优先用音频时钟锚定渲染时刻。
+            //   AudioTrack.write(WRITE_BLOCKING) 天然按采样率匀速消费，是唯一可信的实时时钟。
+            //   视频 PTS 与音频 PTS 同源（服务端统一打戳），差值即为"视频应提前/延后多少渲染"。
+            //   audioClockBaselineMs 处理视频比音频晚到的场景：减去 baseline 使 PTS 对齐。
+            LongSupplier clock = audioClockMs;
+            long renderAtNs;
+            if (clock != null) {
+                long audioMs = clock.getAsLong();
+                if (audioMs > 0) {
+                    long effectiveAudioMs = audioMs - audioClockBaselineMs;
+                    long diffMs = videoPtsMs - effectiveAudioMs;
+                    renderAtNs = nowNs + diffMs * 1_000_000L;
+                    if (DIAG && diagRenderCnt % 25 == 0) {
+                        Log.d(TAG, "AUDIO_SYNC vPts=" + videoPtsMs
+                                + " aPts=" + audioMs + " baseline=" + audioClockBaselineMs
+                                + " effAudio=" + effectiveAudioMs + " diff=" + diffMs + "ms");
+                    }
+                } else {
+                    // 音频尚未启动，回落到 PTS 自维护时钟
+                    renderAtNs = fallbackRenderNs(ptsUs, nowNs);
+                }
+            } else {
+                // 无音频时钟，PTS 自维护时钟
+                renderAtNs = fallbackRenderNs(ptsUs, nowNs);
             }
-            long targetNs = baseRenderNs + (ptsUs - basePtsUs) * 1000L;
+
+            long targetNs = renderAtNs;
             try {
                 if (targetNs < nowNs - LATE_DROP_NS) {
-                    // 严重落后：只丢显示，不断解码链
+                    // 严重落后（在 STALL_GAP_NS 重置后不应再触发）：只丢显示，不断解码链
                     if (DIAG) {
                         diagDropCnt++;
                         Log.d(TAG, "RENDER DROP pts=" + (ptsUs / 1000)
@@ -274,35 +386,15 @@ public class H264VideoDecoder {
                     }
                     c.releaseOutputBuffer(index, false);
                 } else {
-                    // burst 平滑：如果距上次渲染间隔太短，推迟释放，避免帧"快进"闪过
-                    long renderAtNs = targetNs;
-                    if (lastActualRenderNs > 0) {
-                        long gapSinceLastRender = nowNs - lastActualRenderNs;
-                        if (gapSinceLastRender < MIN_RENDER_INTERVAL_NS) {
-                            // 上一帧刚渲染不到 30ms，推迟这一帧
-                            long boostedTarget = lastActualRenderNs + MIN_RENDER_INTERVAL_NS;
-                            if (boostedTarget > renderAtNs) {
-                                renderAtNs = boostedTarget;
-                            }
-                        }
-                    }
                     if (DIAG) {
                         long leadMs = (renderAtNs - nowNs) / 1_000_000L;
                         long sinceLastMs = lastRenderNs < 0 ? -1 : (nowNs - lastRenderNs) / 1_000_000L;
                         lastRenderNs = nowNs;
                         diagRenderCnt++;
-                        if (renderAtNs != targetNs) {
-                            Log.d(TAG, "RENDER pts=" + (ptsUs / 1000)
-                                    + " leadMs=" + leadMs
-                                    + " sinceLastRenderMs=" + sinceLastMs
-                                    + " BURST_SMOOTHED"
-                                    + " (render#" + diagRenderCnt + ")");
-                        } else {
-                            Log.d(TAG, "RENDER pts=" + (ptsUs / 1000)
-                                    + " leadMs=" + leadMs
-                                    + " sinceLastRenderMs=" + sinceLastMs
-                                    + " (render#" + diagRenderCnt + ")");
-                        }
+                        Log.d(TAG, "RENDER pts=" + (ptsUs / 1000)
+                                + " leadMs=" + leadMs
+                                + " sinceLastRenderMs=" + sinceLastMs
+                                + " (render#" + diagRenderCnt + ")");
                     }
                     hasDecodedFirstFrame = true;
                     lastActualRenderNs = renderAtNs;
@@ -381,6 +473,25 @@ public class H264VideoDecoder {
         textureView.setTransform(m);
     }
 
+    /**
+     * PTS 自维护时钟（无音频或音频未启动时的回退方案）。
+     * 首帧 pin 锚点，后续帧按 PTS 差值定时渲染。
+     */
+    private long fallbackRenderNs(long ptsUs, long nowNs) {
+        if (baseRenderNs < 0) {
+            baseRenderNs = nowNs + START_LATENCY_NS;
+            basePtsUs = ptsUs;
+        }
+        if (lastActualRenderNs > 0) {
+            long gapSinceRender = nowNs - lastActualRenderNs;
+            if (gapSinceRender > STALL_GAP_NS) {
+                baseRenderNs = nowNs + START_LATENCY_NS;
+                basePtsUs = ptsUs;
+            }
+        }
+        return baseRenderNs + (ptsUs - basePtsUs) * 1000L;
+    }
+
     /** 仅释放 codec（错误路径用，不动线程/Surface）。 */
     private void releaseCodecOnly() {
         if (codec != null) {
@@ -394,6 +505,7 @@ public class H264VideoDecoder {
     /** 完整释放：codec → HandlerThread → Surface。顺序重要（回调跑在该线程）。 */
     public synchronized void release() {
         released = true;
+        cancelFeed();
         if (codec != null) {
             try { codec.flush(); } catch (Exception ignore) {}
             try { codec.stop(); } catch (Exception ignore) {}

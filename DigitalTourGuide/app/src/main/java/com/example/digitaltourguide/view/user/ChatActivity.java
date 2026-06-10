@@ -111,7 +111,16 @@ public class ChatActivity extends AppCompatActivity {
     // 数字人视频播放相关（H.264 MediaCodec 硬解直渲到 TextureView）
     private TextureView tvDigitalHuman;
     private H264VideoDecoder videoDecoder;
-    private Queue<byte[]> audioQueue = new LinkedList<>();
+    // 音频帧：带句号标识，跨句切换时保留新句子已到达的音频
+    private static class AudioFrame {
+        final int sentenceId;
+        final byte[] pcm;
+        AudioFrame(int sentenceId, byte[] pcm) {
+            this.sentenceId = sentenceId;
+            this.pcm = pcm;
+        }
+    }
+    private Queue<AudioFrame> audioQueue = new LinkedList<>();
     private boolean isPlaying = false;      // 是否已开始音视频同步播放
     private boolean isAudioTrackInitialized = false;
     private Thread audioConsumeThread;
@@ -120,6 +129,9 @@ public class ChatActivity extends AppCompatActivity {
     // ==== 诊断：音频队列深度（避免遍历计算）====
     private volatile int audioQueueBytes = 0;  // 近似值，仅供诊断
     private volatile long lastH264ArriveNs = -1; // H264 帧到达间隔
+    // ==== 预缓冲机制：等待足够帧后再启动播放，避免 burst 到达导致卡顿 ====
+    private static final int MIN_PREBUFFER_FRAMES = 5;  // 预缓冲 5 帧（200ms@25fps）
+    private final java.util.List<H264VideoDecoder.AccessUnit> prebufferFrames = new java.util.ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -203,17 +215,14 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void stopPlayback() {
-        // 停止音频消费线程和视频渲染循环
         isPlaying = false;
-        // 清空音频队列
         synchronized (audioQueue) {
             audioQueue.clear();
+            audioQueueBytes = 0;
         }
-        // 停止音频播放器（AudioTrack 不需要 stop，可以保留但清空数据）
         if (audioTrack != null) {
-            audioTrack.flush();  // 清空播放缓冲区，避免残留声音
+            audioTrack.flush();
         }
-        // flush 解码器，等待下个 IDR，重置节奏锚点
         if (videoDecoder != null) {
             videoDecoder.flushForNewSentence();
         }
@@ -556,8 +565,8 @@ public class ChatActivity extends AppCompatActivity {
         }
         if (audioTrack == null) {
             int minBuf = AudioTrack.getMinBufferSize(16000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-// 16000Hz * 2字节(16bit) * 1秒 = 32000 字节
-            int targetBuf = Math.max(minBuf, 32000);
+// 16000Hz * 2字节(16bit) * 6秒 = 192000 字节（音频比视频早到约4秒，缓冲需大于时间差）
+            int targetBuf = Math.max(minBuf, 192000);
             int trackBufferSize = targetBuf;   // 直接用目标大小，不需要再乘
             audioTrack = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
@@ -726,10 +735,12 @@ public class ChatActivity extends AppCompatActivity {
                         });
                     }else if ("done".equals(type)) {
                          int doneSentenceId = json.optInt("sentence_id");
-                        // MediaCodec 无攒帧门槛，自然流水线渲染；done 仅用于确认本句视频已推完。
+                        // 视频发完了，如果音频也播完了（队列空），flush 视频剩余帧
                         if (doneSentenceId == currentSentenceId) {
-                            if (!isAudioConsumerRunning) {
-                                consumeAudioQueue();
+                            synchronized (audioQueue) {
+                                if (audioQueue.isEmpty()) {
+                                    if (videoDecoder != null) videoDecoder.flushForNewSentence();
+                                }
                             }
                         }
                     }
@@ -761,12 +772,9 @@ public class ChatActivity extends AppCompatActivity {
                 System.arraycopy(payload, 1, pcmData, 0, pcmData.length);
 
 
-                if (typeFlag == 0x01) {  // 假设 0x01 为音频
+                if (typeFlag == 0x01) {  // 音频
                     Log.d("BINARY", " 收到语音包，长度=" + bytes.size());
                     handleAudioData(pcmData);
-                } else if (typeFlag == 0x02) {  // 旧 MJPEG 视频（保留作回退）
-                    Log.d("BINARY", "🟡 收到 JPEG 视频包(已弃用)，长度=" + bytes.size());
-                    // H.264 管线已上线，忽略旧 JPEG 包；如需回退可在此恢复软解路径
                 } else if (typeFlag == 0x03) {  // H.264 视频
                     handleH264Data(pcmData);
                 } else {
@@ -799,12 +807,10 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void handleH264Data(byte[] frameData) {
-        // 诊断：帧到达间隔
         long nowNs = System.nanoTime();
         long gapMs = lastH264ArriveNs < 0 ? -1 : (nowNs - lastH264ArriveNs) / 1_000_000L;
         lastH264ArriveNs = nowNs;
 
-        // 内层头：[sentenceId:2B][ptsMs:4B][isKeyFrame:1B] = 7 字节
         if (frameData.length < 7) {
             Log.e("MYTEST", "H.264 帧数据太短，长度=" + frameData.length);
             return;
@@ -812,36 +818,67 @@ public class ChatActivity extends AppCompatActivity {
 
         ByteBuffer buffer = ByteBuffer.wrap(frameData).order(ByteOrder.BIG_ENDIAN);
         int sentenceId = buffer.getShort() & 0xFFFF;
-        long ptsMs = buffer.getInt() & 0xFFFFFFFFL;  // 无符号转 long
+        long ptsMs = buffer.getInt() & 0xFFFFFFFFL;
         boolean keyFrame = (buffer.get() & 0xFF) == 1;
 
-        // 剩余字节就是 H.264 Annex-B access unit
         byte[] au = new byte[frameData.length - 7];
         buffer.get(au);
 
-        // 诊断日志：到达间隔、PTS、是否关键帧、数据大小
         Log.d("H264_DIAG", "arrive gap=" + gapMs + "ms, sid=" + sentenceId
                 + ", pts=" + ptsMs + "ms, key=" + keyFrame + ", size=" + au.length + "B");
 
-        // 句切换：flush codec + 重置时钟（服务端已流水线化，句间隔≈40ms，冻结≈80ms 不可感知）
+        // 句切换：flush 音频 + 视频，重置播放状态
         if (currentSentenceId != sentenceId) {
             currentSentenceId = sentenceId;
-            // 首句不需要 flush（codec 刚初始化，无旧帧），flush 会清掉首帧导致无画面
+            // flush 音频：丢弃旧句子音频，保留新句子已到达的音频
+            synchronized (audioQueue) {
+                java.util.Iterator<AudioFrame> it = audioQueue.iterator();
+                while (it.hasNext()) {
+                    if (it.next().sentenceId != sentenceId) it.remove();
+                }
+                audioQueueBytes = 0;
+                for (AudioFrame f : audioQueue) audioQueueBytes += f.pcm.length;
+                Log.d("H264_DIAG", "sentence transition: preserved " + audioQueue.size()
+                        + " audio frames for sid=" + sentenceId);
+            }
+            if (audioTrack != null) audioTrack.flush();
+            // flush 视频解码器，重置所有时钟
             if (videoDecoder != null && videoDecoder.hasDecodedFirstFrame) {
                 videoDecoder.flushForNewSentence();
             }
+            // 重置播放状态 + 清空预缓冲
+            isPlaying = false;
+            synchronized (prebufferFrames) {
+                prebufferFrames.clear();
+            }
+        }
+
+        // 预缓冲机制：等待足够帧后再启动播放，避免 burst 到达导致卡顿
+        H264VideoDecoder.AccessUnit accessUnit = new H264VideoDecoder.AccessUnit(sentenceId, ptsMs, keyFrame, au);
+        if (!isPlaying) {
+            synchronized (prebufferFrames) {
+                prebufferFrames.add(accessUnit);
+                Log.d("H264_DIAG", "prebuffer size=" + prebufferFrames.size() + "/" + MIN_PREBUFFER_FRAMES);
+                if (prebufferFrames.size() >= MIN_PREBUFFER_FRAMES) {
+                    // 预缓冲够了，重置音频时钟基准（视频PTS对齐当前音频位置），然后启动播放
+                    isPlaying = true;
+                    if (videoDecoder != null) {
+                        videoDecoder.resetAudioClockBaseline();
+                        for (H264VideoDecoder.AccessUnit buffered : prebufferFrames) {
+                            videoDecoder.feed(buffered);
+                        }
+                    }
+                    prebufferFrames.clear();
+                    if (!isAudioConsumerRunning) {
+                        consumeAudioQueue();
+                    }
+                }
+            }
+            return;  // 预缓冲阶段不直接 feed
         }
 
         if (videoDecoder != null) {
-            videoDecoder.feed(new H264VideoDecoder.AccessUnit(sentenceId, ptsMs, keyFrame, au));
-        }
-
-        // 启动音频消费（视频靠 MediaCodec 自然流水线，无需攒帧门槛）
-        if (!isPlaying) {
-            isPlaying = true;
-        }
-        if (!isAudioConsumerRunning) {
-            consumeAudioQueue();
+            videoDecoder.feed(accessUnit);
         }
     }
 
@@ -855,20 +892,32 @@ public class ChatActivity extends AppCompatActivity {
         return samples / 16;
     }
 
-    private void handleAudioData(byte[] pcmData) {
+    private void handleAudioData(byte[] frameData) {
+        // 协议（0x01 已由 onMessage 剥离）：[sentence_id:2 BE][pts_ms:4 BE][PCM s16le]
+        if (frameData.length < 6) {
+            Log.e("MYTEST", "音频帧数据太短，长度=" + frameData.length);
+            return;
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(frameData).order(ByteOrder.BIG_ENDIAN);
+        int sentenceId = buffer.getShort() & 0xFFFF;
+        long ptsMs = buffer.getInt() & 0xFFFFFFFFL;
+        byte[] pcm = new byte[frameData.length - 6];
+        if (pcm.length > 0) {
+            buffer.get(pcm);
+        }
+        if (pcm.length == 0) return;
+
         if (audioTrack == null) {
-            initAudio();   // 上面的初始化代码抽成方法
+            initAudio();
         }
         synchronized (audioQueue) {
-            audioQueue.offer(pcmData);
-            audioQueueBytes += pcmData.length;
-            audioQueue.notify();//唤醒消费线程
-            // 诊断日志：音频队列深度
-            Log.d("AUDIO_DIAG", "audioQueue depth=" + audioQueue.size() + " bytes≈" + audioQueueBytes);
-            // 如果累积超过 16000 字节（500ms）且还没开始播放，则启动
-            if (!isPlaying && audioQueueBytes >= 16000) {
-                startPlayback();
-            }
+            audioQueue.offer(new AudioFrame(sentenceId, pcm));
+            audioQueueBytes += pcm.length;
+            audioQueue.notify();
+            Log.d("AUDIO_DIAG", "sid=" + sentenceId + ", pts=" + ptsMs + "ms"
+                    + ", pcm=" + pcm.length + "B, queue depth=" + audioQueue.size()
+                    + " bytes≈" + audioQueueBytes);
+            // 不在这里触发播放，等第一帧视频到达再一起开始
         }
     }
 
@@ -884,15 +933,6 @@ public class ChatActivity extends AppCompatActivity {
         }
     }
 
-        //播放启动，音频消费，视频渲染
-    private void startPlayback() {
-        if (isPlaying) return;
-        isPlaying = true;
-        if (!isAudioConsumerRunning) {
-            consumeAudioQueue();
-        }
-    }
-
     //音频播放消费者
     private void consumeAudioQueue() {
         if (isAudioConsumerRunning) return;
@@ -904,9 +944,12 @@ public class ChatActivity extends AppCompatActivity {
             while (isPlaying) {
                 byte[] data;
                 synchronized (audioQueue) {
-                    data = audioQueue.poll();
-                    if (data != null) {
+                    AudioFrame frame = audioQueue.poll();
+                    if (frame != null) {
+                        data = frame.pcm;
                         audioQueueBytes = Math.max(0, audioQueueBytes - data.length);
+                    } else {
+                        data = null;
                     }
                     if (data == null) {
                         try {
@@ -1115,6 +1158,7 @@ public class ChatActivity extends AppCompatActivity {
         ivCamera.setOnClickListener(v -> toggleCamera());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         videoDecoder = new H264VideoDecoder(tvDigitalHuman);
+        videoDecoder.setAudioClock(this::getAudioPtsMs);
         tvDigitalHuman.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(@NonNull SurfaceTexture st, int width, int height) {
