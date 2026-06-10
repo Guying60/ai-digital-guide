@@ -53,7 +53,6 @@ public class MuseTalkConnector {
     }
 
     public void interrupt(ChatSessionContext ctx) {
-        sender.clearVideoQueue(ctx.getSid());
         WebSocketSession museTalkSession = ctx.getMuseTalkSession();
         if (museTalkSession == null || !museTalkSession.isOpen()) {
             return;

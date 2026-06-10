@@ -76,6 +76,7 @@ public class CosyVoiceConnector {
         }
         req.put("session_id", ctx.getSid());
         try {
+            log.info("已向 CosyVoice 发送 synthesize 请求 sid={}", ctx.getSid());
             cosySession.sendMessage(new TextMessage(req.toString()));
         } catch (IOException e) {
             log.error("发送 synthesize 请求到 CosyVoice 失败 sid={}", ctx.getSid(), e);

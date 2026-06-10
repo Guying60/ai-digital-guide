@@ -80,16 +80,16 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
 
         try {
+            // executor 必须最先初始化，保证后续 emitSentence 总能提交 TTS 任务
+            ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
             cacheConversationAndUserInfo(ctx);
             publishUserTourHistory(ctx);
             museTalkConnector.connect(ctx);
             cosyVoiceConnector.connect(ctx);
-            ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
         } catch (Exception e) {
             log.error("会话初始化失败 sid={}", ctx.getSid(), e);
             throw new ServiceException("会话初始化失败");
         }
-        sender.startVideoDrain(ctx);
         log.info("所有初始化完成 sid={}", ctx.getSid());
         sender.sendJson(ctx, "allDone", null);
     }
@@ -148,7 +148,6 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     }
 
     public void cleanup(String sid) {
-        sender.stopVideoDrain(sid);
         ChatSessionContext ctx = registry.remove(sid);
         if (ctx == null) {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
@@ -160,14 +159,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
     }
 
-    /** micOff 与 cleanup 共用：停掉 NLS + 关闭该用户的 TTS 串行执行器 */
+    /** micOff 与 cleanup 共用：停掉 NLS*/
     private void closeMicAndTts(ChatSessionContext ctx) {
         nlsTranscriberManager.close(ctx);
-        ExecutorService ttsExecutor = ctx.getTtsExecutor();
-        ctx.setTtsExecutor(null);
-        if (ttsExecutor != null && !ttsExecutor.isShutdown()) {
-            ttsExecutor.shutdownNow();
-        }
     }
 
     /**
