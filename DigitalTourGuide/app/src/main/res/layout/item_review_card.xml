@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    android:background="@drawable/input_card_bg"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Top Row: Image + Info -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Place Image -->
+        <ImageView
+            android:id="@+id/review_place_image"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/rounded_bg"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_pdf"
+            tools:background="#E0E0E0" />
+
+        <!-- Info Column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <!-- Title + Status -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/review_place_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/profile_on_surface"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="故宫博物院" />
+
+                <TextView
+                    android:id="@+id/review_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_status_reviewed"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:text="已评价"
+                    android:textColor="@color/profile_primary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Date -->
+            <TextView
+                android:id="@+id/review_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/profile_on_surface_variant"
+                android:textSize="12sp"
+                tools:text="2026-06-05 14:30" />
+
+            <!-- Star Rating -->
+            <LinearLayout
+                android:id="@+id/review_star_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/star_1"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_star_filled" />
+                <ImageView
+                    android:id="@+id/star_2"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_star_filled" />
+                <ImageView
+                    android:id="@+id/star_3"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_star_filled" />
+                <ImageView
+                    android:id="@+id/star_4"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_star_filled" />
+                <ImageView
+                    android:id="@+id/star_5"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_star_filled" />
+
+                <TextView
+                    android:id="@+id/review_rating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:textColor="@color/profile_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="4.0" />
+            </LinearLayout>
+
+            <!-- Pending review message (shown instead of stars for pending) -->
+            <LinearLayout
+                android:id="@+id/review_pending_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="你还没有评价此对话"
+                    android:textColor="@color/profile_on_surface"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="对话已结束，快去分享你的体验吧～"
+                    android:textColor="@color/profile_on_surface_variant"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Review Text -->
+    <TextView
+        android:id="@+id/review_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:lineSpacingExtra="4dp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textColor="@color/profile_on_surface_variant"
+        android:textSize="13sp"
+        tools:text="小艾讲解得很专业，历史故事很生动，尤其是关于乾隆时期的内容，让我对故宫有了更深的了解。" />
+
+    <!-- Tags -->
+    <LinearLayout
+        android:id="@+id/review_tags_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="start"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/review_tag_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_review_tag"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:textColor="@color/profile_primary"
+            android:textSize="11sp"
+            tools:text="讲解专业" />
+
+        <TextView
+            android:id="@+id/review_tag_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_review_tag"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:textColor="@color/profile_primary"
+            android:textSize="11sp"
+            tools:text="内容丰富" />
+
+        <TextView
+            android:id="@+id/review_tag_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_review_tag"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:textColor="@color/profile_primary"
+            android:textSize="11sp"
+            tools:text="互动有趣" />
+    </LinearLayout>
+
+    <!-- Bottom Action Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <!-- Delete button (for reviewed entries) -->
+        <TextView
+            android:id="@+id/review_btn_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:text="删除"
+            android:textColor="@color/profile_on_surface_variant"
+            android:textSize="12sp"
+            android:background="?attr/selectableItemBackground"
+            android:visibility="gone" />
+
+        <!-- Rate button (for pending entries) -->
+        <TextView
+            android:id="@+id/review_btn_rate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="6dp"
+            android:text="去评价"
+            android:textColor="@color/profile_primary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:background="@drawable/bg_chip_filter_unselected" />
+    </LinearLayout>
+
+</LinearLayout>

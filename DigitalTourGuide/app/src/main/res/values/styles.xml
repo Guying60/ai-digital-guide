@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- ===================== Shape Appearance ===================== -->
+    <style name="RoundedCorner8dp">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
+    </style>
+
+    <style name="RoundedCorner12dp">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="RoundedCorner24dp">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <style name="CircleImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <style name="RoundedCornerFull">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">999dp</item>
+    </style>
+
+    <!-- ===================== TextAppearance ===================== -->
+    <style name="TextAppearance_Profile_Title" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">24dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance_Profile_Name" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textSize">28dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance_Profile_SectionTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textSize">24dp</item>
+        <item name="android:lineSpacingExtra">8dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance_Profile_Body" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">16dp</item>
+        <item name="android:lineSpacingExtra">8dp</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="TextAppearance_Profile_Body_Small" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">14dp</item>
+        <item name="android:lineSpacingExtra">4dp</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="TextAppearance_Profile_Label" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">14dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <!-- ===================== Chips ===================== -->
+    <style name="Widget_Profile_Chip_Active" parent="Widget.MaterialComponents.Chip.Action">
+        <item name="chipBackgroundColor">@color/profile_secondary</item>
+        <item name="chipStrokeColor">@color/profile_secondary</item>
+        <item name="chipStrokeWidth">0.5dp</item>
+        <item name="android:textColor">@color/profile_on_secondary</item>
+        <item name="chipIconVisible">false</item>
+        <item name="closeIconVisible">true</item>
+        <item name="closeIconTint">@color/profile_on_secondary</item>
+        <item name="android:textSize">14dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="chipMinHeight">32dp</item>
+        <item name="chipStartPadding">16dp</item>
+        <item name="chipEndPadding">12dp</item>
+        <item name="iconStartPadding">0dp</item>
+        <item name="closeIconStartPadding">4dp</item>
+        <item name="closeIconEndPadding">0dp</item>
+        <item name="rippleColor">@color/profile_secondary</item>
+    </style>
+
+    <style name="Widget_Profile_Chip_Add" parent="Widget.MaterialComponents.Chip.Action">
+        <item name="chipBackgroundColor">@color/profile_surface_variant</item>
+        <item name="chipStrokeColor">@color/profile_outline</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">@color/profile_outline</item>
+        <item name="chipIconVisible">true</item>
+        <item name="chipIcon">@drawable/ic_add_small</item>
+        <item name="chipIconTint">@color/profile_outline</item>
+        <item name="closeIconVisible">false</item>
+        <item name="android:textSize">14dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="fontFamily">sans-serif-medium</item>
+        <item name="chipMinHeight">32dp</item>
+        <item name="chipStartPadding">12dp</item>
+        <item name="chipEndPadding">16dp</item>
+        <item name="rippleColor">@color/profile_surface_variant</item>
+    </style>
+
+    <!-- ===================== Button ===================== -->
+    <style name="Widget_Profile_Button_SignOut" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="backgroundTint">@color/profile_error_container</item>
+        <item name="android:textColor">@color/profile_on_error_container</item>
+        <item name="iconTint">@color/profile_on_error_container</item>
+        <item name="cornerRadius">999dp</item>
+        <item name="android:textSize">14dp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingHorizontal">32dp</item>
+        <item name="android:paddingVertical">12dp</item>
+        <item name="android:elevation">2dp</item>
+        <item name="iconPadding">8dp</item>
+        <item name="iconGravity">textStart</item>
+    </style>
+
+</resources>
