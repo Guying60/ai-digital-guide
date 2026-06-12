@@ -20,6 +20,8 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -88,6 +90,7 @@ public class CosyVoiceConnector {
         if (handler != null) {
             handler.clearPcmBuffer();
         }
+        ctx.getAvBuffer().clearAll();
         WebSocketSession cosySession = ctx.getCosyVoiceSession();
         if (cosySession == null || !cosySession.isOpen()) {
             return;
@@ -148,11 +151,10 @@ public class CosyVoiceConnector {
             byte[] payload = message.getPayload().array();
             if (payload.length < AUDIO_HEADER_LEN) return;
 
-
-            // 1) 完整包（含 header）直接透传给 Android
-            if (ctx.getUserSession().isOpen()) {
-                sender.send(ctx, new BinaryMessage(payload));
-            }
+            // 1) 解析 sentence_id，缓冲到 AVBuffer（不再立即透传给 Android）
+            //    协议：[0x01 (1B)][sentence_id (2B BE)][pts_ms (4B BE)][PCM...]
+            int sentenceId = ByteBuffer.wrap(payload, 1, 2).order(ByteOrder.BIG_ENDIAN).getShort() & 0xFFFF;
+            ctx.getAvBuffer().bufferAudio(sentenceId, payload);
 
             // 2) 剥离 header，只缓冲裸 PCM 供 MuseTalk 炼丹使用
             if (payload.length > AUDIO_HEADER_LEN) {

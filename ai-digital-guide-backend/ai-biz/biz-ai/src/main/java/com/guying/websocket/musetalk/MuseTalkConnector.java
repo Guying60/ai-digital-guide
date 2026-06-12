@@ -20,8 +20,10 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 数字人（Python MuseTalk）连接器：纯透传模式 (Zero-Delay Forwarding)
- * 取消后端定时器，将排队与音画同步职责下放给 Android/Web 客户端的 Jitter Buffer。
+ * 数字人（Python MuseTalk）连接器：音视频配对匀速发送模式。
+ * <p>
+ * 视频帧到达后，通过 AVBuffer 先发送该 sentence 缓冲的音频帧，
+ * 再以 25fps 匀速发送视频帧，实现音画同步。
  */
 @Component
 @Slf4j
@@ -53,6 +55,7 @@ public class MuseTalkConnector {
     }
 
     public void interrupt(ChatSessionContext ctx) {
+        ctx.getAvBuffer().clearAll();
         WebSocketSession museTalkSession = ctx.getMuseTalkSession();
         if (museTalkSession == null || !museTalkSession.isOpen()) {
             return;
@@ -100,9 +103,9 @@ public class MuseTalkConnector {
                 case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    // 直接下发 done。客户端收到后，即使缓冲区还有视频，也会等播完再处理后续逻辑。
-                    log.info("[Python WS] 句子完毕 sentence_id={}，立即透传给客户端", sentenceId);
-                    sender.enqueueDone(ctx, sentenceId);
+                    // ★ 通过 AVBuffer 发送 done，保证在所有音视频帧发送完毕后才到达 Android
+                    log.info("[Python WS] 句子完毕 sentence_id={}，提交到 AVBuffer 发送队列", sentenceId);
+                    ctx.getAvBuffer().submitDone(sentenceId, sender, ctx);
                 }
                 case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);
@@ -116,13 +119,16 @@ public class MuseTalkConnector {
             // 内层头现为 7 字节：[sentence_id:2B][pts_ms:4B][is_keyframe:1B]
             if (raw.length < 7) return;
 
+            // 解析 sentence_id
+            int sentenceId = ((raw[0] & 0xFF) << 8) | (raw[1] & 0xFF);
+
             // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];
             androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
-            // ★ 直接透传！不再做任何定时调度，把时间戳交给前端/安卓解析并排队
-            sender.sendVideoFrame(ctx, new BinaryMessage(androidPayload));
+            // ★ 通过 AVBuffer 配对发送：先匀速发音频，再以 25fps 匀速发视频
+            ctx.getAvBuffer().submitPairedSend(sentenceId, androidPayload, sender, ctx);
         }
 
         @Override
