@@ -7,6 +7,8 @@ import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ChatHistoryItem;
 import com.example.digitaltourguide.model.user.DeleteResponse;
 import com.example.digitaltourguide.model.user.EvaluateRequest;
+import com.example.digitaltourguide.model.user.GuidePreference;
+import com.example.digitaltourguide.model.user.GuidePreferenceRequest;
 import com.example.digitaltourguide.model.user.HistoryResponse;
 import com.example.digitaltourguide.model.user.RegisterResponse;
 import com.example.digitaltourguide.model.user.UpdateUserRequest;
@@ -96,5 +98,15 @@ public interface ApiService {
     Call<BaseResponse<String>> uploadAvatar(
             @Part MultipartBody.Part file
     );
+
+    //1.12 保存或更新导览偏好
+    @PUT("users/guide-preference")
+    Call<BaseResponse<Void>> saveGuidePreference(
+            @Body GuidePreferenceRequest request
+    );
+
+    //1.13 查询导览偏好
+    @GET("users/guide-preference")
+    Call<BaseResponse<GuidePreference>> getGuidePreference();
 }
 
