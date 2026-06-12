@@ -1,224 +1,317 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  activity_user_register.xml
+  Converted from the Material You HTML registration design.
+  Maintains backward-compatible IDs: et_nickname, et_username, et_password,
+  et_confirm_password, btn_register.
+  Uses 确认密码 (not verification code) to match existing Java logic.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/bg_login_gradient_admin"
-    android:gravity="center"
+    android:background="@drawable/ic_login_background"
     tools:context=".view.admin.AdminRegisterActivity">
 
-
-    <!-- 登录卡片容器 -->
-    <LinearLayout
+    <!-- ==================== Ambient Background Gradient ==================== -->
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="24dp"
-        android:background="@drawable/bg_edittext_rounded"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:padding="10dp">
+        android:layout_height="240dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_login_ambient" />
 
-        <!-- 用户登录标题 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="管理注册"
-            android:textColor="#000000"
-            android:textSize="30sp"
-            android:textStyle="bold" />
-
-        <!-- 探索全球景点标语 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="探索全球景点    AI导游伴你"
-            android:textColor="#165EFE"
-            android:textSize="12sp" />
+    <!-- ==================== Scrollable Content ==================== -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="40dp"
+            android:paddingBottom="32dp">
+
+            <!-- ========== Header ========== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="管理注册"
+                android:textSize="28sp"
+                android:textColor="@color/login_on_surface"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.0"
+                android:layout_marginTop="16dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="昵称："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:text="@string/register_subtitle"
+                android:textSize="14sp"
+                android:textColor="@color/login_on_surface_variant"
+                android:fontFamily="sans-serif"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="28dp" />
 
-            <EditText
-                android:id="@+id/et_nickname"
+            <!-- ========== Nickname Input ========== -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_marginTop="4dp"
-                android:background="@null"
-                android:hint="1-20 个字符"
-                android:inputType="text"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:textColor="#333333"
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
 
-                android:textSize="16sp" />
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_person_outline"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no" />
 
-            <View
+                <EditText
+                    android:id="@+id/et_nickname"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/register_nickname_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="text"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="username"
+                    android:gravity="center_vertical" />
+            </FrameLayout>
+
+            <!-- ========== Account Input ========== -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
-        </LinearLayout>
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
 
-        <!-- 账号输入区域 (保留原有et_username) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:orientation="horizontal">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_mail"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="账号："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                <EditText
+                    android:id="@+id/et_username"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/register_username_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="text"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="username"
+                    android:gravity="center_vertical" />
+            </FrameLayout>
 
-            <EditText
-                android:id="@+id/et_username"
+            <!-- ========== Password Input ========== -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_marginTop="4dp"
-                android:background="@null"
-                android:hint="4-16 位字母、数字或下划线"
-                android:inputType="text"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:textColor="#333333"
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
 
-                android:textSize="16sp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
-        </LinearLayout>
-
-        <!-- 密码输入区域 (保留原有et_password) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="密码："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="52dp">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_lock"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no" />
 
                 <EditText
                     android:id="@+id/et_password"
                     android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:background="@null"
-                    android:hint="6-20 位字母、数字或下划线"
-                    android:inputType="textPassword"
-                    android:paddingStart="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
                     android:paddingEnd="48dp"
-                    android:textColor="#333333"
-                    android:textSize="16sp" />
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/register_password_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="textPassword"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="password"
+                    android:gravity="center_vertical" />
 
                 <ImageView
                     android:id="@+id/iv_pwd_visibility"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="14dp"
+                    android:src="@drawable/ic_eye_close"
+                    android:contentDescription="@string/register_toggle_visibility"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+
+            <!-- ========== Confirm Password Input (NOT verification code) ========== -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_verified_user"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_eye_close" />
-            </RelativeLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="确认密码："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="52dp">
+                    android:importantForAccessibility="no" />
 
                 <EditText
                     android:id="@+id/et_confirm_password"
                     android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:background="@null"
-                    android:hint="请输入相同密码"
-                    android:inputType="textPassword"
-                    android:paddingStart="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
                     android:paddingEnd="48dp"
-                    android:textColor="#333333"
-                    android:textSize="16sp" />
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/register_confirm_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="textPassword"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="password"
+                    android:gravity="center_vertical" />
 
                 <ImageView
                     android:id="@+id/iv_pwd_visibility_confirm"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_eye_close" />
-            </RelativeLayout>
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="14dp"
+                    android:src="@drawable/ic_eye_close"
+                    android:contentDescription="@string/register_toggle_visibility"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
 
-            <View
+            <!-- ========== Terms Checkbox ========== -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="24dp">
+
+                <CheckBox
+                    android:id="@+id/cb_terms"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:buttonTint="@color/login_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_terms_prefix"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_terms_agreement"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginStart="2dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_terms_and"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_terms_privacy"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginStart="2dp" />
+            </LinearLayout>
+
+            <!-- ========== Register Button ========== -->
+            <TextView
+                android:id="@+id/btn_register"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/register_button"
+                android:textSize="16sp"
+                android:textColor="@color/login_on_primary"
+                android:gravity="center"
+                android:background="@drawable/bg_login_toggle_selected"
+                android:fontFamily="sans-serif-medium"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:elevation="2dp"
+                android:letterSpacing="0.02" />
+
+            <!-- ========== Footer ========== -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_has_account"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_login_link"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_primary"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/btn_register"
-            android:layout_width="match_parent"
-            android:layout_height="37dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_button_rounded_admin"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:text="注册"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-
-        <!-- 底部占位，防止内容贴底 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="20dp" />
-
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

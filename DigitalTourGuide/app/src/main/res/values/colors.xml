@@ -5,8 +5,70 @@
     <color name="tab_normal">#999999</color>
     <color name="tab_selected">#165EFE</color>
 
-    <color name="nav_pressed_bg">#33000000</color>   <!-- 半透明黑色，产生加深效果 -->
+    <color name="nav_pressed_bg">#33000000</color>
     <color name="nav_text_normal">#666666</color>
     <color name="nav_text_selected">#FF5722</color>
 
+    <!-- Profile page colors -->
+    <color name="profile_background">#F9F9FF</color>
+    <color name="profile_on_surface">#141C28</color>
+    <color name="profile_on_surface_variant">#434656</color>
+    <color name="profile_primary">#004BD7</color>
+    <color name="profile_primary_container">#2463FF</color>
+    <color name="profile_on_primary_container">#F7F6FF</color>
+    <color name="profile_on_primary">#FFFFFF</color>
+    <color name="profile_secondary">#006B5B</color>
+    <color name="profile_on_secondary">#FFFFFF</color>
+    <color name="profile_secondary_container">#53F8D9</color>
+    <color name="profile_on_secondary_container">#00705F</color>
+    <color name="profile_error">#BA1A1A</color>
+    <color name="profile_error_container">#FFDAD6</color>
+    <color name="profile_on_error_container">#93000A</color>
+    <color name="profile_outline">#737687</color>
+    <color name="profile_outline_variant">#C3C5D8</color>
+    <color name="profile_surface">#F9F9FF</color>
+    <color name="profile_surface_container_lowest">#FFFFFF</color>
+    <color name="profile_surface_container_low">#F0F3FF</color>
+    <color name="profile_surface_container">#E7EEFF</color>
+    <color name="profile_surface_variant">#DBE3F4</color>
+    <color name="profile_glass_white">#B3FFFFFF</color>
+    <color name="profile_brand_gradient_start">#004BD7</color>
+    <color name="profile_brand_gradient_end">#2ADEC0</color>
+
+    <!-- ===================== Login Page Colors (Material You palette) ===================== -->
+    <color name="login_primary">#5241CD</color>
+    <color name="login_on_primary">#FFFFFF</color>
+    <color name="login_primary_container">#6B5CE7</color>
+    <color name="login_on_primary_container">#FAF5FF</color>
+    <color name="login_secondary">#5644D0</color>
+    <color name="login_background">#F8F9FE</color>
+    <color name="login_surface">#F8F9FE</color>
+    <color name="login_surface_container_low">#F2F3F8</color>
+    <color name="login_surface_container_lowest">#FFFFFF</color>
+    <color name="login_on_surface">#191C1F</color>
+    <color name="login_on_surface_variant">#474554</color>
+    <color name="login_outline">#787586</color>
+    <color name="login_outline_variant">#C8C4D7</color>
+    <color name="login_error">#BA1A1A</color>
+    <color name="login_error_container">#FFDAD6</color>
+    <color name="login_on_error_container">#93000A</color>
+
+    <!-- ===================== Chat / Real-time Conversation colors (from HTML Tailwind) ===================== -->
+    <color name="chat_background">#F8F9FE</color>
+    <color name="chat_surface">#F8F9FE</color>
+    <color name="chat_on_surface">#191C1F</color>
+    <color name="chat_on_surface_variant">#474554</color>
+    <color name="chat_primary">#5241CD</color>
+    <color name="chat_on_primary">#FFFFFF</color>
+    <color name="chat_primary_container">#6B5CE7</color>
+    <color name="chat_on_primary_container">#FAF5FF</color>
+    <color name="chat_surface_container_low">#F2F3F8</color>
+    <color name="chat_surface_container">#ECEEF3</color>
+    <color name="chat_surface_container_high">#E7E8ED</color>
+    <color name="chat_surface_variant">#E1E2E7</color>
+    <color name="chat_surface_dim">#D8DADF</color>
+    <color name="chat_outline">#787586</color>
+    <color name="chat_outline_variant">#C8C4D7</color>
+    <color name="chat_green_dot">#22C55E</color>
+    <color name="chat_green_text">#16A34A</color>
 </resources>

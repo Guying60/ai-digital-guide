@@ -1,259 +1,272 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  activity_userlogin.xml
+  Converted from the Material You HTML login design.
+  Maintains backward-compatible IDs: et_username, et_password, tv_admin_login,
+  cb_remember_password, btn_login, tv_register, iv_pwd_visibility.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/bg_login_gradient_admin"
-    android:gravity="center_horizontal"
+    android:background="@drawable/ic_login_background"
     tools:context=".view.admin.AdminLoginActivity">
 
-    <!-- 顶部Logo和标题区域 -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:layout_marginTop="50dp"
-        android:layout_marginBottom="28dp">
-
-        <!-- 图标位置：这里你可以替换为设计图中的机器人图标 -->
-        <ImageView
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@mipmap/bg_ai_robot"
-            android:contentDescription="@null"/>
-
-        <!-- AI导游主标题 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="AI导游"
-            android:textSize="36sp"
-            android:textStyle="bold"
-            android:textColor="#2196F3"
-            android:letterSpacing="0.02"
-            android:layout_marginTop="8dp"/>
-
-        <!-- 副标题 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="你的24h智能旅行助手"
-            android:textSize="16sp"
-            android:textColor="#666666"
-            android:layout_marginTop="6dp" />
-    </LinearLayout>
-
-    <!-- 登录卡片容器 -->
-    <LinearLayout
+    <!-- ==================== Ambient Background Gradient ==================== -->
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="24dp"
-        android:background="@drawable/bg_edittext_rounded"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:padding="10dp">
+        android:layout_height="240dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_login_ambient" />
 
-        <!-- 用户登录标题 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="管理登录"
-            android:textColor="#000000"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+    <!-- ==================== Scrollable Content ==================== -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never">
 
-        <!-- 探索全球景点标语 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="探索全球景点    AI导游伴你"
-            android:textColor="#165EFE"
-            android:textSize="12sp" />
-
-        <!-- 用户类型切换：普通用户 / 管理员 (保留原有tv_admin_login变量名) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
-            android:background="#F0F0F0"
-            android:clipToPadding="false"
-            android:orientation="horizontal"
-            android:padding="4dp">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="48dp"
+            android:paddingBottom="32dp">
 
+            <!-- ========== Header ========== -->
             <TextView
-                android:id="@+id/tv_user_login"
-                android:layout_width="0dp"
-                android:layout_height="37dp"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="普通用户"
-                android:textColor="#666666"
-                android:textSize="16sp" />
-
-            <!-- 普通用户选项 (新增，但无id冲突) -->
-            <TextView
-                android:id="@+id/tv_normal_user"
-                android:layout_width="0dp"
-                android:layout_height="37dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_switch_normal_selected_admin"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="管理员"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
-
-
-        </LinearLayout>
-
-        <!-- 账号输入区域 (保留原有et_username) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:orientation="horizontal">
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/login_title"
+                android:textSize="28sp"
+                android:textColor="@color/login_on_surface"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.0"
+                android:layout_marginTop="16dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="账号："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:text="@string/login_subtitle"
+                android:textSize="14sp"
+                android:textColor="@color/login_on_surface_variant"
+                android:fontFamily="sans-serif"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="28dp" />
 
-            <EditText
-                android:id="@+id/et_username"
+            <!-- ========== Segmented Pill Toggle ========== -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_marginTop="4dp"
-                android:background="@null"
-                android:hint="请输入账号"
-                android:inputType="text"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:textColor="#333333"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_login_toggle_container"
+                android:gravity="center"
+                android:layout_marginBottom="28dp"
+                android:padding="4dp"
+                android:elevation="1dp">
 
-                android:textSize="16sp" />
 
-            <View
+                <!-- Admin User -->
+                <TextView
+                    android:id="@+id/tv_admin_login"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="普通用户"
+                    android:textSize="13sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:gravity="center"
+                    android:background="@drawable/bg_login_toggle_unselected"
+                    android:fontFamily="sans-serif-medium"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/tv_normal_user"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="管理员"
+                    android:textSize="13sp"
+                    android:textColor="@color/login_on_primary"
+                    android:gravity="center"
+                    android:background="@drawable/bg_login_toggle_selected"
+                    android:fontFamily="sans-serif-medium"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+            <!-- ========== Account Input ========== -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
-        </LinearLayout>
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
 
-        <!-- 密码输入区域 (保留原有et_password) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:orientation="horizontal">
+                <!-- Person Icon -->
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_person_outline"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="密码："
-                android:textColor="#000000"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                <!-- Input -->
+                <EditText
+                    android:id="@+id/et_username"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/login_username_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="text"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="username"
+                    android:gravity="center_vertical" />
+            </FrameLayout>
 
-            <RelativeLayout
+            <!-- ========== Password Input ========== -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="52dp">
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp">
 
+                <!-- Lock Icon -->
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:src="@drawable/ic_lock"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no" />
+
+                <!-- Password Input -->
                 <EditText
                     android:id="@+id/et_password"
                     android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:background="@null"
-                    android:hint="请输入密码"
-                    android:inputType="textPassword"
-                    android:paddingStart="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_input_selector"
+                    android:paddingStart="44dp"
                     android:paddingEnd="48dp"
-                    android:textColor="#333333"
-                    android:textSize="16sp" />
-
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:hint="@string/login_password_hint"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface"
+                    android:textColorHint="@color/login_outline_variant"
+                    android:inputType="textPassword"
+                    android:fontFamily="sans-serif"
+                    android:autofillHints="password"
+                    android:gravity="center_vertical" />
                 <ImageView
                     android:id="@+id/iv_pwd_visibility"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_eye_close" />
-            </RelativeLayout>
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="14dp"
+                    android:src="@drawable/ic_eye_close"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/login_toggle_visibility"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
 
-            <View
+            <!-- ========== Actions Row (Remember me + Forgot password) ========== -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDDDDD" />
-        </LinearLayout>
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:layout_marginBottom="24dp">
 
-        <!-- 记住密码 & 自动登录 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:orientation="horizontal">
+                <!-- Remember Password Checkbox -->
+                <CheckBox
+                    android:id="@+id/cb_remember_password"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/login_remember_password"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:fontFamily="sans-serif-medium"
+                    android:buttonTint="@color/login_primary" />
 
-            <CheckBox
-                android:id="@+id/cb_remember_password"
+                <!-- Forgot Password -->
+                <TextView
+                    android:id="@+id/tv_forgot_password"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/login_forgot_password"
+                    android:textSize="12sp"
+                    android:textColor="@color/login_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- ========== Login Button ========== -->
+            <TextView
+                android:id="@+id/btn_login"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/login_button"
+                android:textSize="16sp"
+                android:textColor="@color/login_on_primary"
+                android:gravity="center"
+                android:background="@drawable/bg_login_toggle_selected"
+                android:fontFamily="sans-serif-medium"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:elevation="2dp"
+                android:letterSpacing="0.02"
+                android:layout_marginBottom="32dp" />
+
+            <!-- ========== Footer ========== -->
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:buttonTint="#00BCD4"
-                android:text="记住密码"
-                android:textColor="#455A64"
-                android:textSize="12sp" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
 
-            <CheckBox
-                android:id="@+id/cb_auto_login"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:layout_marginStart="16dp"
-                android:buttonTint="#00BCD4"
-                android:text="下次自动登录"
-                android:textColor="#455A64"
-                android:textSize="12sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/login_no_account"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_on_surface_variant"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:id="@+id/tv_register"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/login_register_now"
+                    android:textSize="14sp"
+                    android:textColor="@color/login_primary"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/btn_login"
-            android:layout_width="match_parent"
-            android:layout_height="37dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_button_rounded_admin"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:text="登录"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <!-- 新用户注册按钮 -->
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/tv_register"
-            android:layout_width="match_parent"
-            android:layout_height="37dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_register_rounded_admin"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:text="新管理注册"
-            android:textColor="#165EFE"
-            android:textSize="14sp" />
-
-        <!-- 底部占位，防止内容贴底 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="20dp" />
-
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

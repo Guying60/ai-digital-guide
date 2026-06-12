@@ -1,9 +1,31 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.DigitalTourGuide" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/profile_primary</item>
+        <item name="colorOnPrimary">@color/profile_on_primary</item>
+        <item name="colorPrimaryContainer">@color/profile_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/profile_on_primary_container</item>
+        <item name="colorSecondary">@color/profile_secondary</item>
+        <item name="colorSecondaryContainer">@color/profile_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/profile_on_secondary_container</item>
+        <item name="colorError">@color/profile_error</item>
+        <item name="colorErrorContainer">@color/profile_error_container</item>
+        <item name="colorOnErrorContainer">@color/profile_on_error_container</item>
+        <item name="android:windowBackground">@color/profile_background</item>
+        <item name="android:statusBarColor">@color/profile_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.DigitalTourGuide" parent="Base.Theme.DigitalTourGuide" />
+
+    <!-- PointManager theme: status bar blends with #F7F8FA background -->
+    <style name="Theme.DigitalTourGuide.PointManager" parent="Theme.DigitalTourGuide">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Profile page theme (use for ProfileActivity) -->
+    <style name="Theme.DigitalTourGuide.Profile" parent="Base.Theme.DigitalTourGuide">
+        <item name="android:windowBackground">@color/profile_background</item>
+        <item name="android:statusBarColor">@color/profile_surface</item>
+    </style>
 </resources>

@@ -1,19 +1,103 @@
 <resources>
     <string name="app_name">DigitalTourGuide</string>
+    <string name="app_name_profile">个人信息</string>
     <string name="mic_button">麦克风</string>
     <string name="photo_button">拍照</string>
     <string name="camera_button">拍摄</string>
 
+    <!-- Profile strings -->
+    <string name="back">返回</string>
+    <string name="avatar">头像</string>
+    <string name="edit_avatar">编辑头像</string>
+    <string name="personal_info">个人信息</string>
+    <string name="edit">编辑</string>
+    <string name="first_name">昵称</string>
+    <string name="last_name">姓氏</string>
+    <string name="nickname_label">昵称</string>
+    <string name="age_label">年龄</string>
+    <string name="gender_label">性别</string>
+    <string name="location">位置</string>
+    <string name="language">语言</string>
+    <string name="ai_preferences">AI 导游偏好</string>
+    <string name="ai_preferences_desc">设置你的旅游偏好</string>
+    <string name="prefs_description">个性化偏好描述</string>
+    <string name="quick_tags">快捷标签</string>
+    <string name="interest_historical">历史聚焦</string>
+    <string name="interest_culinary">详细讲解</string>
+    <string name="interest_art">轻松语气</string>
+    <string name="add_interest">添加偏好</string>
+    <string name="ai_prefs_hint">例如：我喜欢了解当地美食和隐藏的艺术馆…</string>
+    <string name="accessibility_mode">无障碍模式</string>
+    <string name="accessibility_desc">优先规划无障碍路线</string>
+    <string name="sign_out">退出登录</string>
+
+    <!-- MyPerActivity (导游偏好) -->
+    <string name="pref_style_professional">专业讲解</string>
+    <string name="pref_style_story">故事化讲解</string>
+    <string name="pref_style_humorous">轻松幽默</string>
+    <string name="pref_style_kids">儿童模式</string>
+    <string name="pref_depth_brief">简洁速览</string>
+    <string name="pref_depth_standard">标准导览</string>
+    <string name="pref_depth_deep">深度文化解析</string>
+    <string name="pref_purpose_learning">学习知识</string>
+    <string name="pref_purpose_family">亲子陪伴</string>
+    <string name="pref_purpose_photo">拍照打卡</string>
+    <string name="pref_purpose_relax">休闲放松</string>
+
+    <!-- Login page strings -->
+    <string name="login_title">登录</string>
+    <string name="login_subtitle">欢迎来到 AI 导游</string>
+    <string name="login_tab_normal">普通用户</string>
+    <string name="login_tab_admin">管理员</string>
+    <string name="login_username_hint">请输入账号</string>
+    <string name="login_password_hint">请输入密码</string>
+    <string name="login_toggle_visibility">切换密码可见性</string>
+    <string name="login_remember_password">记住密码</string>
+    <string name="login_forgot_password">忘记密码?</string>
+    <string name="login_button">登录</string>
+    <string name="login_no_account">还没有账号?</string>
+    <string name="login_register_now">立即注册</string>
+
+    <!-- Register page strings -->
+    <string name="register_title">注册</string>
+    <string name="register_subtitle">创建您的 AI 导游账号</string>
+    <string name="register_nickname_hint">昵称</string>
+    <string name="register_username_hint">请输入账号</string>
+    <string name="register_password_hint">请输入密码</string>
+    <string name="register_confirm_hint">确认密码</string>
+    <string name="register_terms_prefix">我已阅读并同意</string>
+    <string name="register_terms_agreement">《用户协议》</string>
+    <string name="register_terms_privacy">《隐私政策》</string>
+    <string name="register_button">注册</string>
+    <string name="register_has_account">已有账号？</string>
+    <string name="register_login_link">去登录</string>
+    <string name="register_toggle_visibility">切换密码可见性</string>
+    <string name="register_terms_and">和</string>
+
+    <!-- History page strings -->
+    <string name="history_hero_title">开始新的对话</string>
+    <string name="history_hero_subtitle">探索景点，开启 AI 导游之旅</string>
+    <string name="history_hero_button">去选择景点</string>
+    <string name="history_search_hint">搜索景点名称</string>
+    <string name="history_search_action">搜索</string>
+    <string name="history_bottom_history">出游记录</string>
+    <string name="history_bottom_new">新建对话</string>
+    <string name="history_bottom_profile">我的</string>
+    <string name="history_tag_all">全部</string>
+    <string name="history_tag_theme_park">主题乐园</string>
+    <string name="history_tag_museum">博物馆与展馆</string>
+    <string name="history_tag_nature_park">自然公园</string>
+    <string name="history_tag_scenic">风景名胜与休闲度假</string>
+    <string name="history_tag_history">历史文化</string>
+    <string name="history_tag_ally">古镇水乡</string>
+    <string name="history_tag_zoo">动植物园与水族馆</string>
+    <string name="history_tag_morden">现代地标</string>
+
     <style name="BottomDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
-        <!-- 去掉默认标题栏 -->
         <item name="windowNoTitle">true</item>
-        <!-- 去掉默认背景（避免白边） -->
         <item name="android:windowBackground">@android:color/transparent</item>
-        <!-- 允许弹窗浮在Activity之上 -->
         <item name="android:windowIsFloating">true</item>
-        <!-- 点击外部可关闭（可选） -->
         <item name="android:windowCloseOnTouchOutside">true</item>
-        <!-- 去掉背景遮罩（如果要保留遮罩，设为#80000000） -->
         <item name="android:backgroundDimEnabled">true</item>
     </style>
 
@@ -29,12 +113,43 @@
     </string-array>
 
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- 状态栏颜色（把紫色换掉） -->
-        <item name="android:statusBarColor">#666666</item> <!-- 红色，可改别的 -->
-        <!-- 状态栏文字颜色：true=黑字，false=白字 -->
+        <item name="android:statusBarColor">#666666</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- PointManager strings -->
+    <string name="pm_title">景点管理</string>
+    <string name="pm_logout">退出登录</string>
+    <string name="pm_search_hint">搜索景点名称、关键词</string>
+    <string name="pm_search_action">搜索</string>
+    <string name="pm_batch_delete">批量删除</string>
+    <string name="pm_confirm_delete">确认删除</string>
+    <string name="pm_cancel">取消</string>
+    <string name="pm_add">新增景点</string>
+    <string name="pm_open_hours_prefix">开放时间：</string>
+
+    <!-- ScenicEdit strings -->
+    <string name="se_back">返回</string>
+    <string name="se_edit_attraction">编辑景点</string>
+    <string name="se_edit_digital">编辑数字人</string>
+    <string name="se_change_cover">更换封面</string>
+    <string name="se_attraction_name">景点名称</string>
+    <string name="se_name_hint">请输入景点名称</string>
+    <string name="se_attraction_type">景点类型</string>
+    <string name="se_knowledge_base">知识库</string>
+    <string name="se_max_files">最多4个</string>
+    <string name="se_add_file">添加</string>
+    <string name="se_no_file">暂无文件</string>
+    <string name="se_save_changes">保存更改</string>
+    <string name="se_remove">移除</string>
+
+    <!-- Chat / Real-time Conversation strings -->
+    <string name="chat_title">景点名称</string>
+    <string name="chat_online_status">在线</string>
+    <string name="chat_subtitles">字幕</string>
+    <string name="chat_more_options">更多选项</string>
+    <string name="chat_mic_hint">按住 说话</string>
+    <string name="chat_keyboard_input">文字输入</string>
+    <string name="chat_text_input">文字</string>
+
 </resources>
-
-

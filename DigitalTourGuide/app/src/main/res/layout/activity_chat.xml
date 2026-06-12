@@ -41,28 +41,24 @@
 
     </LinearLayout>
 
-    <!-- 中间内容区：数字人 + 拍摄画面 -->
-    <LinearLayout
+    <!-- 中间内容区：数字人全屏背景 + 拍摄画面浮层 -->
+    <FrameLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="horizontal"
-        android:padding="8dp"
         tools:ignore="MissingClass,InflatedId,,All">
 
-        <!-- 数字人区域（左侧，占满剩余空间） -->
+        <!-- 数字人区域（全屏填充） -->
         <ImageView
             android:id="@+id/iv_digital_human"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
-            android:background="#333333"
-            />
+            android:background="#333333" />
 
-        <!-- 拍摄画面预览（右侧，固定大小） -->
+        <!-- 拍摄画面预览（右上角浮层） -->
         <androidx.camera.view.PreviewView
             android:id="@+id/preview_view_camera"
             android:layout_width="120dp"
@@ -71,7 +67,7 @@
             android:background="#cccccc"
             android:layout_gravity="end|top" />
 
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- 字幕区域（数字人下方、图标上方） -->
     <TextView
