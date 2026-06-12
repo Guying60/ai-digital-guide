@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:background="@drawable/bg_dialog_rounded">
+
+    <!-- ── 装饰性背景光晕 ── -->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
+
+        <View
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_dialog_glow"
+            android:alpha="0.3" />
+
+        <!-- 装饰小星星 -->
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="top|start"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_star_filled"
+            android:rotation="-15"
+            app:tint="@color/profile_primary_container" />
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="28dp"
+            android:layout_marginEnd="24dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_star_filled"
+            android:rotation="15"
+            app:tint="@color/profile_secondary" />
+
+        <!-- 主勾选圆圈 -->
+        <FrameLayout
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_check_large"
+            android:elevation="4dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_check_white" />
+        </FrameLayout>
+
+        <!-- 底部装饰庆祝图标 -->
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="bottom|start"
+            android:layout_marginBottom="16dp"
+            android:layout_marginStart="20dp"
+            android:contentDescription="@null"
+            android:rotation="45"
+            android:src="@drawable/ic_star_filled"
+            app:tint="@color/profile_error_container" />
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginBottom="24dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@null"
+            android:rotation="-45"
+            android:src="@drawable/ic_star_filled"
+            app:tint="@color/profile_on_secondary_container" />
+    </FrameLayout>
+
+    <!-- ── 标题 ── -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="对话已结束"
+        android:textColor="@color/profile_on_surface"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- ── 副标题 ── -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:text="感谢您使用我们的服务！\n希望您拥有一段美好的旅程。"
+        android:textColor="@color/profile_on_surface_variant"
+        android:textSize="14sp" />
+
+    <!-- ── 按钮区 ── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="8dp">
+
+        <!-- 去评价 -->
+        <Button
+            android:id="@+id/btn_go_rate"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:backgroundTint="@color/profile_primary"
+            android:text="去评价"
+            android:textColor="@color/profile_on_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp" />
+
+        <!-- 继续对话 -->
+        <Button
+            android:id="@+id/btn_continue_chat"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/profile_surface"
+            android:background="@drawable/bg_btn_outline"
+            android:text="继续对话"
+            android:textColor="@color/profile_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            android:stateListAnimator="@null" />
+
+        <!-- 返回记录 -->
+        <Button
+            android:id="@+id/btn_back_history"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/profile_surface"
+            android:background="@drawable/bg_btn_outline"
+            android:text="返回记录"
+            android:textColor="@color/profile_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            android:stateListAnimator="@null" />
+    </LinearLayout>
+
+</LinearLayout>
