@@ -5,12 +5,10 @@ plugins {
 android {
 
     namespace = "com.example.digitaltourguide"
-    compileSdk {
-        version = release(34)
-    }
+    compileSdk = 34
 
     buildFeatures {
-        viewBinding= true
+        viewBinding = true
     }
 
     defaultConfig {
@@ -64,4 +62,6 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("com.google.android.exoplayer:exoplayer:2.19.1")
+    implementation("com.google.android.material:material:1.11.0")
+
 }
