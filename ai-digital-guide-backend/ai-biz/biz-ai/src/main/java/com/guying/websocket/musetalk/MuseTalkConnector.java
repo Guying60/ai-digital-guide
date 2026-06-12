@@ -20,10 +20,9 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 数字人（Python MuseTalk）连接器：音视频配对匀速发送模式。
+ * 数字人（Python MuseTalk）连接器：直接透传模式。
  * <p>
- * 视频帧到达后，通过 AVBuffer 先发送该 sentence 缓冲的音频帧，
- * 再以 25fps 匀速发送视频帧，实现音画同步。
+ * 视频帧到达后直接透传给前端，前端负责缓冲、对齐播放。
  */
 @Component
 @Slf4j
@@ -55,7 +54,6 @@ public class MuseTalkConnector {
     }
 
     public void interrupt(ChatSessionContext ctx) {
-        ctx.getAvBuffer().clearAll();
         WebSocketSession museTalkSession = ctx.getMuseTalkSession();
         if (museTalkSession == null || !museTalkSession.isOpen()) {
             return;
@@ -103,9 +101,12 @@ public class MuseTalkConnector {
                 case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    // ★ 通过 AVBuffer 发送 done，保证在所有音视频帧发送完毕后才到达 Android
-                    log.info("[Python WS] 句子完毕 sentence_id={}，提交到 AVBuffer 发送队列", sentenceId);
-                    ctx.getAvBuffer().submitDone(sentenceId, sender, ctx);
+                    // 发送 done（带 sentence_id）给前端
+                    log.info("[Python WS] 句子完毕 sentence_id={}", sentenceId);
+                    ObjectNode doneMsg = objectMapper.createObjectNode();
+                    doneMsg.put("type", "done");
+                    doneMsg.put("sentence_id", sentenceId);
+                    sender.send(ctx, new TextMessage(doneMsg.toString()));
                 }
                 case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);
@@ -119,16 +120,13 @@ public class MuseTalkConnector {
             // 内层头现为 7 字节：[sentence_id:2B][pts_ms:4B][is_keyframe:1B]
             if (raw.length < 7) return;
 
-            // 解析 sentence_id
-            int sentenceId = ((raw[0] & 0xFF) << 8) | (raw[1] & 0xFF);
-
             // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];
             androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
-            // ★ 通过 AVBuffer 配对发送：先匀速发音频，再以 25fps 匀速发视频
-            ctx.getAvBuffer().submitPairedSend(sentenceId, androidPayload, sender, ctx);
+            // 直接透传给前端（前端负责缓冲、对齐播放）
+            sender.sendVideoFrame(ctx, new BinaryMessage(androidPayload));
         }
 
         @Override

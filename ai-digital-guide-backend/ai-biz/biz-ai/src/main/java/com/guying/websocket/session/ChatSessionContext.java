@@ -22,7 +22,6 @@ public class ChatSessionContext {
     private final Long attractionId;
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
-    private final AVBuffer avBuffer = new AVBuffer();
 
 
     @Setter private volatile WebSocketSession museTalkSession;
