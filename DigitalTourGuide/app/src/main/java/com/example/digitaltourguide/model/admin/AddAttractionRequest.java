@@ -5,6 +5,9 @@ public class AddAttractionRequest {
     private String coverUrl;
     private String attractionName;
     private int type;
+    private Double rating;
+    private Integer reviewCount;
+    private String openHours;
 
     // 构造函数（新增用，不带id）
     public AddAttractionRequest(String coverUrl, String attractionName, int type) {
@@ -50,5 +53,29 @@ public class AddAttractionRequest {
 
     public void setType(int type) {
         this.type = type;
+    }
+
+    public Double getRating() {
+        return rating;
+    }
+
+    public void setRating(Double rating) {
+        this.rating = rating;
+    }
+
+    public Integer getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Integer reviewCount) {
+        this.reviewCount = reviewCount;
+    }
+
+    public String getOpenHours() {
+        return openHours;
+    }
+
+    public void setOpenHours(String openHours) {
+        this.openHours = openHours;
     }
 }

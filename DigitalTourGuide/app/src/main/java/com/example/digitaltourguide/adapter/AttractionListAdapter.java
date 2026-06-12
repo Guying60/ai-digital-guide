@@ -79,7 +79,30 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         AddAttractionRequest item = data.get(position);
         holder.tvName.setText(item.getAttractionName());
-        //holder.tvType.setText(getTypeName(item.getType()));
+
+        // 评分
+        if (item.getRating() != null) {
+            holder.tvRating.setText(String.format("%.1f分", item.getRating()));
+            holder.tvRating.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvRating.setVisibility(View.GONE);
+        }
+
+        // 评论数
+        if (item.getReviewCount() != null) {
+            holder.tvReviewCount.setText(String.format("%d 条评论", item.getReviewCount()));
+            holder.tvReviewCount.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvReviewCount.setVisibility(View.GONE);
+        }
+
+        // 开放时间
+        if (item.getOpenHours() != null && !item.getOpenHours().isEmpty()) {
+            holder.tvOpenHours.setText("开放时间：" + item.getOpenHours());
+            holder.tvOpenHours.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvOpenHours.setVisibility(View.GONE);
+        }
 
         //整个卡片点击
         holder.itemView.setOnClickListener(v -> {
@@ -129,16 +152,19 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvType,tvEdit,tvDelete;
+        TextView tvName, tvType, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours;
         ImageView ivCover;
         CheckBox checkBox;
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tv_name);
-            ivCover=itemView.findViewById(R.id.iv_cover);
+            ivCover = itemView.findViewById(R.id.iv_cover);
             tvEdit = itemView.findViewById(R.id.tv_edit);
             tvDelete = itemView.findViewById(R.id.tv_delete);
             checkBox = itemView.findViewById(R.id.checkbox_select);
+            tvRating = itemView.findViewById(R.id.tv_rating);
+            tvReviewCount = itemView.findViewById(R.id.tv_review_count);
+            tvOpenHours = itemView.findViewById(R.id.tv_open_hours);
         }
     }
 

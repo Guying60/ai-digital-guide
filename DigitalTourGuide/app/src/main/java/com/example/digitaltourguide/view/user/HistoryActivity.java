@@ -1,20 +1,26 @@
 package com.example.digitaltourguide.view.user;
 
+import android.app.Dialog;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -82,7 +88,7 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        rvScenic.setLayoutManager(new GridLayoutManager(this, 2));
+        rvScenic.setLayoutManager(new GridLayoutManager(this, 1));
         adapter = new UserScenicAdapter(this, dataList);
 
         adapter.setOnItemClickListener(new UserScenicAdapter.OnItemClickListener() {
@@ -97,13 +103,30 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onItemLongClick(ScenicSpot spot, int position) {
-                // 弹出确认对话框
-                new AlertDialog.Builder(HistoryActivity.this)
-                        .setTitle("删除记录")
-                        .setMessage("确定要删除「" + spot.getTitle() + "」的旅游记录吗？")
-                        .setPositiveButton("删除", (dialog, which) -> deleteRecord(spot, position))
-                        .setNegativeButton("取消", null)
-                        .show();
+                // 弹出自定义删除确认弹窗
+                Dialog dialog = new Dialog(HistoryActivity.this);
+                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                View view = getLayoutInflater().inflate(R.layout.dialog_delete_confirm, null);
+                dialog.setContentView(view);
+
+                Window window = dialog.getWindow();
+                if (window != null) {
+                    window.setLayout(
+                            (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                            WindowManager.LayoutParams.WRAP_CONTENT
+                    );
+                    window.setGravity(Gravity.CENTER);
+                    window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                }
+
+                view.findViewById(R.id.btn_cancel_delete).setOnClickListener(v -> dialog.dismiss());
+                view.findViewById(R.id.btn_confirm_delete).setOnClickListener(v -> {
+                    deleteRecord(spot, position);
+                    dialog.dismiss();
+                });
+
+                dialog.setCanceledOnTouchOutside(true);
+                dialog.show();
             }
 
             @Override
@@ -153,28 +176,95 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void showRatingDialog(ScenicSpot spot) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_rating, null);
+        dialog.setContentView(view);
 
-        AlertDialog.Builder builder=new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_rating, null);
-        RatingBar ratingBar = dialogView.findViewById(R.id.rating_bar);
-        EditText editFeedback = dialogView.findViewById(R.id.edit_feedback);
-        Button btnSubmit = dialogView.findViewById(R.id.btn_submit);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.88),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
 
-        builder.setView(dialogView);
-        builder.setTitle("评价"+spot.getTitle());
-        AlertDialog dialog=builder.create();
+        // ── 星星评分 ──
+        final int[] selectedScore = {0};
+        ImageView[] stars = new ImageView[5];
+        stars[0] = view.findViewById(R.id.star_1);
+        stars[1] = view.findViewById(R.id.star_2);
+        stars[2] = view.findViewById(R.id.star_3);
+        stars[3] = view.findViewById(R.id.star_4);
+        stars[4] = view.findViewById(R.id.star_5);
 
-        btnSubmit.setOnClickListener(v->{
-            int score=(int) ratingBar.getRating();
-            String feedback=editFeedback.getText().toString().trim();
-            if(score==0){
+        for (int i = 0; i < 5; i++) {
+            final int starIndex = i;
+            stars[i].setOnClickListener(v -> {
+                selectedScore[0] = starIndex + 1;
+                updateStars(stars, selectedScore[0]);
+            });
+        }
+
+        // ── 评分标签 (点击高亮切换) ──
+        int[] tagIds = {
+                R.id.tag_professional, R.id.tag_rich, R.id.tag_fun,
+                R.id.tag_clear, R.id.tag_knowledgeable, R.id.tag_excellent
+        };
+        for (int id : tagIds) {
+            TextView tag = view.findViewById(id);
+            tag.setOnClickListener(v -> {
+                boolean isSelected = tag.isSelected();
+                tag.setSelected(!isSelected);
+                tag.setBackgroundResource(isSelected
+                        ? R.drawable.bg_tag_rating
+                        : R.drawable.bg_chip_filter_selected);
+                tag.setTextColor(getColor(isSelected
+                        ? R.color.profile_primary
+                        : R.color.profile_on_primary));
+            });
+        }
+
+        // ── 评论文本 + 字数统计 ──
+        EditText editFeedback = view.findViewById(R.id.edit_feedback);
+        TextView tvCharCount = view.findViewById(R.id.tv_char_count);
+        editFeedback.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                tvCharCount.setText(s.length() + "/200");
+            }
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        // ── 取消 ──
+        view.findViewById(R.id.btn_cancel).setOnClickListener(v -> dialog.dismiss());
+
+        // ── 提交 ──
+        view.findViewById(R.id.btn_submit).setOnClickListener(v -> {
+            if (selectedScore[0] == 0) {
                 Toast.makeText(this, "请评分", Toast.LENGTH_SHORT).show();
                 return;
             }
-            submitRating(spot, score, feedback);
+            String feedback = editFeedback.getText().toString().trim();
+            submitRating(spot, selectedScore[0], feedback);
             dialog.dismiss();
         });
+
+        dialog.setCanceledOnTouchOutside(true);
         dialog.show();
+    }
+
+    private void updateStars(ImageView[] stars, int score) {
+        for (int i = 0; i < stars.length; i++) {
+            stars[i].setImageTintList(ColorStateList.valueOf(getColor(
+                    i < score ? R.color.profile_primary : R.color.profile_outline_variant
+            )));
+        }
     }
 
     private void submitRating(ScenicSpot spot, int score, String feedback) {
@@ -460,7 +550,7 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void initView() {
-        ivAdd=findViewById(R.id.iv_add);
+        ivAdd=findViewById(R.id.iv_add_chat);
         tvHistory=findViewById(R.id.tv_history);
         tvMine=findViewById(R.id.tv_mine);
         tvHistory.setBackgroundResource(R.drawable.bg_nav_text_selected);
@@ -475,8 +565,7 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(new Intent(this, MyActivity.class));
         });
         ivAdd.setOnClickListener(v->{
-            AttractionPickerDialog dialog=new AttractionPickerDialog();
-            dialog.show(getSupportFragmentManager(),"attraction_picker");
+            startActivity(new Intent(this, ChatActivity.class));
         });
     }
 

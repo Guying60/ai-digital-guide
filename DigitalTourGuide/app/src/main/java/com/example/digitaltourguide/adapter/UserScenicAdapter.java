@@ -2,6 +2,8 @@ package com.example.digitaltourguide.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.view.user.ChatHistoryActivity;
@@ -74,19 +77,50 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
     public void onBindViewHolder(@NonNull ScenicHolder holder, int position) {
         ScenicSpot spot=list.get(position);
         holder.tvTitle.setText(spot.getTitle());
-        // 加载图片
+        // 加载图片（使用 Glide RoundedCorners 实现圆角，兼容 API 24+）
         String url = spot.getCoverUrl();
         if (url != null && !url.isEmpty()) {
             Glide.with(context)
                     .load(url)
                     .placeholder(R.drawable.ic_pdf)
+                    .transform(new RoundedCorners(12))
                     .into(holder.ivCover);
         }else{
             holder.ivCover.setImageResource(R.drawable.ic_pdf);
         }
 
-        // 根据是否已评价（或已结束）决定显示哪个按钮布局
+        // ── 状态徽章 ──
+        // 与按钮可见性共用 isRated / isEnded 判断，不改变原有逻辑
         boolean isRated = SpUtils.isRated(context, spot.getConversationId());
+        String statusText;
+        String statusBgColor;
+        String statusTextColor;
+        if (isRated) {
+            statusText = "已评价";
+            statusBgColor = "#E6FFE6";
+            statusTextColor = "#008000";
+        } else if (spot.isEnded()) {
+            statusText = "已结束";
+            statusBgColor = "#FFF4E6";
+            statusTextColor = "#CC6600";
+        } else {
+            statusText = "进行中";
+            statusBgColor = "#E6F0FF";
+            statusTextColor = "#0066CC";
+        }
+        holder.tvStatus.setText(statusText);
+        holder.tvStatus.setVisibility(View.VISIBLE);
+        GradientDrawable statusBg = (GradientDrawable) holder.tvStatus.getBackground().mutate();
+        statusBg.setColor(Color.parseColor(statusBgColor));
+        holder.tvStatus.setTextColor(Color.parseColor(statusTextColor));
+
+        // ── 分类标签（暂无数据，默认隐藏） ──
+        holder.tvCategory.setVisibility(View.GONE);
+
+        // ── 上次对话时间（暂无数据，默认隐藏） ──
+        holder.tvLastTime.setVisibility(View.GONE);
+
+        // 根据是否已评价（或已结束）决定显示哪个按钮布局
         if (isRated || spot.isEnded()) {
             holder.layoutDualButtons.setVisibility(View.GONE);
             holder.layoutSingleButton.setVisibility(View.VISIBLE);
@@ -167,6 +201,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
 
     public static class ScenicHolder extends RecyclerView.ViewHolder{
         TextView tvTitle,tvStopChat, tvContinueChat,btnRate;
+        TextView tvStatus, tvCategory, tvLastTime;
         ImageView ivCover;
         View layoutDualButtons,layoutSingleButton;
 
@@ -180,6 +215,9 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             btnRate = itemView.findViewById(R.id.btn_rate);
             layoutDualButtons = itemView.findViewById(R.id.layout_dual_buttons);
             layoutSingleButton = itemView.findViewById(R.id.layout_single_button);
+            tvStatus = itemView.findViewById(R.id.tv_status);
+            tvCategory = itemView.findViewById(R.id.tv_category);
+            tvLastTime = itemView.findViewById(R.id.tv_last_time);
         }
 
     }
