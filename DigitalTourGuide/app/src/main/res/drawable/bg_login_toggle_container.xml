@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Container background for the segmented pill toggle – light grey pill shape -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/login_surface_container_low" />
+    <corners android:radius="999dp" />
+</shape>

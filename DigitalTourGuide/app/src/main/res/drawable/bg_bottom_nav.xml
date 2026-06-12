@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom navigation bar background – rounded top corners only, matching HTML design -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/login_surface_container_lowest" />
+    <corners
+        android:topLeftRadius="16dp"
+        android:topRightRadius="16dp" />
+</shape>

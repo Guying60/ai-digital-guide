@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ambient background for the login page.
+  A subtle vertical gradient: transparent at top → very light purple at bottom center → slightly stronger at bottom edge.
+  Mimics the HTML CSS effect of a landscape image with mask and opacity.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="90"
+        android:startColor="#00000000"
+        android:centerColor="#08000000"
+        android:endColor="#18C8C4D7" />
+</shape>
