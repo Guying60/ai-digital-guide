@@ -17,11 +17,6 @@ public class UserInfoDTO {
     private String nickname;
 
 
-
-    @Pattern(regexp = "^[\\s\\S]{0,100}$", message = "用户设定不能超过100个字符")
-    private String userSetting;
-
-
     @Min(value = 0, message = "性别值不合法")
     @Max(value = 2, message = "性别值不合法")
     private Integer gender;

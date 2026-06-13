@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static com.guying.common.constants.RedisConstants.USER_CONVERSATION_KEY;
-import static com.guying.common.constants.RedisConstants.USER_INFO_KEY;
 
 /**
  * AI 讲解员 WebSocket 入口：仅做事件分发与会话生命周期管理，
@@ -173,6 +172,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("用户主动打断 sid={}", ctx.getSid());
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
+        ctx.getAvSyncBuffer().clear();
         ExecutorService old = ctx.getTtsExecutor();
         if (old != null && !old.isShutdown()) {
             old.shutdownNow();
@@ -197,12 +197,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 ctx.conversationId(),
                 RedisConstants.CONVERSATION_EXPIRE_TIME,
                 TimeUnit.HOURS);
-        if (!stringRedisTemplate.hasKey(USER_INFO_KEY + userId)) {
-            Map<String, String> userInfo = userService.getUserInfo(userId);
-            stringRedisTemplate.opsForHash().putAll(USER_INFO_KEY + userId, userInfo);
-            stringRedisTemplate.expire(USER_INFO_KEY + userId,
-                    RedisConstants.USER_INFO_EXPIRE_TIME, TimeUnit.HOURS);
-        }
+        // 每次连接都重新构建缓存，确保偏好字段完整（UserInternalServiceImpl 内部负责写缓存）
+        userService.getUserInfo(userId);
     }
 
     private void publishUserTourHistory(ChatSessionContext ctx) {

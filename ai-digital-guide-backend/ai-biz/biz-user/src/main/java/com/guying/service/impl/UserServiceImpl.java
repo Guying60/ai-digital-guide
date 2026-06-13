@@ -110,7 +110,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
             UserInfoVO userInfoVO = new UserInfoVO();
             userInfoVO.setNickname((String) entries.get("nickname"));
-            userInfoVO.setUserSetting((String) entries.get("userSetting"));
             userInfoVO.setGender(GenderEnum.fromCode(Integer.parseInt((String) entries.get("gender"))).getCode());
             userInfoVO.setAge(Integer.valueOf((String) entries.get("age")));
             return userInfoVO;
@@ -122,10 +121,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             GenderEnum genderEnum = user.getGender() == null
                     ? GenderEnum.UNKNOWN
                     : GenderEnum.fromCode(user.getGender());
-            Map<String, Object> userMap = Map.of("gender", String.valueOf(genderEnum.getCode()),
-                    "age", user.getAge().toString(),
-                    "userSetting", user.getUserSetting() == null ? "未知" : user.getUserSetting(),
-                    "nickname", user.getNickname() == null ? "未知" : user.getNickname());
+
+            Map<String, String> userMap = new HashMap<>();
+            userMap.put("gender", String.valueOf(genderEnum.getCode()));
+            userMap.put("age", user.getAge() == null ? "0" : user.getAge().toString());
+            userMap.put("nickname", user.getNickname() == null ? "未知" : user.getNickname());
+
             stringRedisTemplate.opsForHash().putAll(key, userMap);
             stringRedisTemplate.expire(key, USER_INFO_EXPIRE_TIME, TimeUnit.HOURS);
             return userConverter.toUserInfoVO(user);
