@@ -185,7 +185,7 @@ public class AVSyncPlayer {
      * Video data: [sentenceId:2B][ptsMs:4B][keyFrame:1B][H.264 AU:N]
      * ChatActivity already stripped the type byte.
      */
-    private static final int VIDEO_QUEUE_MAX = 200;  // 8 秒 burst 上限保护，丢弃最旧帧防内存暴涨
+    private static final int VIDEO_QUEUE_MAX = 350;  // 8 秒 burst 上限保护，丢弃最旧帧防内存暴涨
 
     public void onVideoData(byte[] frameData) {
         if (released || frameData == null || frameData.length <= VIDEO_HDR) return;
