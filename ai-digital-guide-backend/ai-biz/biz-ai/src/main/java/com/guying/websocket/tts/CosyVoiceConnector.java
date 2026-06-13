@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * CosyVoice TTS 客户端：纯透传模式
+ * CosyVoice TTS 客户端：音频帧即时流式转发给前端，同时累积裸 PCM 供 MuseTalk 使用。
  */
 @Component
 @Slf4j
@@ -109,6 +109,8 @@ public class CosyVoiceConnector {
 
         private final ChatSessionContext ctx;
         private final ByteArrayOutputStream pcmBuffer = new ByteArrayOutputStream();
+        // 当前句子的 ID，由二进制音频帧头部提取，供 chunk_end → MuseTalk 使用
+        private volatile int currentSentenceId = 0;
 
         CosyVoiceHandler(ChatSessionContext ctx) {
             this.ctx = ctx;
@@ -135,8 +137,12 @@ public class CosyVoiceConnector {
                             objectMapper.createObjectNode().put("type", "pong").toString()));
                 }
                 case "chunk_end" -> {
-                    int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    forwardSentenceToMuseTalk(sentenceId);
+                    // 使用音频帧头部的 sentenceId（currentSentenceId），
+                    // 而非 chunk_end 消息自身的 sentenceId，保证与 buffer key 一致
+                    log.info("[CosyVoice] chunk_end 消息sentenceId={}, 音频帧sentenceId={}",
+                            node.has("sentence_id") ? node.get("sentence_id").asInt() : "null",
+                            currentSentenceId);
+                    forwardSentenceToMuseTalk(currentSentenceId);
                 }
                 case "error" -> log.error("[CosyVoice WS] 报错：{}", node.has("message") ? node.get("message").asText() : "unknown");
                 default -> log.warn("[CosyVoice WS] 收到未知类型消息: {}", type);
@@ -148,11 +154,19 @@ public class CosyVoiceConnector {
             byte[] payload = message.getPayload().array();
             if (payload.length < AUDIO_HEADER_LEN) return;
 
-            // 1) 直接透传给前端（前端负责缓冲音频、等待视频帧后对齐播放）
-            //    协议：[0x01 (1B)][sentence_id (2B BE)][pts_ms (4B BE)][PCM...]
-            if (ctx.getUserSession().isOpen()) {
-                sender.send(ctx, new BinaryMessage(payload));
-            }
+            // 解析 sentence_id（来自音频帧头部，与前端协议一致）
+            int sentenceId = ((payload[0] & 0xFF) << 8) | (payload[1] & 0xFF);
+            currentSentenceId = sentenceId;  // 记录当前句子 ID，供 chunk_end 使用
+
+            // 1) 即时流式发送音频帧给前端（不做批量缓冲）
+            // CosyVoice 原始格式：[sentenceId:2B][ptsMs:4B][0x01][PCM...]  (7 字节头)
+            // Android 协议格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]    (总长不变，仅重组头)
+            byte[] androidFrame = new byte[payload.length];                 // 总长相同
+            androidFrame[0] = 0x01;                                          // type 前缀
+            System.arraycopy(payload, 0, androidFrame, 1, 6);               // sentenceId(2B) + pts(4B)
+            System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,     // PCM
+                    payload.length - AUDIO_HEADER_LEN);
+            sender.send(ctx, new BinaryMessage(androidFrame));
 
             // 2) 剥离 header，只缓冲裸 PCM 供 MuseTalk 炼丹使用
             if (payload.length > AUDIO_HEADER_LEN) {

@@ -20,9 +20,7 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 数字人（Python MuseTalk）连接器：直接透传模式。
- * <p>
- * 视频帧到达后直接透传给前端，前端负责缓冲、对齐播放。
+ * 数字人（Python MuseTalk）连接器：将 MuseTalk 生成的视频帧即时流式转发给前端。
  */
 @Component
 @Slf4j
@@ -101,8 +99,9 @@ public class MuseTalkConnector {
                 case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    // 发送 done（带 sentence_id）给前端
                     log.info("[Python WS] 句子完毕 sentence_id={}", sentenceId);
+
+                    // 直接转发 done 消息给前端（帧已在 handleBinaryMessage 中流式发送）
                     ObjectNode doneMsg = objectMapper.createObjectNode();
                     doneMsg.put("type", "done");
                     doneMsg.put("sentence_id", sentenceId);
@@ -120,13 +119,16 @@ public class MuseTalkConnector {
             // 内层头现为 7 字节：[sentence_id:2B][pts_ms:4B][is_keyframe:1B]
             if (raw.length < 7) return;
 
+            // 解析 sentence_id
+            int sentenceId = ((raw[0] & 0xFF) << 8) | (raw[1] & 0xFF);
+
             // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];
             androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
-            // 直接透传给前端（前端负责缓冲、对齐播放）
-            sender.sendVideoFrame(ctx, new BinaryMessage(androidPayload));
+            // 即时流式转发视频帧给前端（不做批量缓冲）
+            sender.send(ctx, new BinaryMessage(androidPayload));
         }
 
         @Override
