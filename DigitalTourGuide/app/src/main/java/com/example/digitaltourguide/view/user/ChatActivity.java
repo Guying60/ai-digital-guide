@@ -81,6 +81,7 @@ public class ChatActivity extends AppCompatActivity {
     private static final String LINE_SEPARATOR = "\n\n"; // 对话之间的分隔
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private WebSocket webSocketClient;
+    private volatile boolean wsConnected = false;  // 标记 WebSocket 是否已成功连接
     private AudioRecord audioRecord;
     private boolean isRecording = false;
     private static final int SAMPLE_RATE = 16000;
@@ -554,7 +555,7 @@ public class ChatActivity extends AppCompatActivity {
         // 2. 构建 OkHttp 客户端（支持 wss 安全协议）
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.SECONDS)   // WebSocket 不设读超时，靠心跳保活
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .addNetworkInterceptor(chain -> {
                     Request original = chain.request();
@@ -577,6 +578,7 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
                 super.onOpen(webSocket, response);
+                wsConnected = true;
                 runOnUiThread(() -> {
                     Toast.makeText(ChatActivity.this, "✅ 连接成功！", Toast.LENGTH_SHORT).show();
                     startHeartbeat();
@@ -670,13 +672,11 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "❌ 后端报错：" + errorMsg);
                     }else if ("allDone".equals(type)) {
                         Log.d("MYTEST", "收到 allDone，后端已就绪");
+                        // 清空队列，准备下一次对话
+                        if (avSyncPlayer != null) avSyncPlayer.onConversationEnd();
+                        // 麦克风默认关闭，用户手动点击按钮开启
                         runOnUiThread(() -> {
-                            if (!isRecording && checkRecordPermission() && isRecordReady()) {
-                                startRecord();  // 内部会发送 micOn
-                            } else if (!isRecording) {
-                                // 如果无法录音，至少发送状态消息
-                                sendMicStatus(true);
-                            }
+                            sendMicStatus(false);  // 告知后端麦克风关闭
                         });
                     }else if ("done".equals(type)) {
                          int doneSentenceId = json.optInt("sentence_id");
@@ -718,6 +718,8 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
                 Log.e("MYTEST", "WebSocket 关闭: " + reason);
+                wsConnected = false;
+                webSocketClient = null;  // 清空引用，允许重新连接
                 runOnUiThread(() -> {
                     stopHeartbeat();
                     stopRecord();  // 停止录音
@@ -729,11 +731,21 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, Response response) {
                 super.onFailure(webSocket, t, response);
-                Log.e("MYTEST", "❌ 连接失败/报错：" + t.getMessage());
+                Log.e("MYTEST", "❌ WebSocket 报错：" + t.getMessage() + " wsConnected=" + wsConnected);
+                boolean wasConnected = wsConnected;
+                wsConnected = false;
+                webSocketClient = null;  // 清空引用，允许重新连接
                 runOnUiThread(() -> {
                     stopHeartbeat();
                     stopRecord();
-                    Toast.makeText(ChatActivity.this, "连接失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    if (wasConnected) {
+                        // 连接已建立后断开，不是连接失败
+                        Toast.makeText(ChatActivity.this, "连接已断开", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // 真正的连接失败
+                        String msg = t.getMessage();
+                        Toast.makeText(ChatActivity.this, "连接失败: " + (msg != null ? msg : "网络异常"), Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
         });
