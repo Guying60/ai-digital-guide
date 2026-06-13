@@ -34,6 +34,10 @@
     <color name="profile_glass_white">#B3FFFFFF</color>
     <color name="profile_brand_gradient_start">#004BD7</color>
     <color name="profile_brand_gradient_end">#2ADEC0</color>
+    <color name="profile_star_yellow">#FFB300</color>
+    <color name="profile_preference_green">#66BB6A</color>
+    <color name="profile_female_pink">#F06292</color>
+    <color name="profile_on_female_pink">#FFFFFF</color>
 
     <!-- ===================== Login Page Colors (Material You palette) ===================== -->
     <color name="login_primary">#5241CD</color>

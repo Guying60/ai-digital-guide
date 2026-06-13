@@ -21,19 +21,7 @@
             android:layout_height="wrap_content"
             android:background="@color/profile_surface"
             android:translationZ="0dp"
-            app:elevation="0dp">
-
-            <com.google.android.material.appbar.MaterialToolbar
-                android:id="@+id/topAppBar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                android:background="@color/profile_surface"
-                app:navigationContentDescription="@string/back"
-                app:navigationIcon="@drawable/ic_arrow_back"
-                app:titleTextColor="@color/profile_primary"
-                app:titleTextAppearance="@style/TextAppearance_Profile_Title" />
-
-        </com.google.android.material.appbar.AppBarLayout>
+            app:elevation="0dp"/>
 
         <!-- Scrollable Content -->
         <androidx.core.widget.NestedScrollView
@@ -288,7 +276,26 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
-
+                <!-- ══════════════════════════════════════ -->
+                <!-- 退出登录                                -->
+                <!-- ══════════════════════════════════════ -->
+                <Button
+                    android:id="@+id/btnSignOut"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="32dp"
+                    android:layout_marginBottom="24dp"
+                    android:backgroundTint="@color/profile_error_container"
+                    android:text="退出登录"
+                    android:textColor="@color/profile_on_error_container"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="16dp"
+                    app:icon="@drawable/ic_logout"
+                    app:iconGravity="textStart"
+                    app:iconSize="20dp"
+                    app:iconTint="@color/profile_on_error_container"
+                    app:rippleColor="@color/profile_error" />
 
             </LinearLayout>
 

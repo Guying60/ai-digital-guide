@@ -8,7 +8,7 @@
     <!-- ===================== 我的评价 (My Reviews) ===================== -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="16dp"
         app:cardBackgroundColor="@color/profile_surface_container_low"
         app:cardCornerRadius="16dp"

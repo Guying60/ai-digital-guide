@@ -127,6 +127,7 @@
     <string name="pm_cancel">取消</string>
     <string name="pm_add">新增景点</string>
     <string name="pm_open_hours_prefix">开放时间：</string>
+    <string name="pm_settings">设置</string>
 
     <!-- ScenicEdit strings -->
     <string name="se_back">返回</string>

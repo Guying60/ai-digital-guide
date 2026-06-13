@@ -28,18 +28,16 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tv_logout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <ImageView
+            android:id="@+id/iv_settings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:background="@color/profile_error_container"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp"
-            android:text="@string/pm_logout"
-            android:textColor="#FF4D4F"
-            android:textSize="13sp" />
+            android:padding="8dp"
+            android:src="@drawable/ic_settings"
+            android:contentDescription="@string/pm_settings"
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </RelativeLayout>
 
     <!-- ======================== 搜索栏 ======================== -->
@@ -255,17 +253,22 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <!-- 批量删除 -->
-        <TextView
+        <Button
             android:id="@+id/tv_delete_batch"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_btn_danger_outline"
+            android:backgroundTint="@color/profile_error_container"
             android:gravity="center"
+            android:textColor="@color/profile_on_error_container"
             android:text="@string/pm_batch_delete"
-            android:textColor="#7854F4"
             android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_delete"
+            app:iconGravity="textStart"
+            app:iconSize="18dp"
+            app:iconTint="@color/profile_on_error_container" />
 
         <!-- 取消（多选模式时显示） -->
         <TextView
@@ -287,17 +290,22 @@
             android:layout_height="match_parent" />
 
         <!-- 新增景点 -->
-        <TextView
+        <Button
             android:id="@+id/tv_add"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_btn_primary"
+            android:backgroundTint="#7854F4"
             android:gravity="center"
             android:text="@string/pm_add"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_add_circle"
+            app:iconGravity="textStart"
+            app:iconSize="18dp"
+            app:iconTint="#FFFFFF" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
