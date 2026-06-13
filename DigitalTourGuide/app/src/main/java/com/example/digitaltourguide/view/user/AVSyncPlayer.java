@@ -453,16 +453,17 @@ public class AVSyncPlayer {
         long videoStartWallMs = System.currentTimeMillis();
 
         while (!released) {
-            // ★ 检测代际变化：新的对话已开始，释放旧 codec 并重置等待新关键帧
+            // ★ 检测代际变化：新对话已开始，旧循环必须退出释放 SingleThreadExecutor，
+            // 否则排队的 startPlayback() 永远无法执行 → 音频线程永不创建 → 无声
             if (myGen != generation) {
-                if (LOG) Log.i(TAG, "videoFeedLoop: generation changed " + myGen + "→" + generation + ", resetting codec");
-                myGen = generation;
+                if (LOG) Log.i(TAG, "videoFeedLoop: generation changed " + myGen + "→" + generation + ", exiting");
                 if (c != null) {
                     try { c.stop(); } catch (Exception ignored) {}
                     try { c.release(); } catch (Exception ignored) {}
                     c = null;
                 }
                 // 不要 release h264Decoder — 它可能已被外部 releaseDecoder() 设为 null
+                break;  // ★ 退出循环，释放 executor 让 startPlayback() 可以执行
             }
 
             // ★ 防御：如果 codec 被外部释放（h264Decoder==null）但本地 c 仍引用旧实例，重置
