@@ -102,6 +102,7 @@ public class ChatActivity extends AppCompatActivity {
     // 数字人视频播放相关（AVSyncPlayer 统一管理音画同步）
     private TextureView tvDigitalHuman;
     private AVSyncPlayer avSyncPlayer;
+    private int binaryMsgCount = 0;           // 二进制消息计数器，用于限频日志
     private volatile boolean isAutoFrameRunning = false;
 
     @Override
@@ -695,7 +696,11 @@ public class ChatActivity extends AppCompatActivity {
             public void onMessage(@NonNull WebSocket webSocket, @NonNull ByteString bytes) {
 
                 byte[] payload = bytes.toByteArray();
-                Log.d("BINARY", "收到二进制数据，长度=" + payload.length + "，首字节=" + (payload[0] & 0xFF));
+                binaryMsgCount++;
+                // ★ 高频二进制消息（25fps 视频+音频），每 50 条才打一次日志，避免 logcat I/O 阻塞 WebSocket 线程
+                if (binaryMsgCount % 50 == 1) {
+                    Log.d("BINARY", "收到二进制数据 #" + binaryMsgCount + "，长度=" + payload.length);
+                }
 
                 if (payload.length == 0) return;
 
@@ -706,7 +711,6 @@ public class ChatActivity extends AppCompatActivity {
 
                 // 2. 交给 AVSyncPlayer 处理（内部分拣到 AudioQueue / VideoQueue）
                 if (typeFlag == 0x01) {  // 音频
-                    Log.d("BINARY", " 收到语音包，长度=" + bytes.size());
                     if (avSyncPlayer != null) avSyncPlayer.onAudioData(frameData);
                 } else if (typeFlag == 0x03) {  // H.264 视频
                     if (avSyncPlayer != null) avSyncPlayer.onVideoData(frameData);
