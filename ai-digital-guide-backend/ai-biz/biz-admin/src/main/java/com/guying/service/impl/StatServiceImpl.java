@@ -9,6 +9,7 @@ import com.guying.pojo.vo.SatisfactionTrendVO;
 import com.guying.service.StatService;
 import com.guying.user.dto.UserChatTrendDTO;
 import com.guying.user.dto.UserSatisfactionTrendDTO;
+import com.guying.attractions.service.ReviewInternalService;
 import com.guying.user.service.UserTourHistoryInternalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,8 @@ import java.util.List;
 public class StatServiceImpl implements StatService {
     @Autowired
     private UserTourHistoryInternalService userTourHistoryInternalService;
+    @Autowired
+    private ReviewInternalService reviewInternalService;
     @Autowired
     private StatConverter statConverter;
     @Autowired
@@ -41,7 +44,7 @@ public class StatServiceImpl implements StatService {
 
     @Override
     public SatisfactionTrendVO getSatisfactionTrend(Long attractionId, Integer days) {
-        UserSatisfactionTrendDTO dto = userTourHistoryInternalService.getUserSatisfactionTrend(attractionId, days);
+        UserSatisfactionTrendDTO dto = reviewInternalService.getSatisfactionTrend(attractionId, days);
         return convertToSatisfactionTrendVO(dto);
     }
 

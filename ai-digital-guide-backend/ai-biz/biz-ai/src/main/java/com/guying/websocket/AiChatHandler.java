@@ -6,6 +6,7 @@ import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
+import com.guying.attractions.service.ReviewInternalService;
 import com.guying.user.service.UserInternalService;
 import com.guying.websocket.chat.AiChatService;
 import com.guying.websocket.musetalk.MuseTalkConnector;
@@ -62,6 +63,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
 
     @Autowired
     private UserInternalService userService;
+
+    @Autowired
+    private ReviewInternalService reviewInternalService;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -152,6 +156,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
             return;
         }
+        // 对话结束，自动创建待评价记录
+        reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
         closeQuietly(ctx.getMuseTalkSession(), "MuseTalk", sid);
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);

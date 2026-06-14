@@ -10,7 +10,7 @@ import com.guying.pojo.dto.NegativeSampleDTO;
 import com.guying.pojo.dto.Suggestion;
 import com.guying.pojo.entity.AiExperienceAnalysis;
 import com.guying.service.ExperienceAnalysisService;
-import com.guying.user.service.UserTourHistoryInternalService;
+import com.guying.attractions.service.ReviewInternalService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
@@ -37,7 +37,7 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
     private ExperienceAnalysisMapper analysisMapper;
 
     @Autowired
-    private UserTourHistoryInternalService  userTourHistoryInternalService;
+    private ReviewInternalService reviewInternalService;
 
     @Async
     @Transactional
@@ -79,7 +79,7 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
         EmotionStatDTO emotionStat          = analysisMapper.getEmotionStat(attractionId, days, days * 2);
         List<FocusStatDTO> worstFocusList   = analysisMapper.getWorstFocus(attractionId, days);
         List<NegativeSampleDTO> sampleList = analysisMapper.getNegativeSample(attractionId, days);
-        List<String> feedbackText = userTourHistoryInternalService.getFeedbackText(attractionId, days);
+        List<String> feedbackText = reviewInternalService.getFeedbackText(attractionId, days);
         if (worstFocusList.isEmpty() || emotionStat == null) {
             log.warn("该景点没有数据:{}", attractionId);
             return new Suggestion("暂无数据","暂无数据");

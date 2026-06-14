@@ -355,47 +355,7 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
 
 ---
 
-## 1.10 评价旅游历史
-
-**请求 URL：** `POST /users/tourHistory/evaluate`
-
-**认证方式：** Bearer Token（用户 JWT）
-
-**接口说明：** 用户对某次游览进行评分和文字反馈，更新到对应的游览记录。
-
-**请求体（Body / JSON）：**
-
-`TourEvaluateDTO`：
-
-| 字段         | 类型    | 必填 | 说明                     |
-| ------------ | ------- | ---- | ------------------------ |
-| conversationId | Long  | 是   | 会话ID，对应一次游览记录 |
-| score        | Integer | 否   | 评分，1-5 分             |
-| feedbackText | String  | 否   | 文字反馈                 |
-
-**请求示例：**
-
-```json
-{
-  "conversationId": 123456789,
-  "score": 4,
-  "feedbackText": "不错"
-}
-```
-
-**成功响应示例：**
-
-```json
-{
-  "code": 1,
-  "msg": "success",
-  "data": null
-}
-```
-
----
-
-## 1.11 上传用户头像
+## 1.10 上传用户头像
 
 **请求 URL：** `POST /users/file/avatar`
 
@@ -446,7 +406,7 @@ file: <图片文件>
 
 ---
 
-## 1.12 保存或更新导览偏好
+## 1.11 保存或更新导览偏好
 
 **请求 URL：** `PUT /users/guide-preference`
 
@@ -503,7 +463,7 @@ file: <图片文件>
 
 ---
 
-## 1.13 查询导览偏好
+## 1.12 查询导览偏好
 
 **请求 URL：** `GET /users/guide-preference`
 
@@ -544,6 +504,175 @@ file: <图片文件>
 ```
 
 > 用户未设置过偏好时，`data` 为 `null`
+
+---
+
+## 1.13 获取我的评价列表（游标分页）
+
+**请求 URL：** `GET /users/reviews`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 游标分页获取当前用户的评价列表，支持按状态筛选。AI 对话结束时自动创建"待评价"记录，用户提交后变为"已评价"。
+
+**请求参数（Query）：**
+
+| 参数名   | 类型    | 必填 | 说明                                           |
+| -------- | ------- | ---- | ---------------------------------------------- |
+| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
+| pageSize | Integer | 否   | 每页条数，默认 10                              |
+| status   | Integer | 否   | 筛选状态：不传=全部，0=待评价，1=已评价        |
+
+**请求示例：**
+
+```
+GET /users/reviews?pageSize=10
+GET /users/reviews?status=1&pageSize=10
+GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
+```
+
+**响应参数说明（ScrollResult\<UserReviewVO\>）：**
+
+| 字段                  | 类型           | 说明                                     |
+| --------------------- | -------------- | ---------------------------------------- |
+| list[].id             | String         | 评价记录 ID（雪花ID）                    |
+| list[].attractionId   | String         | 景点 ID                                  |
+| list[].attractionName | String         | 景点名称                                 |
+| list[].coverUrl       | String         | 景点封面图片地址                          |
+| list[].rating         | BigDecimal     | 评分 1.0-5.0，待评价时为 null            |
+| list[].content        | String         | 评价内容，待评价时为 null                |
+| list[].tags           | List\<String\> | 标签列表，如 `["讲解专业","风景不错"]`，待评价时为 null |
+| list[].status         | Integer        | 0=待评价，1=已评价                       |
+| list[].createTime     | String         | 创建时间，格式 `yyyy-MM-ddTHH:mm:ss`     |
+| nextLastId            | String         | 下一页游标，为 null 表示无更多数据        |
+| hasMore               | Boolean        | 是否还有更多数据                          |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "list": [
+      {
+        "id": "90000000000000001",
+        "attractionId": "2046935279750139906",
+        "attractionName": "故宫博物院",
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+        "rating": 4.0,
+        "content": "讲解很专业，体验不错",
+        "tags": ["讲解专业", "风景不错"],
+        "status": 1,
+        "createTime": "2026-05-13T14:54:39"
+      },
+      {
+        "id": "90000000000000002",
+        "attractionId": "2046935279750139907",
+        "attractionName": "颐和园",
+        "coverUrl": "https://oss.example.com/cover/yyy.jpg",
+        "rating": null,
+        "content": null,
+        "tags": null,
+        "status": 0,
+        "createTime": "2026-05-14T10:30:00"
+      }
+    ],
+    "nextLastId": "90000000000000002",
+    "hasMore": true
+  },
+  "msg": "success"
+}
+```
+
+> `hasMore` 为 `false` 时，展示"没有更多了"并停止触发加载
+
+---
+
+## 1.14 提交评价
+
+**请求 URL：** `POST /users/reviews/submit`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 将"待评价"记录提交为"已评价"，补充评分、内容和标签。需先通过 1.13 获取待评价记录的 `id`。
+
+**请求体（Body / JSON）：**
+
+| 字段     | 类型           | 必填 | 说明                                 |
+| -------- | -------------- | ---- | ------------------------------------ |
+| reviewId | Long           | 是   | 评价记录 ID（来自 1.13 返回的 id）   |
+| rating   | BigDecimal     | 是   | 评分，1.0-5.0，支持 0.5 步进        |
+| content  | String         | 是   | 评价内容，不超过 500 字              |
+| tags     | List\<String\> | 否   | 标签列表，最多 5 个                  |
+
+**请求示例：**
+
+```json
+{
+  "reviewId": 90000000000000002,
+  "rating": 4.5,
+  "content": "风景优美，AI 导游讲解非常详细，推荐！",
+  "tags": ["讲解专业", "风景不错", "值得推荐"]
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 500,
+  "msg": "该评价已提交，请勿重复提交",
+  "data": null
+}
+```
+
+---
+
+## 1.15 删除评价
+
+**请求 URL：** `DELETE /users/reviews/{reviewId}`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 删除一条评价记录（逻辑删除）。已评价和待评价均可删除。
+
+**请求参数（路径参数）：**
+
+| 参数名   | 类型   | 必填 | 说明         |
+| -------- | ------ | ---- | ------------ |
+| reviewId | String | 是   | 评价记录 ID  |
+
+**请求示例：** `DELETE /users/reviews/90000000000000001`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 500,
+  "msg": "评价记录不存在",
+  "data": null
+}
+```
 
 ---
 
@@ -1374,7 +1503,7 @@ POST /admins/attractions/digital-human/test-video/2044359968888639490
 
 **认证方式：** Bearer Token（管理员 JWT）
 
-**接口说明：** 获取指定景点近N天的用户满意度趋势，返回每日均分和总均分，用于折线图展示。
+**接口说明：** 获取指定景点近N天的用户满意度趋势，返回每日均分和总均分，用于折线图展示。数据来源为用户评价表（`tb_user_review`），仅统计已评价（status=1）的记录。
 
 **请求参数：**
 
