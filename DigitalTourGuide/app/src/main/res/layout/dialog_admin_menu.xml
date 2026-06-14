@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="280dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_rounded"
+    android:orientation="vertical">
+
+    <!-- Header：头像 + 管理员名称 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="16dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:src="@drawable/ic_person_filled"
+            android:contentDescription="@null"
+            android:background="@drawable/bg_circle_avatar"
+            android:scaleType="centerCrop"
+            android:padding="14dp"
+            android:backgroundTint="#E8EAF6" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="管理员：admin001"
+            android:textColor="#333333"
+            android:textSize="17sp"
+            android:textStyle="normal" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E5E5E5" />
+
+    <!-- 管理模式 -->
+    <LinearLayout
+        android:id="@+id/menu_management_mode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="16dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_assignment"
+            android:contentDescription="@null"
+            android:layout_marginEnd="16dp"
+            app:tint="#3C415C" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="管理模式"
+            android:textColor="#333333"
+            android:textSize="17sp"
+            android:textStyle="normal" />
+    </LinearLayout>
+
+    <!-- 管理信息 -->
+    <LinearLayout
+        android:id="@+id/menu_management_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="16dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_info"
+            android:contentDescription="@null"
+            android:layout_marginEnd="16dp"
+            app:tint="#3C415C" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="管理信息"
+            android:textColor="#333333"
+            android:textSize="17sp"
+            android:textStyle="normal" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E5E5E5" />
+
+    <!-- 退出登录 -->
+    <LinearLayout
+        android:id="@+id/menu_logout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_logout"
+            android:contentDescription="@null"
+            android:layout_marginEnd="16dp"
+            app:tint="#FF4D4F" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="退出登录"
+            android:textColor="#FF4D4F"
+            android:textSize="17sp"
+            android:textStyle="normal" />
+    </LinearLayout>
+
+</LinearLayout>
