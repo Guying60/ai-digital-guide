@@ -154,16 +154,16 @@ public class CosyVoiceConnector {
             byte[] payload = message.getPayload().array();
             if (payload.length < AUDIO_HEADER_LEN) return;
 
-            // 解析 sentence_id（来自音频帧头部，与前端协议一致）
-            int sentenceId = ((payload[0] & 0xFF) << 8) | (payload[1] & 0xFF);
+            // 解析 sentence_id（来自音频帧头部，payload 格式: [0x01][sentenceId:2B][ptsMs:4B][PCM...]）
+            int sentenceId = ((payload[1] & 0xFF) << 8) | (payload[2] & 0xFF);
             currentSentenceId = sentenceId;  // 记录当前句子 ID，供 chunk_end 使用
 
             // 1) 即时流式发送音频帧给前端（不做批量缓冲）
-            // CosyVoice 原始格式：[sentenceId:2B][ptsMs:4B][0x01][PCM...]  (7 字节头)
+            // CosyVoice 原始格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]  (7 字节头)
             // Android 协议格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]    (总长不变，仅重组头)
             byte[] androidFrame = new byte[payload.length];                 // 总长相同
             androidFrame[0] = 0x01;                                          // type 前缀
-            System.arraycopy(payload, 0, androidFrame, 1, 6);               // sentenceId(2B) + pts(4B)
+            System.arraycopy(payload, 1, androidFrame, 1, 6);               // sentenceId(2B) + pts(4B)，跳过 CosyVoice 的 type byte
             System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,     // PCM
                     payload.length - AUDIO_HEADER_LEN);
             sender.send(ctx, new BinaryMessage(androidFrame));
