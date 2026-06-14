@@ -101,7 +101,10 @@ public class MuseTalkConnector {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
                     log.info("[Python WS] 句子完毕 sentence_id={}", sentenceId);
 
-                    // 直接转发 done 消息给前端（帧已在 handleBinaryMessage 中流式发送）
+                    // 推进全局 PTS 偏移（该句所有视频帧已发送完毕）
+                    ctx.getPtsTracker().advanceOnDone();
+
+                    // 转发 done 消息给前端（前端可用于 UI 状态更新，不再用于 PTS 偏移）
                     ObjectNode doneMsg = objectMapper.createObjectNode();
                     doneMsg.put("type", "done");
                     doneMsg.put("sentence_id", sentenceId);
@@ -121,6 +124,15 @@ public class MuseTalkConnector {
 
             // 解析 sentence_id
             int sentenceId = ((raw[0] & 0xFF) << 8) | (raw[1] & 0xFF);
+
+            // 解析本地 PTS，转换为全局 PTS 并写回
+            int localPtsMs = ((raw[2] & 0xFF) << 24) | ((raw[3] & 0xFF) << 16)
+                    | ((raw[4] & 0xFF) << 8) | (raw[5] & 0xFF);
+            int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
+            raw[2] = (byte) (globalPtsMs >> 24);
+            raw[3] = (byte) (globalPtsMs >> 16);
+            raw[4] = (byte) (globalPtsMs >> 8);
+            raw[5] = (byte) globalPtsMs;
 
             // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];

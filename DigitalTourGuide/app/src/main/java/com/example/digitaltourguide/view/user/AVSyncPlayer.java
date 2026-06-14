@@ -34,7 +34,7 @@ public class AVSyncPlayer {
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     // MuseTalk server: 25fps → 40ms per frame
     private static final long FRAME_INTERVAL_MS = 40;
-    private static final int VIDEO_BUFFER_THRESHOLD = 75;  // 视频缓冲 3 秒（25fps）吸收后端批量发送间隙
+    private static final int VIDEO_BUFFER_THRESHOLD = 18;  // 视频缓冲 3 秒（25fps）吸收后端批量发送间隙
 
     // Data format (type byte already stripped by ChatActivity):
     // Audio: [sentenceId:2B][ptsMs:4B][PCM:N]  → header = 6 bytes
@@ -64,6 +64,7 @@ public class AVSyncPlayer {
     private long lastAudioRecvTime = 0;
     private int videoRecvCount = 0;
     private int audioRecvCount = 0;
+    private long audioRecvTotalBytes = 0;   // 累计收到的音频 PCM 字节数（不含 header），用于诊断突发到达
 
     // ---- 跨线程同步诊断字段（日志分析音画不同步） ----
     private volatile long diagAudioPtsMs = 0;
@@ -74,10 +75,6 @@ public class AVSyncPlayer {
     private volatile long diagVideoFeedWallMs = 0;
     private volatile long diagVideoRenderPtsMs = 0;
     private volatile long diagVideoRenderWallMs = 0;
-
-    // Global PTS offset: accumulated duration of all completed sentences (ms)
-    private volatile long ptsOffsetMs = 0;
-    private volatile long lastSentenceEndPtsMs = 0;
 
     private final ExecutorService decoderExecutor = Executors.newSingleThreadExecutor();
     private volatile Thread audioThread;  // 用于安全停止音频线程
@@ -173,10 +170,16 @@ public class AVSyncPlayer {
             long interval = lastAudioRecvTime == 0 ? 0 : now - lastAudioRecvTime;
             lastAudioRecvTime = now;
             audioRecvCount++;
-            if (interval > 100 || audioRecvCount % 50 == 0) {
+            int pcmLen = frameData.length - AUDIO_HDR;
+            audioRecvTotalBytes += pcmLen;
+            long recvDurationMs = audioRecvTotalBytes * 1000L / (AUDIO_SAMPLE_RATE * 2); // 16-bit mono
+            // ★ 每个音频包都打日志，观察突发到达模式
+            if (interval > 50 || audioRecvCount <= 20 || audioRecvCount % 20 == 0) {
                 long ptsMs = ((long)(frameData[2]&0xFF)<<24) | ((long)(frameData[3]&0xFF)<<16)
                            | ((long)(frameData[4]&0xFF)<<8) | (frameData[5]&0xFF);
-                Log.w(TAG, "onAudioData: interval=" + interval + "ms pts=" + ptsMs + " queueSize=" + audioQueue.size() + " total=" + audioRecvCount);
+                Log.w(TAG, "onAudioData: interval=" + interval + "ms pts=" + ptsMs
+                        + " pcmLen=" + pcmLen + " q=" + audioQueue.size()
+                        + " total=" + audioRecvCount + " recvDur=" + recvDurationMs + "ms");
             }
         }
     }
@@ -229,8 +232,6 @@ public class AVSyncPlayer {
         // ★ generation++ 已足够让旧线程退出循环，不再 join 等待阻塞调用线程
         // startPlayback() 会处理残余线程的清理
         releaseDecoder();
-        ptsOffsetMs = 0;
-        lastSentenceEndPtsMs = 0;
         playbackStarted = false;  // 允许下次对话重新启动播放
         videoRecvCount = 0;
         audioRecvCount = 0;
@@ -245,17 +246,15 @@ public class AVSyncPlayer {
         diagVideoFeedWallMs = 0;
         diagVideoRenderPtsMs = 0;
         diagVideoRenderWallMs = 0;
+        audioRecvTotalBytes = 0;
     }
 
     /**
-     * Update PTS offset when a sentence is done.
-     * 播放启动由 onVideoData 负责（收到第一帧视频时触发），
-     * 此处仅更新 PTS 偏移，不触发播放。
+     * Sentence done notification from backend.
+     * PTS 全局化已由后端完成，此处仅记录日志，不再维护偏移量。
      */
     public void onSentenceDone(int sentenceId) {
-        ptsOffsetMs += lastSentenceEndPtsMs + FRAME_INTERVAL_MS;
-        lastSentenceEndPtsMs = 0;
-        if (LOG) Log.i(TAG, "onSentenceDone: sid=" + sentenceId + " ptsOffset=" + ptsOffsetMs
+        if (LOG) Log.i(TAG, "onSentenceDone: sid=" + sentenceId
                 + " audioQueueSize=" + audioQueue.size() + " videoQueueSize=" + videoQueue.size()
                 + " playbackStarted=" + playbackStarted);
     }
@@ -270,8 +269,6 @@ public class AVSyncPlayer {
         try { audioTrack.flush(); } catch (Exception ignored) {}
         // ★ generation++ 已足够让旧线程退出循环，不再 join 等待阻塞调用线程
         releaseDecoder();
-        ptsOffsetMs = 0;
-        lastSentenceEndPtsMs = 0;
         playbackStarted = false;
         videoRecvCount = 0;
         audioRecvCount = 0;
@@ -286,6 +283,7 @@ public class AVSyncPlayer {
         diagVideoFeedWallMs = 0;
         diagVideoRenderPtsMs = 0;
         diagVideoRenderWallMs = 0;
+        audioRecvTotalBytes = 0;
     }
 
     public void release() {
@@ -385,10 +383,19 @@ public class AVSyncPlayer {
                     if (LOG) Log.w(TAG, "audioPlayLoop: odd PCM length=" + pcm.length + ", skip");
                     continue;
                 }
-                // 解析音频 PTS（用于同步诊断）
+                // 解析音频 PTS（后端已全局化，直接使用）
                 long audioPtsMs = ((long)(pkt[2]&0xFF)<<24) | ((long)(pkt[3]&0xFF)<<16)
                                 | ((long)(pkt[4]&0xFF)<<8) | (pkt[5]&0xFF);
-                long audioGlobalPtsMs = audioPtsMs + ptsOffsetMs;
+                long audioGlobalPtsMs = audioPtsMs;
+
+                // ★ 写入前诊断：记录 AudioTrack 缓冲深度，判断是否因缓冲区满而阻塞
+                long preHeadPos = audioTrack.getPlaybackHeadPosition();
+                long preExpectedMs = audioTotalSamples * 1000 / AUDIO_SAMPLE_RATE;
+                long prePlayedMs = preHeadPos * 1000 / AUDIO_SAMPLE_RATE;
+                long preBufferedMs = preExpectedMs - prePlayedMs;
+                int preQ = audioQueue.size();
+                long pcmDurationMs = pcm.length * 1000L / (AUDIO_SAMPLE_RATE * 2);
+
                 long tWrite = System.currentTimeMillis();
                 try {
                     int written = audioTrack.write(pcm, 0, pcm.length);
@@ -401,17 +408,19 @@ public class AVSyncPlayer {
                     diagAudioGlobalPtsMs = audioGlobalPtsMs;
                     diagAudioWallMs = System.currentTimeMillis();
 
-                    if (LOG && (writeCost > 20 || audioWriteCount % 50 == 0)) {
-                        long headPos = audioTrack.getPlaybackHeadPosition();
-                        long playedMs = headPos * 1000 / AUDIO_SAMPLE_RATE;
-                        long expectedMs = audioTotalSamples * 1000 / AUDIO_SAMPLE_RATE;
-                        long bufferedMs = expectedMs - playedMs;
+                    // ★ 降低日志阈值：writeCost > 5ms 或前 50 帧 或每 20 帧打印，观察缓冲堆积
+                    if (LOG && (writeCost > 5 || audioWriteCount <= 50 || audioWriteCount % 20 == 0)) {
+                        long postHeadPos = audioTrack.getPlaybackHeadPosition();
+                        long postPlayedMs = postHeadPos * 1000 / AUDIO_SAMPLE_RATE;
+                        long postExpectedMs = audioTotalSamples * 1000 / AUDIO_SAMPLE_RATE;
+                        long postBufferedMs = postExpectedMs - postPlayedMs;
                         long wallElapsed = System.currentTimeMillis() - audioStartWallMs;
-                        Log.w(TAG, "♫ AUDIO: pts=" + audioPtsMs + " globalPts=" + audioGlobalPtsMs
-                            + " headPos=" + headPos + " played=" + playedMs + "ms"
-                            + " expected=" + expectedMs + "ms buf=" + bufferedMs + "ms"
-                            + " wallElapsed=" + wallElapsed + "ms"
-                            + " q=" + audioQueue.size() + " cost=" + writeCost + "ms"
+                        Log.w(TAG, "♫ AUDIO: pts=" + audioPtsMs
+                            + " pcmDur=" + pcmDurationMs + "ms"
+                            + " preBuf=" + preBufferedMs + "ms→postBuf=" + postBufferedMs + "ms"
+                            + " q=" + preQ + "→" + audioQueue.size()
+                            + " cost=" + writeCost + "ms"
+                            + " wall=" + wallElapsed + "ms"
                             + " #" + audioWriteCount);
                     }
                 } catch (IllegalStateException e) {
@@ -512,7 +521,9 @@ public class AVSyncPlayer {
                 spsPpsLen[1] = pps.length;
                 if (LOG) Log.i(TAG, "Codec created: " + c.getCodecInfo().getName() + " SPS=" + sps.length + " PPS=" + pps.length);
 
-                // Feed the first keyframe
+                // Feed the first keyframe（PTS 已由后端全局化）
+                long firstPtsMs = ((long) (pkt[2] & 0xFF) << 24) | ((long) (pkt[3] & 0xFF) << 16)
+                        | ((long) (pkt[4] & 0xFF) << 8) | (pkt[5] & 0xFF);
                 long tFirstFeed = System.currentTimeMillis();
                 int inIdx = c.dequeueInputBuffer(50_000);
                 long firstDequeueCost = System.currentTimeMillis() - tFirstFeed;
@@ -521,7 +532,7 @@ public class AVSyncPlayer {
                     if (inBuf != null) {
                         inBuf.clear();
                         inBuf.put(avData);
-                        c.queueInputBuffer(inIdx, 0, avData.length, 0,
+                        c.queueInputBuffer(inIdx, 0, avData.length, firstPtsMs * 1000,
                                 MediaCodec.BUFFER_FLAG_KEY_FRAME);
                     }
                     if (LOG) Log.i(TAG, "videoFeedLoop: first keyframe fed, dequeueIn=" + firstDequeueCost + "ms size=" + avData.length);
@@ -581,7 +592,6 @@ public class AVSyncPlayer {
                             + " (age=" + videoRenderAge + "ms) vQ=" + videoQueue.size());
                         Log.w(TAG, "║ Δ(audioGlobal-videoFeedGlobal)=" + (aGlobal - vFeedGlobal) + "ms"
                             + " Δ(audioGlobal-videoRender)=" + (aGlobal - vRenderPts) + "ms");
-                        Log.w(TAG, "║ ptsOffset=" + ptsOffsetMs + " lastSentEnd=" + lastSentenceEndPtsMs);
                         Log.w(TAG, "╚══════════════════════════════════╝");
                     }
                 }
@@ -629,14 +639,9 @@ public class AVSyncPlayer {
                 }
             }
 
-            // Track max PTS per sentence
-            if (ptsMs > lastSentenceEndPtsMs) {
-                lastSentenceEndPtsMs = ptsMs;
-            }
-
-            // Apply global PTS offset
-            long globalPtsUs = (ptsMs + ptsOffsetMs) * 1000;
-            long videoGlobalPtsMs = ptsMs + ptsOffsetMs;  // 同步诊断用
+            // PTS 已由后端全局化，直接使用
+            long globalPtsUs = ptsMs * 1000;
+            long videoGlobalPtsMs = ptsMs;  // 同步诊断用
             int flags = keyFrame ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
             long tDequeueInStart = System.currentTimeMillis();
             int inIdx = c.dequeueInputBuffer(1_000);

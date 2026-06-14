@@ -158,13 +158,25 @@ public class CosyVoiceConnector {
             int sentenceId = ((payload[1] & 0xFF) << 8) | (payload[2] & 0xFF);
             currentSentenceId = sentenceId;  // 记录当前句子 ID，供 chunk_end 使用
 
+            // 解析本地 PTS，转换为全局 PTS
+            int localPtsMs = ((payload[3] & 0xFF) << 24) | ((payload[4] & 0xFF) << 16)
+                    | ((payload[5] & 0xFF) << 8) | (payload[6] & 0xFF);
+            int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
+
             // 1) 即时流式发送音频帧给前端（不做批量缓冲）
-            // CosyVoice 原始格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]  (7 字节头)
-            // Android 协议格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]    (总长不变，仅重组头)
-            byte[] androidFrame = new byte[payload.length];                 // 总长相同
-            androidFrame[0] = 0x01;                                          // type 前缀
-            System.arraycopy(payload, 1, androidFrame, 1, 6);               // sentenceId(2B) + pts(4B)，跳过 CosyVoice 的 type byte
-            System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,     // PCM
+            // Android 协议格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]
+            byte[] androidFrame = new byte[payload.length];
+            androidFrame[0] = 0x01;
+            // sentenceId(2B)
+            androidFrame[1] = payload[1];
+            androidFrame[2] = payload[2];
+            // 全局 PTS(4B)
+            androidFrame[3] = (byte) (globalPtsMs >> 24);
+            androidFrame[4] = (byte) (globalPtsMs >> 16);
+            androidFrame[5] = (byte) (globalPtsMs >> 8);
+            androidFrame[6] = (byte) globalPtsMs;
+            // PCM
+            System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,
                     payload.length - AUDIO_HEADER_LEN);
             sender.send(ctx, new BinaryMessage(androidFrame));
 
