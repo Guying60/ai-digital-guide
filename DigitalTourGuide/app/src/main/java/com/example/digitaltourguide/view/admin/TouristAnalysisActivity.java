@@ -1,6 +1,7 @@
 package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.BaseResponse;
@@ -59,7 +61,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
     private TextView tvTopFocus;           // 显示 餐饮/票务 的位置
     private TextView tvTopFocusRate;       // 显示 占所有问题71% 的位置
     private TextView tvWorstFocus;         // 显示 停车/导览 的位置
-    private LinearLayout llSuggestion;
+    private CardView llSuggestion;
     private TextView tvSummary, tvSuggestion, tvScenicText, tvDataText;
     private Button btnScrollToSuggestion;
     private ScrollView scrollView;
@@ -367,14 +369,27 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         if (totalNegative > 0) entries.add(new PieEntry((float) totalNegative, "负面"));
 
         PieDataSet dataSet = new PieDataSet(entries, "");
-        dataSet.setColors(ColorTemplate.COLORFUL_COLORS);
+        // 自定义紫色系配色
+        int[] purpleColors = new int[]{
+                Color.parseColor("#7C3AED"),  // 正面 - 紫色
+                Color.parseColor("#A78BFA"),  // 中性 - 浅紫
+                Color.parseColor("#FCA5A5"),  // 负面 - 浅红
+        };
+        dataSet.setColors(purpleColors);
         dataSet.setValueTextSize(12f);
+        dataSet.setValueTextColor(Color.parseColor("#1F2937"));
         dataSet.setValueLinePart1Length(0.4f);
         dataSet.setValueLinePart2Length(0.4f);
         dataSet.setUsingSliceColorAsValueLineColor(true);
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(8f);
 
         PieData pieData = new PieData(dataSet);
+        pieData.setValueFormatter(new com.github.mikephil.charting.formatter.PercentFormatter(pieChart));
         pieChart.setData(pieData);
+        pieChart.setDrawEntryLabels(true);
+        pieChart.setEntryLabelColor(Color.parseColor("#1F2937"));
+        pieChart.setEntryLabelTextSize(11f);
         pieChart.invalidate();
     }
 
@@ -426,6 +441,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         tvSuggestion = findViewById(R.id.tv_suggestion);
         btnScrollToSuggestion = findViewById(R.id.btn_scroll_to_suggestion);
         scrollView = findViewById(R.id.scrollView);
+        tabDataAnalysis = findViewById(R.id.tab_data_analysis);
         ivScenicIcon = findViewById(R.id.iv_icon_scenic);   // 需要给 ImageView 添加 id
         ivDataIcon = tabDataAnalysis.findViewById(R.id.iv_icon_data);
         tvScenicText = findViewById(R.id.tv_text_scenic);   // 给 TextView 添加 id

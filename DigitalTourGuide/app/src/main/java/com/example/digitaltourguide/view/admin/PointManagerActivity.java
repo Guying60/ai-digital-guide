@@ -13,6 +13,10 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import android.app.Dialog;
+import android.view.Gravity;
+import android.view.Window;
+import android.view.WindowManager;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -232,6 +236,9 @@ public class PointManagerActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
+        // 设置图标 → 弹出管理菜单
+        findViewById(R.id.iv_settings).setOnClickListener(v -> showAdminMenuDialog());
+
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
             search();
             return true;
@@ -346,6 +353,43 @@ public class PointManagerActivity extends AppCompatActivity {
                         Toast.makeText(PointManagerActivity.this, "网络异常：" + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    /**
+     * 显示管理菜单弹窗（管理模式、管理信息、退出登录）
+     */
+    private void showAdminMenuDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_admin_menu);
+
+        // 管理模式
+        dialog.findViewById(R.id.menu_management_mode).setOnClickListener(v -> {
+            Toast.makeText(this, "管理模式", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        // 管理信息
+        dialog.findViewById(R.id.menu_management_info).setOnClickListener(v -> {
+            Toast.makeText(this, "管理信息", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        // 退出登录
+        dialog.findViewById(R.id.menu_logout).setOnClickListener(v -> {
+            dialog.dismiss();
+            startActivity(new Intent(PointManagerActivity.this, AdminLoginActivity.class));
+            finishAffinity();  // 清除所有 Activity 栈
+        });
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        dialog.show();
     }
 
     private void initViews() {

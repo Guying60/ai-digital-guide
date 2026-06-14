@@ -85,6 +85,10 @@ public class ProfileInfoActivity extends AppCompatActivity {
 
     private void initListener() {
 
+        // 返回按钮 → 回到上一个页面
+        ((com.google.android.material.appbar.MaterialToolbar) findViewById(R.id.topAppBar))
+                .setNavigationOnClickListener(v -> finish());
+
         // 退出登录
         btnOutLogin.setOnClickListener(v -> {
             startActivity(new Intent(this, UserLoginActivity.class));
@@ -105,9 +109,7 @@ public class ProfileInfoActivity extends AppCompatActivity {
         );
 
         // 导游偏好 → 跳转到 MyPerActivity
-        findViewById(R.id.card_preferences).setOnClickListener(v ->
-                startActivity(new Intent(ProfileInfoActivity.this, MyPerActivity.class))
-        );
+        // ProfileInfoActivity 是编辑资料页，不需要偏好导航入口
     }
 
     // ===================== 以下方法保持不变 =====================

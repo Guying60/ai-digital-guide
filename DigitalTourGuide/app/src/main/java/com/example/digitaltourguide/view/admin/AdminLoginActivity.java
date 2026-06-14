@@ -157,7 +157,7 @@ public class AdminLoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.et_password);
         btnLogin = findViewById(R.id.btn_login);
         btnRegister = findViewById(R.id.tv_register);
-        tvUserLogin=findViewById(R.id.btn_login);
+        tvUserLogin=findViewById(R.id.tv_user_login);
         ivPwdVisibility = findViewById(R.id.iv_pwd_visibility);
         ivPwdVisibility.setOnClickListener(new View.OnClickListener() {
             @Override

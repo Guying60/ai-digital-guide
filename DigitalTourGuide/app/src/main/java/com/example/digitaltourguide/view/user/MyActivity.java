@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -29,6 +30,7 @@ public class MyActivity extends AppCompatActivity {
     private ApiService apiService;
     private ImageView ivAvatar;
     private TextView tvNickname, tvUserId;
+    private LinearLayout tvHistory;
     private Chip chipGender;
 
     @Override
@@ -48,6 +50,7 @@ public class MyActivity extends AppCompatActivity {
         tvNickname = findViewById(R.id.tv_nickname);
         tvUserId = findViewById(R.id.tv_user_id);
         chipGender = findViewById(R.id.chip_gender);
+        tvHistory = findViewById(R.id.tv_history);
     }
 
     private void initClickListeners() {
@@ -66,23 +69,8 @@ public class MyActivity extends AppCompatActivity {
                 startActivity(new Intent(this, MyPerActivity.class))
         );
 
-        // 退出登录 → 确认弹窗 → UserLoginActivity
-        findViewById(R.id.btnSignOut).setOnClickListener(v ->
-                new AlertDialog.Builder(this)
-                        .setTitle("退出登录")
-                        .setMessage("确定要退出登录吗？")
-                        .setPositiveButton("确认退出", (dialog, which) -> {
-                            // 清除本地 Token
-                            SpUtils.saveUserToken(this, "");
-                            SpUtils.saveUserId(this, "");
-                            // 跳转登录页
-                            Intent intent = new Intent(this, UserLoginActivity.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            startActivity(intent);
-                            finish();
-                        })
-                        .setNegativeButton("取消", null)
-                        .show()
+        tvHistory.setOnClickListener(v->
+            startActivity(new Intent(this, HistoryActivity.class))
         );
     }
 
@@ -130,13 +118,27 @@ public class MyActivity extends AppCompatActivity {
 
         // 性别
         if (data.getGender() != null) {
+            chipGender.setVisibility(android.view.View.VISIBLE);
             String genderStr;
             switch (data.getGender()) {
-                case 0:  genderStr = "♀ 女"; break;
-                case 1:  genderStr = "♂ 男"; break;
-                default: genderStr = "⚥ 未知"; break;
+                case 0:
+                    genderStr = "♀ 女";
+                    chipGender.setChipBackgroundColorResource(R.color.profile_female_pink);
+                    chipGender.setTextColor(getColor(R.color.profile_on_female_pink));
+                    break;
+                case 1:
+                    genderStr = "♂ 男";
+                    chipGender.setChipBackgroundColorResource(R.color.profile_primary_container);
+                    chipGender.setTextColor(getColor(R.color.profile_on_primary_container));
+                    break;
+                default:
+                    genderStr = "⚥ 未知";
+                    chipGender.setVisibility(android.view.View.GONE);
+                    break;
             }
             chipGender.setText(genderStr);
+        } else {
+            chipGender.setVisibility(android.view.View.GONE);
         }
 
         // 账号 ID（从 SpUtils 读取）
