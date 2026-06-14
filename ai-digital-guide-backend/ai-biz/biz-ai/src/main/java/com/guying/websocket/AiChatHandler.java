@@ -172,6 +172,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("用户主动打断 sid={}", ctx.getSid());
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
+        ctx.getPtsTracker().onInterrupt();
         ExecutorService old = ctx.getTtsExecutor();
         if (old != null && !old.isShutdown()) {
             old.shutdownNow();
