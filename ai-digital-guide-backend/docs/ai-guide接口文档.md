@@ -121,13 +121,12 @@
 
 **响应参数说明：**
 
-| 参数名      | 类型    | 说明                     |
-| ----------- | ------- | ------------------------ |
-| nickname    | String  | 昵称（可能为 null）      |
-| userSetting | String  | 用户设定（可能为 null）  |
-| gender      | Integer | 0:女；1:男；2:未知       |
-| age         | Integer | 年龄（可能为 null）      |
-| avatarUrl   | String  | 头像地址（可能为 null）  |
+| 参数名    | 类型    | 说明                    |
+| --------- | ------- | ----------------------- |
+| nickname  | String  | 昵称（可能为 null）     |
+| gender    | Integer | 0:女；1:男；2:未知      |
+| age       | Integer | 年龄（可能为 null）     |
+| avatarUrl | String  | 头像地址（可能为 null） |
 
 > 以上参数均可能为 null，渲染前请做判空处理
 
@@ -138,7 +137,6 @@
   "code": 1,
   "data": {
     "nickname": "小明",
-    "userSetting": "我是一个旅行爱好者",
     "gender": 1,
     "age": 25,
     "avatarUrl": "https://oss.example.com/avatar/2026/05/21/xxx.jpg"
@@ -155,13 +153,12 @@
 
 **请求参数（Body / JSON）：**
 
-| 参数名      | 类型    | 必填 | 说明                              |
-| ----------- | ------- | ---- | --------------------------------- |
-| nickname    | String  | 否   | 昵称，1-20 个字符                 |
-| userSetting | String  | 否   | 用户设定，不超过 100 个字符       |
-| gender      | Integer | 否   | 0:女；1:男；2:未知                |
-| age         | Integer | 否   | 0 到 120                          |
-| avatarUrl   | String  | 否   | 头像地址，通过 1.11 上传后获取    |
+| 参数名    | 类型    | 必填 | 说明                           |
+| --------- | ------- | ---- | ------------------------------ |
+| nickname  | String  | 否   | 昵称，1-20 个字符              |
+| gender    | Integer | 否   | 0:女；1:男；2:未知             |
+| age       | Integer | 否   | 0 到 120                       |
+| avatarUrl | String  | 否   | 头像地址，通过 1.11 上传后获取 |
 
 **成功响应示例：**
 
@@ -446,6 +443,107 @@ file: <图片文件>
 ```
 
 > 上传成功后，将 `data` 中的 URL 保存并用于头像展示；上传失败时可直接将 `msg` 弹窗提示用户
+
+---
+
+## 1.12 保存或更新导览偏好
+
+**请求 URL：** `PUT /users/guide-preference`
+
+**请求参数（Body / JSON）：**
+
+| 参数名             | 类型    | 必填 | 说明                                                               |
+| ------------------ | ------- | ---- | ------------------------------------------------------------------ |
+| guideStyle         | Integer | 否   | 讲解风格：1-专业讲解 2-故事化讲解 3-轻松幽默 4-儿童模式            |
+| guideDepth         | Integer | 否   | 讲解深度：1-快速浏览 2-标准讲解 3-深度文化                         |
+| interests          | String  | 否   | 兴趣偏好，逗号分隔枚举名，如 `HISTORY_CULTURE,ARCHITECTURE_ART`    |
+| travelPurpose      | Integer | 否   | 出游目的：1-学习探索 2-亲子出游 3-拍照打卡 4-休闲放松              |
+| specialRequirements| String  | 否   | 特殊需求，不超过 100 个字符                                        |
+
+**interests 可选值：**
+
+| 枚举名               | 中文     |
+| -------------------- | -------- |
+| HISTORY_CULTURE      | 历史文化 |
+| ARCHITECTURE_ART     | 建筑艺术 |
+| ROYAL_STORIES        | 皇家故事 |
+| HERITAGE_COLLECTION  | 文物收藏 |
+| NATURE_ECOLOGY       | 自然生态 |
+| PHOTOGRAPHY          | 摄影打卡 |
+| MYTHS_LEGENDS        | 神话传说 |
+| FOLK_CULTURE         | 民俗风情 |
+| FOOD_CULTURE         | 美食文化 |
+| INTANGIBLE_HERITAGE  | 非遗文化 |
+
+> 多选用逗号分隔，如 `"HISTORY_CULTURE,ARCHITECTURE_ART,PHOTOGRAPHY"`
+
+**请求示例：**
+
+```json
+{
+  "guideStyle": 2,
+  "guideDepth": 3,
+  "interests": "HISTORY_CULTURE,ARCHITECTURE_ART",
+  "travelPurpose": 1,
+  "specialRequirements": "我对宋代历史特别感兴趣"
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+> 不存在则新增，已存在则更新（按 userId 去重）
+
+---
+
+## 1.13 查询导览偏好
+
+**请求 URL：** `GET /users/guide-preference`
+
+**请求参数：** 无
+
+**响应参数说明：**
+
+| 参数名             | 类型    | 说明                                     |
+| ------------------ | ------- | ---------------------------------------- |
+| id                 | String  | 记录 ID                                  |
+| guideStyle         | Integer | 讲解风格 code                            |
+| guideStyleName     | String  | 讲解风格中文名                           |
+| guideDepth         | Integer | 讲解深度 code                            |
+| guideDepthName     | String  | 讲解深度中文名                           |
+| interests          | String  | 兴趣偏好，逗号分隔枚举名                 |
+| travelPurpose      | Integer | 出游目的 code                            |
+| travelPurposeName  | String  | 出游目的中文名                           |
+| specialRequirements| String  | 特殊需求                                 |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639999",
+    "guideStyle": 2,
+    "guideStyleName": "故事化讲解",
+    "guideDepth": 3,
+    "guideDepthName": "深度文化",
+    "interests": "HISTORY_CULTURE,ARCHITECTURE_ART",
+    "travelPurpose": 1,
+    "travelPurposeName": "学习探索",
+    "specialRequirements": "我对宋代历史特别感兴趣"
+  },
+  "msg": "success"
+}
+```
+
+> 用户未设置过偏好时，`data` 为 `null`
 
 ---
 
