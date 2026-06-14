@@ -6,6 +6,7 @@ import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
+import com.guying.attractions.service.ReviewInternalService;
 import com.guying.user.service.UserInternalService;
 import com.guying.websocket.chat.AiChatService;
 import com.guying.websocket.musetalk.MuseTalkConnector;
@@ -32,7 +33,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static com.guying.common.constants.RedisConstants.USER_CONVERSATION_KEY;
-import static com.guying.common.constants.RedisConstants.USER_INFO_KEY;
 
 /**
  * AI 讲解员 WebSocket 入口：仅做事件分发与会话生命周期管理，
@@ -65,6 +65,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     private UserInternalService userService;
 
     @Autowired
+    private ReviewInternalService reviewInternalService;
+
+    @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
@@ -80,16 +83,16 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
 
         try {
+            // executor 必须最先初始化，保证后续 emitSentence 总能提交 TTS 任务
+            ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
             cacheConversationAndUserInfo(ctx);
             publishUserTourHistory(ctx);
             museTalkConnector.connect(ctx);
             cosyVoiceConnector.connect(ctx);
-            ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
         } catch (Exception e) {
             log.error("会话初始化失败 sid={}", ctx.getSid(), e);
             throw new ServiceException("会话初始化失败");
         }
-        sender.startVideoDrain(ctx);
         log.info("所有初始化完成 sid={}", ctx.getSid());
         sender.sendJson(ctx, "allDone", null);
     }
@@ -148,26 +151,22 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     }
 
     public void cleanup(String sid) {
-        sender.stopVideoDrain(sid);
         ChatSessionContext ctx = registry.remove(sid);
         if (ctx == null) {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
             return;
         }
+        // 对话结束，自动创建待评价记录
+        reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
         closeQuietly(ctx.getMuseTalkSession(), "MuseTalk", sid);
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);
         log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
     }
 
-    /** micOff 与 cleanup 共用：停掉 NLS + 关闭该用户的 TTS 串行执行器 */
+    /** micOff 与 cleanup 共用：停掉 NLS*/
     private void closeMicAndTts(ChatSessionContext ctx) {
         nlsTranscriberManager.close(ctx);
-        ExecutorService ttsExecutor = ctx.getTtsExecutor();
-        ctx.setTtsExecutor(null);
-        if (ttsExecutor != null && !ttsExecutor.isShutdown()) {
-            ttsExecutor.shutdownNow();
-        }
     }
 
     /**
@@ -179,6 +178,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         log.info("用户主动打断 sid={}", ctx.getSid());
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
+        ctx.getPtsTracker().onInterrupt();
         ExecutorService old = ctx.getTtsExecutor();
         if (old != null && !old.isShutdown()) {
             old.shutdownNow();
@@ -203,12 +203,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 ctx.conversationId(),
                 RedisConstants.CONVERSATION_EXPIRE_TIME,
                 TimeUnit.HOURS);
-        if (!stringRedisTemplate.hasKey(USER_INFO_KEY + userId)) {
-            Map<String, String> userInfo = userService.getUserInfo(userId);
-            stringRedisTemplate.opsForHash().putAll(USER_INFO_KEY + userId, userInfo);
-            stringRedisTemplate.expire(USER_INFO_KEY + userId,
-                    RedisConstants.USER_INFO_EXPIRE_TIME, TimeUnit.HOURS);
-        }
+        // 每次连接都重新构建缓存，确保偏好字段完整（UserInternalServiceImpl 内部负责写缓存）
+        userService.getUserInfo(userId);
     }
 
     private void publishUserTourHistory(ChatSessionContext ctx) {

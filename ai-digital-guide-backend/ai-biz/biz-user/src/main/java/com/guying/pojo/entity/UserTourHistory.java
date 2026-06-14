@@ -18,15 +18,12 @@ public class UserTourHistory {
 
     private Long userId;
 
-
     private Long attractionId;
-
 
     private String conversationId;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
-
 
     private String attractionName;
 
@@ -36,9 +33,4 @@ public class UserTourHistory {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
-
-    private Integer score;
-
-    private String feedbackText;
-
 }

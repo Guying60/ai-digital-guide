@@ -20,8 +20,7 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 数字人（Python MuseTalk）连接器：纯透传模式 (Zero-Delay Forwarding)
- * 取消后端定时器，将排队与音画同步职责下放给 Android/Web 客户端的 Jitter Buffer。
+ * 数字人（Python MuseTalk）连接器：将 MuseTalk 生成的视频帧即时流式转发给前端。
  */
 @Component
 @Slf4j
@@ -53,7 +52,6 @@ public class MuseTalkConnector {
     }
 
     public void interrupt(ChatSessionContext ctx) {
-        sender.clearVideoQueue(ctx.getSid());
         WebSocketSession museTalkSession = ctx.getMuseTalkSession();
         if (museTalkSession == null || !museTalkSession.isOpen()) {
             return;
@@ -101,9 +99,16 @@ public class MuseTalkConnector {
                 case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    // 直接下发 done。客户端收到后，即使缓冲区还有视频，也会等播完再处理后续逻辑。
-                    log.info("[Python WS] 句子完毕 sentence_id={}，立即透传给客户端", sentenceId);
-                    sender.enqueueDone(ctx, sentenceId);
+                    log.info("[Python WS] 句子完毕 sentence_id={}", sentenceId);
+
+                    // 推进全局 PTS 偏移（该句所有视频帧已发送完毕）
+                    ctx.getPtsTracker().advanceOnDone();
+
+                    // 转发 done 消息给前端（前端可用于 UI 状态更新，不再用于 PTS 偏移）
+                    ObjectNode doneMsg = objectMapper.createObjectNode();
+                    doneMsg.put("type", "done");
+                    doneMsg.put("sentence_id", sentenceId);
+                    sender.send(ctx, new TextMessage(doneMsg.toString()));
                 }
                 case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);
@@ -114,15 +119,28 @@ public class MuseTalkConnector {
         protected void handleBinaryMessage(WebSocketSession museTalkSession, BinaryMessage message) {
             if (!ctx.getUserSession().isOpen()) return;
             byte[] raw = message.getPayload().array();
-            if (raw.length < 6) return;
+            // 内层头现为 7 字节：[sentence_id:2B][pts_ms:4B][is_keyframe:1B]
+            if (raw.length < 7) return;
 
-            // 组装 Android payload：[0x02][sentence_id:2B][pts_ms:4B][JPEG...]
+            // 解析 sentence_id
+            int sentenceId = ((raw[0] & 0xFF) << 8) | (raw[1] & 0xFF);
+
+            // 解析本地 PTS，转换为全局 PTS 并写回
+            int localPtsMs = ((raw[2] & 0xFF) << 24) | ((raw[3] & 0xFF) << 16)
+                    | ((raw[4] & 0xFF) << 8) | (raw[5] & 0xFF);
+            int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
+            raw[2] = (byte) (globalPtsMs >> 24);
+            raw[3] = (byte) (globalPtsMs >> 16);
+            raw[4] = (byte) (globalPtsMs >> 8);
+            raw[5] = (byte) globalPtsMs;
+
+            // 组装 Android payload：[0x03][sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU...]
             byte[] androidPayload = new byte[raw.length + 1];
-            androidPayload[0] = 0x02;
+            androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
-            // ★ 直接透传！不再做任何定时调度，把时间戳交给前端/安卓解析并排队
-            sender.sendVideoFrame(ctx, new BinaryMessage(androidPayload));
+            // 即时流式转发视频帧给前端（不做批量缓冲）
+            sender.send(ctx, new BinaryMessage(androidPayload));
         }
 
         @Override

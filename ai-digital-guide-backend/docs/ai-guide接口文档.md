@@ -121,13 +121,12 @@
 
 **响应参数说明：**
 
-| 参数名      | 类型    | 说明                     |
-| ----------- | ------- | ------------------------ |
-| nickname    | String  | 昵称（可能为 null）      |
-| userSetting | String  | 用户设定（可能为 null）  |
-| gender      | Integer | 0:女；1:男；2:未知       |
-| age         | Integer | 年龄（可能为 null）      |
-| avatarUrl   | String  | 头像地址（可能为 null）  |
+| 参数名    | 类型    | 说明                    |
+| --------- | ------- | ----------------------- |
+| nickname  | String  | 昵称（可能为 null）     |
+| gender    | Integer | 0:女；1:男；2:未知      |
+| age       | Integer | 年龄（可能为 null）     |
+| avatarUrl | String  | 头像地址（可能为 null） |
 
 > 以上参数均可能为 null，渲染前请做判空处理
 
@@ -138,7 +137,6 @@
   "code": 1,
   "data": {
     "nickname": "小明",
-    "userSetting": "我是一个旅行爱好者",
     "gender": 1,
     "age": 25,
     "avatarUrl": "https://oss.example.com/avatar/2026/05/21/xxx.jpg"
@@ -155,13 +153,12 @@
 
 **请求参数（Body / JSON）：**
 
-| 参数名      | 类型    | 必填 | 说明                              |
-| ----------- | ------- | ---- | --------------------------------- |
-| nickname    | String  | 否   | 昵称，1-20 个字符                 |
-| userSetting | String  | 否   | 用户设定，不超过 100 个字符       |
-| gender      | Integer | 否   | 0:女；1:男；2:未知                |
-| age         | Integer | 否   | 0 到 120                          |
-| avatarUrl   | String  | 否   | 头像地址，通过 1.11 上传后获取    |
+| 参数名    | 类型    | 必填 | 说明                           |
+| --------- | ------- | ---- | ------------------------------ |
+| nickname  | String  | 否   | 昵称，1-20 个字符              |
+| gender    | Integer | 否   | 0:女；1:男；2:未知             |
+| age       | Integer | 否   | 0 到 120                       |
+| avatarUrl | String  | 否   | 头像地址，通过 1.11 上传后获取 |
 
 **成功响应示例：**
 
@@ -358,47 +355,7 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
 
 ---
 
-## 1.10 评价旅游历史
-
-**请求 URL：** `POST /users/tourHistory/evaluate`
-
-**认证方式：** Bearer Token（用户 JWT）
-
-**接口说明：** 用户对某次游览进行评分和文字反馈，更新到对应的游览记录。
-
-**请求体（Body / JSON）：**
-
-`TourEvaluateDTO`：
-
-| 字段         | 类型    | 必填 | 说明                     |
-| ------------ | ------- | ---- | ------------------------ |
-| conversationId | Long  | 是   | 会话ID，对应一次游览记录 |
-| score        | Integer | 否   | 评分，1-5 分             |
-| feedbackText | String  | 否   | 文字反馈                 |
-
-**请求示例：**
-
-```json
-{
-  "conversationId": 123456789,
-  "score": 4,
-  "feedbackText": "不错"
-}
-```
-
-**成功响应示例：**
-
-```json
-{
-  "code": 1,
-  "msg": "success",
-  "data": null
-}
-```
-
----
-
-## 1.11 上传用户头像
+## 1.10 上传用户头像
 
 **请求 URL：** `POST /users/file/avatar`
 
@@ -446,6 +403,276 @@ file: <图片文件>
 ```
 
 > 上传成功后，将 `data` 中的 URL 保存并用于头像展示；上传失败时可直接将 `msg` 弹窗提示用户
+
+---
+
+## 1.11 保存或更新导览偏好
+
+**请求 URL：** `PUT /users/guide-preference`
+
+**请求参数（Body / JSON）：**
+
+| 参数名             | 类型    | 必填 | 说明                                                               |
+| ------------------ | ------- | ---- | ------------------------------------------------------------------ |
+| guideStyle         | Integer | 否   | 讲解风格：1-专业讲解 2-故事化讲解 3-轻松幽默 4-儿童模式            |
+| guideDepth         | Integer | 否   | 讲解深度：1-快速浏览 2-标准讲解 3-深度文化                         |
+| interests          | String  | 否   | 兴趣偏好，逗号分隔枚举名，如 `HISTORY_CULTURE,ARCHITECTURE_ART`    |
+| travelPurpose      | Integer | 否   | 出游目的：1-学习探索 2-亲子出游 3-拍照打卡 4-休闲放松              |
+| specialRequirements| String  | 否   | 特殊需求，不超过 100 个字符                                        |
+
+**interests 可选值：**
+
+| 枚举名               | 中文     |
+| -------------------- | -------- |
+| HISTORY_CULTURE      | 历史文化 |
+| ARCHITECTURE_ART     | 建筑艺术 |
+| ROYAL_STORIES        | 皇家故事 |
+| HERITAGE_COLLECTION  | 文物收藏 |
+| NATURE_ECOLOGY       | 自然生态 |
+| PHOTOGRAPHY          | 摄影打卡 |
+| MYTHS_LEGENDS        | 神话传说 |
+| FOLK_CULTURE         | 民俗风情 |
+| FOOD_CULTURE         | 美食文化 |
+| INTANGIBLE_HERITAGE  | 非遗文化 |
+
+> 多选用逗号分隔，如 `"HISTORY_CULTURE,ARCHITECTURE_ART,PHOTOGRAPHY"`
+
+**请求示例：**
+
+```json
+{
+  "guideStyle": 2,
+  "guideDepth": 3,
+  "interests": "HISTORY_CULTURE,ARCHITECTURE_ART",
+  "travelPurpose": 1,
+  "specialRequirements": "我对宋代历史特别感兴趣"
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": null,
+  "msg": "success"
+}
+```
+
+> 不存在则新增，已存在则更新（按 userId 去重）
+
+---
+
+## 1.12 查询导览偏好
+
+**请求 URL：** `GET /users/guide-preference`
+
+**请求参数：** 无
+
+**响应参数说明：**
+
+| 参数名             | 类型    | 说明                                     |
+| ------------------ | ------- | ---------------------------------------- |
+| id                 | String  | 记录 ID                                  |
+| guideStyle         | Integer | 讲解风格 code                            |
+| guideStyleName     | String  | 讲解风格中文名                           |
+| guideDepth         | Integer | 讲解深度 code                            |
+| guideDepthName     | String  | 讲解深度中文名                           |
+| interests          | String  | 兴趣偏好，逗号分隔枚举名                 |
+| travelPurpose      | Integer | 出游目的 code                            |
+| travelPurposeName  | String  | 出游目的中文名                           |
+| specialRequirements| String  | 特殊需求                                 |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "id": "2044359968888639999",
+    "guideStyle": 2,
+    "guideStyleName": "故事化讲解",
+    "guideDepth": 3,
+    "guideDepthName": "深度文化",
+    "interests": "HISTORY_CULTURE,ARCHITECTURE_ART",
+    "travelPurpose": 1,
+    "travelPurposeName": "学习探索",
+    "specialRequirements": "我对宋代历史特别感兴趣"
+  },
+  "msg": "success"
+}
+```
+
+> 用户未设置过偏好时，`data` 为 `null`
+
+---
+
+## 1.13 获取我的评价列表（游标分页）
+
+**请求 URL：** `GET /users/reviews`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 游标分页获取当前用户的评价列表，支持按状态筛选。AI 对话结束时自动创建"待评价"记录，用户提交后变为"已评价"。
+
+**请求参数（Query）：**
+
+| 参数名   | 类型    | 必填 | 说明                                           |
+| -------- | ------- | ---- | ---------------------------------------------- |
+| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
+| pageSize | Integer | 否   | 每页条数，默认 10                              |
+| status   | Integer | 否   | 筛选状态：不传=全部，0=待评价，1=已评价        |
+
+**请求示例：**
+
+```
+GET /users/reviews?pageSize=10
+GET /users/reviews?status=1&pageSize=10
+GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
+```
+
+**响应参数说明（ScrollResult\<UserReviewVO\>）：**
+
+| 字段                  | 类型           | 说明                                     |
+| --------------------- | -------------- | ---------------------------------------- |
+| list[].id             | String         | 评价记录 ID（雪花ID）                    |
+| list[].attractionId   | String         | 景点 ID                                  |
+| list[].attractionName | String         | 景点名称                                 |
+| list[].coverUrl       | String         | 景点封面图片地址                          |
+| list[].rating         | BigDecimal     | 评分 1.0-5.0，待评价时为 null            |
+| list[].content        | String         | 评价内容，待评价时为 null                |
+| list[].tags           | List\<String\> | 标签列表，如 `["讲解专业","风景不错"]`，待评价时为 null |
+| list[].status         | Integer        | 0=待评价，1=已评价                       |
+| list[].createTime     | String         | 创建时间，格式 `yyyy-MM-ddTHH:mm:ss`     |
+| nextLastId            | String         | 下一页游标，为 null 表示无更多数据        |
+| hasMore               | Boolean        | 是否还有更多数据                          |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "list": [
+      {
+        "id": "90000000000000001",
+        "attractionId": "2046935279750139906",
+        "attractionName": "故宫博物院",
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+        "rating": 4.0,
+        "content": "讲解很专业，体验不错",
+        "tags": ["讲解专业", "风景不错"],
+        "status": 1,
+        "createTime": "2026-05-13T14:54:39"
+      },
+      {
+        "id": "90000000000000002",
+        "attractionId": "2046935279750139907",
+        "attractionName": "颐和园",
+        "coverUrl": "https://oss.example.com/cover/yyy.jpg",
+        "rating": null,
+        "content": null,
+        "tags": null,
+        "status": 0,
+        "createTime": "2026-05-14T10:30:00"
+      }
+    ],
+    "nextLastId": "90000000000000002",
+    "hasMore": true
+  },
+  "msg": "success"
+}
+```
+
+> `hasMore` 为 `false` 时，展示"没有更多了"并停止触发加载
+
+---
+
+## 1.14 提交评价
+
+**请求 URL：** `POST /users/reviews/submit`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 将"待评价"记录提交为"已评价"，补充评分、内容和标签。需先通过 1.13 获取待评价记录的 `id`。
+
+**请求体（Body / JSON）：**
+
+| 字段     | 类型           | 必填 | 说明                                 |
+| -------- | -------------- | ---- | ------------------------------------ |
+| reviewId | Long           | 是   | 评价记录 ID（来自 1.13 返回的 id）   |
+| rating   | BigDecimal     | 是   | 评分，1.0-5.0，支持 0.5 步进        |
+| content  | String         | 是   | 评价内容，不超过 500 字              |
+| tags     | List\<String\> | 否   | 标签列表，最多 5 个                  |
+
+**请求示例：**
+
+```json
+{
+  "reviewId": 90000000000000002,
+  "rating": 4.5,
+  "content": "风景优美，AI 导游讲解非常详细，推荐！",
+  "tags": ["讲解专业", "风景不错", "值得推荐"]
+}
+```
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 500,
+  "msg": "该评价已提交，请勿重复提交",
+  "data": null
+}
+```
+
+---
+
+## 1.15 删除评价
+
+**请求 URL：** `DELETE /users/reviews/{reviewId}`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 删除一条评价记录（逻辑删除）。已评价和待评价均可删除。
+
+**请求参数（路径参数）：**
+
+| 参数名   | 类型   | 必填 | 说明         |
+| -------- | ------ | ---- | ------------ |
+| reviewId | String | 是   | 评价记录 ID  |
+
+**请求示例：** `DELETE /users/reviews/90000000000000001`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 500,
+  "msg": "评价记录不存在",
+  "data": null
+}
+```
 
 ---
 
@@ -1276,7 +1503,7 @@ POST /admins/attractions/digital-human/test-video/2044359968888639490
 
 **认证方式：** Bearer Token（管理员 JWT）
 
-**接口说明：** 获取指定景点近N天的用户满意度趋势，返回每日均分和总均分，用于折线图展示。
+**接口说明：** 获取指定景点近N天的用户满意度趋势，返回每日均分和总均分，用于折线图展示。数据来源为用户评价表（`tb_user_review`），仅统计已评价（status=1）的记录。
 
 **请求参数：**
 

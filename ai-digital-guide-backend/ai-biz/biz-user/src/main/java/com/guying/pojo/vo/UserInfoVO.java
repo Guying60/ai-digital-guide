@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 public class UserInfoVO {
 
     private String nickname;
-    private String userSetting;
     private String avatarUrl;
     private Integer gender;
     private Integer age;

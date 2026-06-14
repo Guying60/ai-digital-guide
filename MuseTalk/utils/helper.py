@@ -10,7 +10,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def encode_frame(frame_np: np.ndarray, quality: int = 80, target_size: tuple = (540, 960)) -> bytes:
+def encode_frame(frame_np: np.ndarray, quality: int = 80, target_size: tuple = (720, 1280)) -> bytes:
     """CPU JPEG 编码（兼容旧调用方）。
 
     target_size 为 (W, H)；与 generate_frames 返回 ndarray 时的旧路径配合。

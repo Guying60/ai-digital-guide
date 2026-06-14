@@ -47,10 +47,6 @@ public class User {
      * 用户昵称
      */
     private String nickname;
-    /**
-     * 用户设定
-     */
-    private String userSetting;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)

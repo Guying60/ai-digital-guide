@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
 import com.guying.converter.UserTourHistoryConverter;
+import com.guying.attractions.service.ReviewInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.mapper.UserTourHistoryMapper;
 import com.guying.pojo.dto.TourEvaluateDTO;
@@ -27,6 +28,9 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
 
     @Autowired
     private UserTourHistoryConverter userTourHistoryConverter;
+
+    @Autowired
+    private ReviewInternalService reviewInternalService;
 
     /**
      * 获取旅游历史
@@ -72,17 +76,16 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
     }
 
     /**
-     * 评价旅游历史
+     * 评价旅游历史（已迁移至 tb_user_review，委托给 ReviewInternalService）
      * @param tourEvaluateDTO
      */
     @Override
     public void evaluateTourHistory(TourEvaluateDTO tourEvaluateDTO) {
         Long userId = UserContext.getUserId();
-        UserTourHistory userTourHistory = userTourHistoryConverter.toUserTourHistory(tourEvaluateDTO);
-        LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserTourHistory::getUserId, userId)
-                        .eq(UserTourHistory::getConversationId, tourEvaluateDTO.getConversationId());
-        userTourHistoryMapper.update(userTourHistory, queryWrapper);
-
+        reviewInternalService.submitByConversationId(
+                tourEvaluateDTO.getConversationId(),
+                userId,
+                tourEvaluateDTO.getScore(),
+                tourEvaluateDTO.getFeedbackText());
     }
 }

@@ -100,6 +100,7 @@ public class AiChatService {
         stream.subscribe(
                 delta -> {
                     List<String> sentences = splitter.consume(delta);
+                    log.debug("收到 delta，切出 {} 个句子", sentences.size());
                     for (String sentence : sentences) {
                         emitSentence(ctx, sentence);
                     }
@@ -112,7 +113,8 @@ public class AiChatService {
                     log.info("调用 AI 服务完成");
                     String tail = splitter.drain();
                     if (tail != null) {
-                        sender.sendJson(ctx, "aiOutput", tail);
+                        // 尾部文本也要走 emitSentence 触发 TTS，不能只 sendJson
+                        emitSentence(ctx, tail);
                     }
                     sender.sendJson(ctx, "responseDone", null);
                 }
@@ -124,10 +126,8 @@ public class AiChatService {
         log.info("aiOutput:{}", sentence);
 
         ExecutorService executor = ctx.getTtsExecutor();
-        if (executor != null && !executor.isShutdown()) {
-            // 把可能阻塞的 TTS 调度扔进单线程池里串行执行，
-            // 仅阻塞当前用户的 TTS 队列，不影响 WebFlux 主流和其它会话
-            executor.submit(() -> cosyVoiceConnector.synthesize(ctx, sentence));
-        }
+        // 把可能阻塞的 TTS 调度扔进单线程池里串行执行，
+        // 仅阻塞当前用户的 TTS 队列，不影响 WebFlux 主流和其它会话
+        executor.submit(() -> cosyVoiceConnector.synthesize(ctx, sentence));
     }
 }

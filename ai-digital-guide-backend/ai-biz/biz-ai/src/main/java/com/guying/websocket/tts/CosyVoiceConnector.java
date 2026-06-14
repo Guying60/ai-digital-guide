@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * CosyVoice TTS 客户端：纯透传模式
+ * CosyVoice TTS 客户端：音频帧即时流式转发给前端，同时累积裸 PCM 供 MuseTalk 使用。
  */
 @Component
 @Slf4j
@@ -76,6 +76,7 @@ public class CosyVoiceConnector {
         }
         req.put("session_id", ctx.getSid());
         try {
+            log.info("已向 CosyVoice 发送 synthesize 请求 sid={}", ctx.getSid());
             cosySession.sendMessage(new TextMessage(req.toString()));
         } catch (IOException e) {
             log.error("发送 synthesize 请求到 CosyVoice 失败 sid={}", ctx.getSid(), e);
@@ -108,6 +109,8 @@ public class CosyVoiceConnector {
 
         private final ChatSessionContext ctx;
         private final ByteArrayOutputStream pcmBuffer = new ByteArrayOutputStream();
+        // 当前句子的 ID，由二进制音频帧头部提取，供 chunk_end → MuseTalk 使用
+        private volatile int currentSentenceId = 0;
 
         CosyVoiceHandler(ChatSessionContext ctx) {
             this.ctx = ctx;
@@ -134,8 +137,12 @@ public class CosyVoiceConnector {
                             objectMapper.createObjectNode().put("type", "pong").toString()));
                 }
                 case "chunk_end" -> {
-                    int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    forwardSentenceToMuseTalk(sentenceId);
+                    // 使用音频帧头部的 sentenceId（currentSentenceId），
+                    // 而非 chunk_end 消息自身的 sentenceId，保证与 buffer key 一致
+                    log.info("[CosyVoice] chunk_end 消息sentenceId={}, 音频帧sentenceId={}",
+                            node.has("sentence_id") ? node.get("sentence_id").asInt() : "null",
+                            currentSentenceId);
+                    forwardSentenceToMuseTalk(currentSentenceId);
                 }
                 case "error" -> log.error("[CosyVoice WS] 报错：{}", node.has("message") ? node.get("message").asText() : "unknown");
                 default -> log.warn("[CosyVoice WS] 收到未知类型消息: {}", type);
@@ -147,12 +154,31 @@ public class CosyVoiceConnector {
             byte[] payload = message.getPayload().array();
             if (payload.length < AUDIO_HEADER_LEN) return;
 
-            // ★ 删除了所有拆解解析 sentenceId 和 pts_ms 并锚定时间的逻辑
+            // 解析 sentence_id（来自音频帧头部，payload 格式: [0x01][sentenceId:2B][ptsMs:4B][PCM...]）
+            int sentenceId = ((payload[1] & 0xFF) << 8) | (payload[2] & 0xFF);
+            currentSentenceId = sentenceId;  // 记录当前句子 ID，供 chunk_end 使用
 
-            // 1) 完整包（含 header）直接透传给 Android
-            if (ctx.getUserSession().isOpen()) {
-                sender.send(ctx, new BinaryMessage(payload));
-            }
+            // 解析本地 PTS，转换为全局 PTS
+            int localPtsMs = ((payload[3] & 0xFF) << 24) | ((payload[4] & 0xFF) << 16)
+                    | ((payload[5] & 0xFF) << 8) | (payload[6] & 0xFF);
+            int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
+
+            // 1) 即时流式发送音频帧给前端（不做批量缓冲）
+            // Android 协议格式：[0x01][sentenceId:2B][ptsMs:4B][PCM...]
+            byte[] androidFrame = new byte[payload.length];
+            androidFrame[0] = 0x01;
+            // sentenceId(2B)
+            androidFrame[1] = payload[1];
+            androidFrame[2] = payload[2];
+            // 全局 PTS(4B)
+            androidFrame[3] = (byte) (globalPtsMs >> 24);
+            androidFrame[4] = (byte) (globalPtsMs >> 16);
+            androidFrame[5] = (byte) (globalPtsMs >> 8);
+            androidFrame[6] = (byte) globalPtsMs;
+            // PCM
+            System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,
+                    payload.length - AUDIO_HEADER_LEN);
+            sender.send(ctx, new BinaryMessage(androidFrame));
 
             // 2) 剥离 header，只缓冲裸 PCM 供 MuseTalk 炼丹使用
             if (payload.length > AUDIO_HEADER_LEN) {

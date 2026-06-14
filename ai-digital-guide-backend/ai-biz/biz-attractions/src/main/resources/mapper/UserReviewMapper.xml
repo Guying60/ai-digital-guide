@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.guying.mapper.UserReviewMapper">
+
+    <select id="getSatisfactionTrend" resultType="com.guying.user.dto.UserSatisfactionTrendDTO$SatisfactionItem">
+        SELECT
+            DATE_FORMAT(create_time, '%Y-%m-%d') AS date,
+            ROUND(AVG(rating), 1) AS avgScore,
+            COUNT(*) AS count
+        FROM tb_user_review
+        WHERE attraction_id = #{attractionId}
+          AND status = 1
+          AND rating IS NOT NULL
+          AND is_deleted = 0
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d')
+        ORDER BY date ASC
+    </select>
+
+    <select id="selectTotalAvgScore" resultType="java.lang.Double">
+        SELECT ROUND(AVG(rating), 1)
+        FROM tb_user_review
+        WHERE attraction_id = #{attractionId}
+          AND status = 1
+          AND rating IS NOT NULL
+          AND is_deleted = 0
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+    </select>
+
+    <select id="selectFeedbackText" resultType="java.lang.String">
+        SELECT content
+        FROM tb_user_review
+        WHERE attraction_id = #{attractionId}
+          AND status = 1
+          AND content IS NOT NULL
+          AND content != ''
+          AND is_deleted = 0
+          AND create_time BETWEEN #{startTime} AND #{endTime}
+          AND CHAR_LENGTH(content) BETWEEN 5 AND 500
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

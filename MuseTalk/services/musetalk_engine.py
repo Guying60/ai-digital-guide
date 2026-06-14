@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 
 # 输出分辨率（W, H）。与 helper.encode_frame 默认值一致。
-TARGET_W, TARGET_H = 480, 854
-BATCH = 32
+TARGET_W, TARGET_H = 720, 1280
+BATCH = 48
 
 
 class MuseTalkEngine:
@@ -83,14 +83,15 @@ class MuseTalkEngine:
         )
         self.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
 
-        # 懒编译 + 第二条 CUDA 流（后处理）
+        # 懒编译
         self._unet_compiled: Optional[Callable] = None
         self._vae_compiled = None
+        # 双 CUDA 流：UNet 在默认流，VAE decode + blend 在 vae_stream，实现流水线重叠
         try:
-            self._post_stream: Optional[torch.cuda.Stream] = torch.cuda.Stream()
+            self._vae_stream: Optional[torch.cuda.Stream] = torch.cuda.Stream()
         except Exception as e:
-            logger.warning(f"[engine] 创建 post_stream 失败，将使用默认流：{e}")
-            self._post_stream = None
+            logger.warning(f"[engine] 创建 vae_stream 失败，将使用默认流：{e}")
+            self._vae_stream = None
 
         # 用于把 CPU 端 audio2feat 与 GPU 端预热 / 上一次推理尾巴并行起来
         self._audio_executor = ThreadPoolExecutor(
@@ -352,8 +353,8 @@ class MuseTalkEngine:
         from utils.helper import encode_frames_gpu
 
         t0 = time.time()
-        # 25fps × BATCH(32) ≈ 1.28s，给到 2s 保证至少跑满一个 padded batch
-        silent_pcm = b"\x00\x00" * int(16000 * 2.0)
+        # 25fps × BATCH(16) ≈ 0.64s，给到 2.5s 保证至少跑满一个 padded batch
+        silent_pcm = b"\x00\x00" * int(16000 * 2.5)
 
         saved_idx = avatar["current_idx"]
         saved_cancel = self._cancel_flag
@@ -441,6 +442,7 @@ class MuseTalkEngine:
                 [mask_face_list[k_list[j]] for j in js], dim=0
             )  # (g, 1, fbh, fbw) fp16
 
+            # 批量 α 混合：整个 size group 一次 kernel 完成
             blended = ori_face_stack * (1.0 - mask_face_stack) + faces * mask_face_stack
             blended_u8 = (blended.clamp_(0.0, 1.0) * 255.0 + 0.5).to(torch.uint8)
 
@@ -472,14 +474,24 @@ class MuseTalkEngine:
                 whisper_feature = self.audio_processor.audio2feat(tmp.name)
         return self.audio_processor.feature2chunks(whisper_feature, fps=25)
 
-    def generate_frames(self, audio_chunk: bytes, attraction_id: str):
+    def precompute_audio_chunks(self, audio_chunk: bytes):
+        """公开方法：预计算 whisper chunks（纯 CPU，不占 GPU）。
+
+        用于流水线重叠：在前一句 GPU 推理期间，提前为下一句做 audio2feat。
+        可安全在 asyncio.to_thread 或 ThreadPoolExecutor 中调用。
+        """
+        return self._audio_to_chunks(audio_chunk)
+
+    def generate_frames(self, audio_chunk: bytes, attraction_id: str, precomputed_chunks=None):
         avatar = self.avatar_cache.get(attraction_id)
         if not avatar:
             return
 
-        # 1) audio2feat 立刻丢到后台线程跑（NumPy / whisper-tiny 主要是 CPU + 小 GPU op，
-        #    GIL 大部分时间会释放）。主线程同时做 GPU 端的预热与首批准备。
-        chunks_future = self._audio_executor.submit(self._audio_to_chunks, audio_chunk)
+        # 1) audio2feat：若已预计算则直接使用，否则丢到后台线程跑
+        if precomputed_chunks is not None:
+            whisper_chunks = precomputed_chunks
+        else:
+            chunks_future = self._audio_executor.submit(self._audio_to_chunks, audio_chunk)
 
         latents_gpu: torch.Tensor = avatar["latents_gpu"]
         indices: List[int] = avatar["indices"]
@@ -487,23 +499,23 @@ class MuseTalkEngine:
         nN: int = len(indices)
         unet_fn = self._get_or_compile_unet()
 
-        # 在等 audio2feat 期间触发一次 cudaStreamSynchronize 之外的轻量 GPU 调度，
-        # 让 CUDA context / cudnn handle 保持热（成本几乎为零，但能消除冷启动空隙）。
+        # 在等 audio2feat 期间触发一次轻量 GPU 调度，保持 CUDA context 热
         if torch.cuda.is_available():
-            _kicker = latents_gpu.narrow(0, 0, 1).sum()  # 极小 kernel
+            _kicker = latents_gpu.narrow(0, 0, 1).sum()
             del _kicker
 
-        whisper_chunks = chunks_future.result()
+        if precomputed_chunks is None:
+            whisper_chunks = chunks_future.result()
         n = len(whisper_chunks)
         if n == 0:
             return
 
         default_stream = torch.cuda.current_stream() if torch.cuda.is_available() else None
-        post_stream = self._post_stream
+        vae_stream = self._vae_stream
 
-        # 一拍流水线：上一批的 blend 与下一批的 UNet 在不同 stream 上并行
+        # 流水线状态：上一批的 blend 结果 + VAE 完成事件
         prev_blend: Optional[List[torch.Tensor]] = None
-        prev_event: Optional[torch.cuda.Event] = None
+        prev_vae_event: Optional[torch.cuda.Event] = None
         prev_bs: int = 0
 
         for i in range(0, n, BATCH):
@@ -515,16 +527,16 @@ class MuseTalkEngine:
             if bs < BATCH:
                 batch_chunks = list(batch_chunks) + [batch_chunks[-1]] * (BATCH - bs)
 
-            # 取 latents（GPU index_select）+ k 列表（仅 bs 个有效，pad 部分对最终输出不暴露）
+            # 取 latents（GPU index_select）+ k 列表
             k_list_full = [indices[(idx0 + i + j) % nN] for j in range(BATCH)]
             sel = torch.as_tensor(k_list_full, device=self.device, dtype=torch.long)
-            latent_batch = latents_gpu.index_select(0, sel).contiguous()  # (B,4,32,32)
+            latent_batch = latents_gpu.index_select(0, sel).contiguous()
             latent_batch = latent_batch.to(memory_format=torch.channels_last)
             audio_batch = torch.from_numpy(np.stack(batch_chunks)).to(
                 self.device, dtype=torch.float16, non_blocking=True
             )
 
-            # TeaCache：检查本 batch audio 是否与上一批高度相似
+            # TeaCache
             _use_cache = False
             if self._tea_cache_audio is not None and self._tea_cache_latents is not None:
                 _sim = F.cosine_similarity(
@@ -537,6 +549,10 @@ class MuseTalkEngine:
                     _use_cache = True
                     logger.debug(f"[engine] TeaCache 命中，相似度={_sim:.4f}，跳过 UNet")
 
+            # ---- 计时：UNet ----
+            _t0 = time.perf_counter()
+
+            # ---- UNet forward（默认流）----
             with torch.inference_mode():
                 if not _use_cache:
                     pred_latents = unet_fn(
@@ -544,44 +560,59 @@ class MuseTalkEngine:
                     ).sample
                     if self._unet_compiled is not self.unet.model:
                         pred_latents = pred_latents.clone()
-                    # 更新 TeaCache
                     self._tea_cache_audio = audio_batch.detach()
                     self._tea_cache_latents = pred_latents.detach()
 
-                recon = self._vae_decode_tensor(pred_latents)
+            # 标记 UNet 完成，让 vae_stream 可以等待
+            unet_done = torch.cuda.Event()
+            unet_done.record(default_stream)
 
-            # 在 post_stream 上排布本批 blend：等默认流的 recon 就绪后开跑
-            if post_stream is not None and default_stream is not None:
-                post_stream.wait_stream(default_stream)
-                with torch.cuda.stream(post_stream):
-                    blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
-                    # 让张量内存被默认流引用期间不会被 caching allocator 回收
-                    for t in blend_list:
-                        t.record_stream(default_stream)
-                event = torch.cuda.Event()
-                event.record(post_stream)
-            else:
-                blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
-                event = None
-
-            # 关键：先把"上一批"的结果交付出去，再进入下一轮 UNet。
-            # 这样本批 blend（在 post_stream 上）就能与下一批 UNet（默认流）真正并行。
+            # ---- 交付上一批结果（等待其 VAE+blend 完成）----
+            # 先 yield prev_blend，再启动当前 batch 的 VAE——
+            # 让 CPU 端 H264 编码与 GPU 端 VAE decode 重叠
             if prev_blend is not None:
-                if prev_event is not None:
-                    prev_event.synchronize()  # CPU 等 GPU；等待期间默认流仍在跑下一批 UNet
+                if prev_vae_event is not None:
+                    prev_vae_event.synchronize()
                 yield prev_blend
                 avatar["current_idx"] = (avatar["current_idx"] + prev_bs) % nN
                 if self._cancel_flag:
                     return
 
+            # UNet 计时：用 event synchronize 而非全流 synchronize，
+            # 避免阻塞 vae_stream 的流水线启动
+            unet_done.synchronize()
+            _t_unet = (time.perf_counter() - _t0) * 1000
+
+            # ---- 计时：VAE + blend ----
+            _t1 = time.perf_counter()
+
+            # ---- VAE decode + blend（vae_stream，与下一批 UNet 重叠）----
+            if vae_stream is not None and default_stream is not None:
+                vae_stream.wait_event(unet_done)
+                with torch.cuda.stream(vae_stream):
+                    recon = self._vae_decode_tensor(pred_latents)
+                    blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
+                    for t in blend_list:
+                        t.record_stream(default_stream)
+                vae_done = torch.cuda.Event()
+                vae_done.record(vae_stream)
+            else:
+                recon = self._vae_decode_tensor(pred_latents)
+                blend_list = self._blend_batch_gpu(recon, k_list_full[:bs], avatar)
+                vae_done = None
+
+            # 注意：不在这里 synchronize，让下一批 UNet 的输入准备（index_select、
+            # audio batch transfer）能与当前批 VAE decode 在 GPU 上重叠执行。
+            # prev_vae_event.synchronize() 在下次循环 yield 前调用，保证数据就绪。
+
             prev_blend = blend_list
-            prev_event = event
+            prev_vae_event = vae_done
             prev_bs = bs
 
         # 收尾：交付最后一批
         if prev_blend is not None:
-            if prev_event is not None:
-                prev_event.synchronize()
+            if prev_vae_event is not None:
+                prev_vae_event.synchronize()
             yield prev_blend
             avatar["current_idx"] = (avatar["current_idx"] + prev_bs) % nN
 

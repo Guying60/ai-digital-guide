@@ -10,7 +10,7 @@ Accept: application/json
 # Interactive test script (run separately):
 #
 # python -c "
-# import asyncio, json, websockets
+# import asyncio, json, struct, websockets
 # async def test():
 #     async with websockets.connect('ws://127.0.0.1:6006/ws/infer') as ws:
 #         # --- init ---
@@ -24,23 +24,18 @@ Accept: application/json
 #         while True:
 #            raw = await ws.recv()
 #            if isinstance(raw, bytes):
-#                frame_index = struct.unpack(">I", raw[:4])[0]
-#                is_last = raw[4] == 1
-#                jpeg_bytes = raw[5:]
-#                print(f"收到第 {frame_index} 帧, 是否最后一帧={is_last}, 大小={len(jpeg_bytes)} 字节")
-#                if is_last:
-#                    print(f"完成！耗时: {time.time() - t0:.2f}s")
-#                    break
+#                # H.264 binary: [sentence_id:2B][pts_ms:4B][is_keyframe:1B][H.264 AU]
+#                sid = struct.unpack(">H", raw[:2])[0]
+#                pts = struct.unpack(">I", raw[2:6])[0]
+#                is_key = raw[6] == 1
+#                print(f"收到 H.264 AU: sid={sid}, pts={pts}ms, key={is_key}, 大小={len(raw)-7} 字节")
 #            else:
 #                msg = json.loads(raw)
 #                if msg["type"] == "done":
+#                    print(f"sentence {msg['sentence_id']} 完成")
 #                    break
-#             if msg['type'] == 'done':
-#                 print('Sentence complete')
-#                 break
-#             if msg['type'] == 'error':
-#                 print(f\"ERROR: {msg['message']}\")
-#                 break
-#             print(f\"frame {msg['index']} is_last={msg['is_last']} data={len(msg['data'])} chars\")
+#                elif msg["type"] == "error":
+#                    print(f"ERROR: {msg['text']}")
+#                    break
 # asyncio.run(test())
 # "
