@@ -123,7 +123,6 @@
                     android:layout_marginStart="4dp"
                     android:layout_marginBottom="24dp"
                     android:drawablePadding="6dp"
-                    android:drawableStart="@drawable/ic_add_circle"
                     android:alpha="0.5"
                     android:text="最大支持上传 50MB 以内的 mp4 文件"
                     android:textSize="13sp"
