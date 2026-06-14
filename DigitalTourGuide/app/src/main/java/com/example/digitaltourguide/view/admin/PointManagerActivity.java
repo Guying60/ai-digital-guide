@@ -41,7 +41,8 @@ public class PointManagerActivity extends AppCompatActivity {
     private static final String TAG="PointManagerActivity";
     private EditText etSearch;
     private RecyclerView rvScenic;
-    private TextView tvDelete, tvAdd,tvCancel,tvBatchDelete;
+    private TextView tvDelete, tvCancel, tvBatchDelete;
+    private Button tvAdd;
     private boolean isBatchMode = false;
     private AttractionListAdapter adapter;
     private List<AddAttractionRequest> attractionList = new ArrayList<>();
@@ -153,18 +154,20 @@ public class PointManagerActivity extends AppCompatActivity {
         isBatchMode = true;
         adapter.setMultiSelectMode(true);
         tvBatchDelete.setText("确认删除");
-        // 显示取消按钮
-        if (tvCancel != null) tvCancel.setVisibility(View.VISIBLE);
-        // 隐藏新增按钮或置灰
-        tvAdd.setEnabled(false);
+        // 新增按钮 → 取消（不带图标）
+        tvAdd.setText("取消");
+        tvAdd.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+        if (tvCancel != null) tvCancel.setVisibility(View.GONE);
     }
 
     private void exitBatchMode() {
         isBatchMode = false;
         adapter.setMultiSelectMode(false);
         tvBatchDelete.setText("批量删除");
+        // 取消 → 恢复新增按钮（带图标）
+        tvAdd.setText(R.string.pm_add);
+        tvAdd.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_add_circle, 0, 0, 0);
         if (tvCancel != null) tvCancel.setVisibility(View.GONE);
-        tvAdd.setEnabled(true);
     }
 
     private void callBatchDeleteApi(List<String> ids) {
@@ -277,9 +280,13 @@ public class PointManagerActivity extends AppCompatActivity {
         }
 
         tvAdd.setOnClickListener(v -> {
-            Toast.makeText(this, "新增景点", Toast.LENGTH_SHORT).show();
-            Intent intent=new Intent(PointManagerActivity.this, ScenicEditActivity.class);
-            editAttractionLauncher.launch(intent);
+            if (isBatchMode) {
+                exitBatchMode();
+            } else {
+                Toast.makeText(this, "新增景点", Toast.LENGTH_SHORT).show();
+                Intent intent=new Intent(PointManagerActivity.this, ScenicEditActivity.class);
+                editAttractionLauncher.launch(intent);
+            }
         });
 
     }
