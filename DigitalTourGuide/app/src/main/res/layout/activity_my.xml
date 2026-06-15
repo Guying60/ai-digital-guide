@@ -78,35 +78,28 @@
                             android:textSize="22sp"
                             android:textStyle="bold" />
 
-                        <LinearLayout
+                        <!-- 性别标签（昵称和ID中间） -->
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_gender"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:layout_marginTop="4dp"
+                            android:text="♂ 男"
+                            android:textColor="@color/profile_on_primary_container"
+                            android:textSize="11sp"
+                            app:chipBackgroundColor="@color/profile_primary_container"
+                            app:chipCornerRadius="20dp"
+                            app:chipMinHeight="22dp"
+                            app:chipStrokeWidth="0dp" />
 
-                            <TextView
-                                android:id="@+id/tv_user_id"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="ID: 12345678"
-                                android:textColor="@color/profile_outline"
-                                android:textSize="14sp" />
-
-                            <!-- 性别 → 改用 M3 Chip 组件 -->
-                            <com.google.android.material.chip.Chip
-                                android:id="@+id/chip_gender"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="8dp"
-                                android:text="♂ 男"
-                                android:textColor="@color/profile_on_primary_container"
-                                android:textSize="12sp"
-                                app:chipBackgroundColor="@color/profile_primary_container"
-                                app:chipCornerRadius="20dp"
-                                app:chipMinHeight="26dp"
-                                app:chipStrokeWidth="0dp" />
-                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/tv_user_id"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ID: 12345678"
+                            android:textColor="@color/profile_outline"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
                     <!-- 箭头 -->
@@ -121,24 +114,26 @@
 
                 </LinearLayout>
 
-                <!-- 用户徽章 → 贴在信息卡片右下角 -->
+                <!-- 用户徽章 → 贴在信息卡片右下角，浅色小字 -->
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_user_badge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="8dp"
-                    android:translationY="16dp"
-                    android:text=" 普通用户"
-                    android:textColor="@color/profile_on_primary"
-                    android:textSize="11sp"
-                    app:chipBackgroundColor="@color/profile_primary"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginBottom="2dp"
+                    android:text="普通用户"
+                    android:textColor="@color/profile_outline"
+                    android:textSize="10sp"
+                    app:chipBackgroundColor="@color/profile_surface_container"
                     app:chipCornerRadius="20dp"
                     app:chipIcon="@drawable/ic_stars"
-                    app:chipIconSize="16dp"
-                    app:chipIconTint="@color/profile_on_primary"
-                    app:chipMinHeight="28dp"
-                    app:chipStrokeWidth="0dp" />
+                    app:chipIconSize="12dp"
+                    app:chipIconTint="@color/profile_outline"
+                    app:chipMinHeight="20dp"
+                    app:chipStrokeWidth="0dp"
+                    app:chipStartPadding="6dp"
+                    app:chipEndPadding="6dp" />
 
             </FrameLayout>
 
