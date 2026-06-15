@@ -10,22 +10,38 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.digitaltourguide.R;
-import com.example.digitaltourguide.model.user.ReviewItem;
+import com.example.digitaltourguide.model.user.UserReviewItem;
 
 import java.util.List;
 
 public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewViewHolder> {
 
-    private List<ReviewItem> reviewList;
+    private List<UserReviewItem> reviewList;
 
-    public ReviewAdapter(List<ReviewItem> reviewList) {
+    private OnItemClickListener onDeleteClickListener;
+    private OnItemClickListener onRateClickListener;
+
+    public interface OnItemClickListener {
+        void onItemClick(UserReviewItem item, int position);
+    }
+
+    public ReviewAdapter(List<UserReviewItem> reviewList) {
         this.reviewList = reviewList;
     }
 
-    public void updateData(List<ReviewItem> newList) {
+    public void updateData(List<UserReviewItem> newList) {
         this.reviewList = newList;
         notifyDataSetChanged();
+    }
+
+    public void setOnDeleteClickListener(OnItemClickListener listener) {
+        this.onDeleteClickListener = listener;
+    }
+
+    public void setOnRateClickListener(OnItemClickListener listener) {
+        this.onRateClickListener = listener;
     }
 
     @NonNull
@@ -38,16 +54,25 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
 
     @Override
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
-        ReviewItem item = reviewList.get(position);
+        UserReviewItem item = reviewList.get(position);
 
         // 景点名称
-        holder.tvPlaceName.setText(item.getPlaceName());
+        holder.tvPlaceName.setText(item.getAttractionName());
 
         // 日期
-        holder.tvDate.setText(item.getDate());
+        holder.tvDate.setText(item.getCreateTime());
 
-        // 封面图（示例用 ic_pdf 占位，可替换为 Glide 加载网络图片）
-        holder.ivPlaceImage.setImageResource(item.getPlaceImageRes());
+        // 封面图（Glide 加载网络图片）
+        if (item.getCoverUrl() != null && !item.getCoverUrl().isEmpty()) {
+            Glide.with(holder.itemView.getContext())
+                    .load(item.getCoverUrl())
+                    .placeholder(R.drawable.ic_pdf)
+                    .error(R.drawable.ic_pdf)
+                    .centerCrop()
+                    .into(holder.ivPlaceImage);
+        } else {
+            holder.ivPlaceImage.setImageResource(R.drawable.ic_pdf);
+        }
 
         if (item.isReviewed()) {
             // ── 已评价状态 ──
@@ -56,12 +81,12 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.tvStatus.setTextColor(holder.itemView.getContext()
                     .getColor(R.color.profile_primary));
 
-            // 显示评分区域，隐藏待评价提示
             holder.starContainer.setVisibility(View.VISIBLE);
             holder.pendingContainer.setVisibility(View.GONE);
 
-            // 设置星级
-            int fullStars = (int) item.getRating();
+            // 设置星级（支持半星，这里简化处理为整星）
+            double rating = item.getRating() != null ? item.getRating() : 0;
+            int fullStars = (int) Math.round(rating);
             for (int i = 0; i < 5; i++) {
                 ImageView star = holder.stars[i];
                 if (star != null) {
@@ -71,25 +96,27 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
                 }
             }
 
-            // 评分数字
-            holder.tvRating.setText(String.valueOf(item.getRating()));
+            holder.tvRating.setText(String.format("%.1f", rating));
 
             // 评论文本
-            holder.tvReviewText.setText(item.getReviewText());
-            holder.tvReviewText.setVisibility(View.VISIBLE);
+            if (item.getContent() != null && !item.getContent().isEmpty()) {
+                holder.tvReviewText.setText(item.getContent());
+                holder.tvReviewText.setVisibility(View.VISIBLE);
+            } else {
+                holder.tvReviewText.setVisibility(View.GONE);
+            }
 
             // 标签
             List<String> tags = item.getTags();
             if (tags != null && !tags.isEmpty()) {
                 holder.tagsContainer.setVisibility(View.VISIBLE);
-                TextView[] tagViews = {holder.tag1, holder.tag2, holder.tag3};
-                for (int i = 0; i < tagViews.length; i++) {
-                    if (i < tags.size()) {
-                        tagViews[i].setText(tags.get(i));
-                        tagViews[i].setVisibility(View.VISIBLE);
-                    } else {
-                        tagViews[i].setVisibility(View.GONE);
-                    }
+                holder.tag1.setVisibility(View.GONE);
+                holder.tag2.setVisibility(View.GONE);
+                holder.tag3.setVisibility(View.GONE);
+                for (int i = 0; i < Math.min(tags.size(), 3); i++) {
+                    TextView[] tagViews = {holder.tag1, holder.tag2, holder.tag3};
+                    tagViews[i].setText(tags.get(i));
+                    tagViews[i].setVisibility(View.VISIBLE);
                 }
             } else {
                 holder.tagsContainer.setVisibility(View.GONE);
@@ -106,18 +133,31 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.tvStatus.setTextColor(holder.itemView.getContext()
                     .getColor(R.color.profile_on_surface_variant));
 
-            // 隐藏评分区，显示待评价提示
             holder.starContainer.setVisibility(View.GONE);
             holder.pendingContainer.setVisibility(View.VISIBLE);
 
-            // 隐藏评论文本
             holder.tvReviewText.setVisibility(View.GONE);
             holder.tagsContainer.setVisibility(View.GONE);
 
             // 按钮：隐藏删除，显示去评价
-            holder.btnDelete.setVisibility(View.GONE);
+            holder.btnDelete.setVisibility(View.VISIBLE);
+            holder.btnDelete.setText("删除");
             holder.btnRate.setVisibility(View.VISIBLE);
         }
+
+        // 删除按钮点击
+        holder.btnDelete.setOnClickListener(v -> {
+            if (onDeleteClickListener != null) {
+                onDeleteClickListener.onItemClick(item, holder.getAdapterPosition());
+            }
+        });
+
+        // 去评价按钮点击
+        holder.btnRate.setOnClickListener(v -> {
+            if (onRateClickListener != null) {
+                onRateClickListener.onItemClick(item, holder.getAdapterPosition());
+            }
+        });
     }
 
     @Override
