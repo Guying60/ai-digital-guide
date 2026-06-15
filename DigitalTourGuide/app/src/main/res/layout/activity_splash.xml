@@ -3,155 +3,236 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/profile_surface"
+    android:background="@drawable/bg_splash_gradient"
     android:keepScreenOn="true">
 
-    <!-- 背景光晕（扩大淡化） -->
+    <!-- ========== 主背景光晕 ========== -->
     <View
         android:id="@+id/bg_glow"
-        android:layout_width="400dp"
-        android:layout_height="400dp"
-        android:background="@drawable/bg_splash_glow"
-        android:alpha="0.08"
-        app:layout_constraintBottom_toTopOf="@+id/character_image"
+        android:layout_width="520dp"
+        android:layout_height="520dp"
+        android:background="@drawable/bg_character_glow"
+        android:alpha="0.7"
+        app:layout_constraintBottom_toTopOf="@+id/character_frame"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- ========== 顶部标题 ========== -->
+    <!-- ========== 装饰性浮动元素 ========== -->
+    <!-- 顶部右侧圆环 -->
+    <ImageView
+        android:id="@+id/deco_ring_1"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_deco_ring"
+        android:alpha="0.6"
+        android:contentDescription="@null"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginEnd="52dp"
+        android:layout_marginTop="80dp" />
+
+    <!-- 顶部左侧菱形 -->
+    <ImageView
+        android:id="@+id/deco_diamond_1"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_deco_diamond"
+        android:rotation="15"
+        android:contentDescription="@null"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="44dp"
+        android:layout_marginTop="120dp" />
+
+    <!-- 中间左侧小圆点 -->
+    <ImageView
+        android:id="@+id/deco_circle_1"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:src="@drawable/ic_deco_circle"
+        android:contentDescription="@null"
+        app:layout_constraintBottom_toTopOf="@+id/character_frame"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="28dp"
+        android:layout_marginBottom="32dp" />
+
+    <!-- 中间右侧菱形 -->
+    <ImageView
+        android:id="@+id/deco_diamond_2"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_deco_diamond"
+        android:rotation="45"
+        android:alpha="0.8"
+        android:contentDescription="@null"
+        app:layout_constraintBottom_toTopOf="@+id/character_frame"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="36dp"
+        android:layout_marginBottom="48dp" />
+
+    <!-- 中间右侧圆环 -->
+    <ImageView
+        android:id="@+id/deco_ring_2"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_deco_ring"
+        android:alpha="0.4"
+        android:contentDescription="@null"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/character_frame"
+        android:layout_marginEnd="48dp"
+        android:layout_marginTop="8dp" />
+
+    <!-- ========== 顶部品牌区 ========== -->
     <LinearLayout
         android:id="@+id/top_branding"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="56dp"
+        android:layout_marginTop="52dp"
         android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="数字人导游"
-            android:textColor="@color/profile_primary"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+        <!-- App 图标徽章 -->
+        <FrameLayout
+            android:id="@+id/app_icon_badge"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_app_icon"
+            android:elevation="6dp">
 
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_splash"
+                android:contentDescription="@string/splash_app_title" />
+        </FrameLayout>
+
+        <!-- 标题 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="18dp"
+            android:text="@string/splash_app_title"
+            android:textColor="@color/profile_primary"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.03"
+            android:fontFamily="sans-serif" />
+
+        <!-- 副标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
             android:fontFamily="sans-serif"
-            android:letterSpacing="0.05"
-            android:text="您的 AI 智能旅游助手"
+            android:letterSpacing="0.10"
+            android:text="@string/splash_app_subtitle"
             android:textAllCaps="true"
             android:textColor="@color/profile_on_surface_variant"
-            android:textSize="12sp" />
+            android:textSize="11sp"
+            android:alpha="0.8" />
     </LinearLayout>
 
-    <!-- ========== 角色形象 ========== -->
-    <ImageView
-        android:id="@+id/character_image"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:scaleType="centerInside"
-        android:adjustViewBounds="true"
-        android:background="@drawable/ic_splash"
-        android:contentDescription="数字人导游"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_loading"
+    <!-- ========== 角色形象卡片区域 ========== -->
+    <FrameLayout
+        android:id="@+id/character_frame"
+        android:layout_width="210dp"
+        android:layout_height="210dp"
+        android:background="@drawable/bg_character_frame"
+        android:elevation="10dp"
+        android:clipToOutline="true"
+        android:outlineProvider="background"
+        android:padding="4dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_section"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/top_branding" />
+        app:layout_constraintTop_toBottomOf="@id/top_branding"
+        android:layout_marginTop="8dp">
 
-    <!-- ========== 底部加载区 ========== -->
+        <ImageView
+            android:id="@+id/character_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:src="@drawable/ic_splash_logo"
+            android:contentDescription="@string/splash_app_title"
+            android:padding="20dp" />
+    </FrameLayout>
+
+    <!-- ========== 底部区域 ========== -->
     <LinearLayout
-        android:id="@+id/bottom_loading"
+        android:id="@+id/bottom_section"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="40dp"
-        android:layout_marginBottom="72dp"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="48dp"
         android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/character_image">
+        app:layout_constraintStart_toStartOf="parent">
 
-        <!-- 启动消息 -->
+        <!-- 状态玻璃卡片 -->
         <LinearLayout
+            android:id="@+id/status_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_glass_badge"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="12dp"
+            android:elevation="2dp">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_star_filled"
-                app:tint="@color/profile_primary" />
+            <View
+                android:id="@+id/status_dot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_dot_pulse" />
 
             <TextView
+                android:id="@+id/status_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="正在启动导游服务..."
-                android:textColor="@color/profile_on_surface"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:layout_marginStart="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/splash_loading_status"
+                android:textColor="@color/profile_primary"
+                android:textSize="14sp" />
         </LinearLayout>
 
         <!-- 进度条 -->
         <ProgressBar
             android:id="@+id/loading_progress"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
+            android:layout_width="180dp"
             android:layout_height="3dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:indeterminate="true"
             android:progressTint="@color/profile_primary"
             android:progressBackgroundTint="@color/profile_surface_container"
             android:progressBackgroundTintMode="src_over" />
 
         <!-- 云端验证 -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/cloud_verify"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/bg_splash_badge"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp">
-
-            <View
-                android:id="@+id/status_dot"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/bg_dot_pulse" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:fontFamily="sans-serif"
-                android:letterSpacing="0.05"
-                android:text="云端验证"
-                android:textColor="@color/profile_on_surface_variant"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:layout_marginTop="14dp"
+            app:drawableEndCompat="@drawable/ic_star_filled"
+            android:drawablePadding="3dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.06"
+            android:text="@string/splash_cloud_verify"
+            android:textColor="@color/profile_on_surface_variant"
+            android:textSize="11sp"
+            android:alpha="0.7" />
     </LinearLayout>
-
-    <!-- 底部渐变 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="@drawable/bg_splash_bottom_gradient"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/character_image" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

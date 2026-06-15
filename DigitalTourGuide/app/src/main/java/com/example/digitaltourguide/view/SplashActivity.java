@@ -8,6 +8,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -26,6 +28,9 @@ public class SplashActivity extends AppCompatActivity {
 
         // 启动入场动画
         startEntryAnimations();
+
+        // 启动装饰元素的持续浮动动画
+        startFloatingAnimations();
 
         // 延迟后跳转
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -53,61 +58,165 @@ public class SplashActivity extends AppCompatActivity {
                 startActivity(new Intent(SplashActivity.this, UserLoginActivity.class));
                 finish();
             }
-        }, 2500); // 2.5秒展示启动页，给动画留足时间
+        }, 2800); // 2.8秒展示启动页，让动画完整播放
     }
 
     private void startEntryAnimations() {
-        // 顶部标题：先设初始透明偏移，再动画
+        OvershootInterpolator overshoot = new OvershootInterpolator(0.6f);
+        DecelerateInterpolator decelerate = new DecelerateInterpolator(1.2f);
+
+        // ---- 顶部品牌区：弹跳入场 ----
         View topBranding = findViewById(R.id.top_branding);
         topBranding.setAlpha(0f);
-        topBranding.setTranslationY(20f);
+        topBranding.setTranslationY(-30f);
         topBranding.animate()
                 .translationY(0)
-                .alpha(1)
-                .setDuration(800)
-                .setStartDelay(200)
-                .setInterpolator(new AccelerateDecelerateInterpolator())
+                .alpha(1f)
+                .setDuration(700)
+                .setStartDelay(150)
+                .setInterpolator(overshoot)
                 .start();
 
-        // 角色形象：先设初始透明偏移，再动画
-        View character = findViewById(R.id.character_image);
-        character.setAlpha(0f);
-        character.setTranslationY(20f);
-        character.animate()
+        // ---- 应用图标：缩小放大弹跳 ----
+        View appIcon = findViewById(R.id.app_icon_badge);
+        if (appIcon != null) {
+            appIcon.setScaleX(0.4f);
+            appIcon.setScaleY(0.4f);
+            appIcon.setAlpha(0f);
+            appIcon.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(600)
+                    .setStartDelay(100)
+                    .setInterpolator(overshoot)
+                    .start();
+        }
+
+        // ---- 角色形象卡片：缩放 + 淡入 ----
+        View characterFrame = findViewById(R.id.character_frame);
+        characterFrame.setAlpha(0f);
+        characterFrame.setScaleX(0.7f);
+        characterFrame.setScaleY(0.7f);
+        characterFrame.setTranslationY(30f);
+        characterFrame.animate()
                 .translationY(0)
-                .alpha(1)
+                .scaleX(1f)
+                .scaleY(1f)
+                .alpha(1f)
                 .setDuration(800)
-                .setStartDelay(100)
-                .setInterpolator(new AccelerateDecelerateInterpolator())
+                .setStartDelay(250)
+                .setInterpolator(overshoot)
                 .start();
 
-        // 底部加载区：先设初始透明偏移，再动画
-        View bottomLoading = findViewById(R.id.bottom_loading);
-        bottomLoading.setAlpha(0f);
-        bottomLoading.setTranslationY(20f);
-        bottomLoading.animate()
+        // ---- 底部区域：淡入 + 上移 ----
+        View bottomSection = findViewById(R.id.bottom_section);
+        bottomSection.setAlpha(0f);
+        bottomSection.setTranslationY(40f);
+        bottomSection.animate()
                 .translationY(0)
-                .alpha(1)
-                .setDuration(800)
-                .setStartDelay(400)
-                .setInterpolator(new AccelerateDecelerateInterpolator())
+                .alpha(1f)
+                .setDuration(700)
+                .setStartDelay(500)
+                .setInterpolator(decelerate)
                 .start();
 
-        // 状态点：脉冲动画（缩放）
+        // ---- 底部状态卡片：渐变出现 ----
+        View statusBadge = findViewById(R.id.status_badge);
+        if (statusBadge != null) {
+            statusBadge.setAlpha(0f);
+            statusBadge.animate()
+                    .alpha(1f)
+                    .setDuration(500)
+                    .setStartDelay(700)
+                    .setInterpolator(decelerate)
+                    .start();
+        }
+
+        // ---- 状态点：脉冲动画 ----
         View statusDot = findViewById(R.id.status_dot);
         if (statusDot != null) {
             ObjectAnimator pulseAnimator = ObjectAnimator.ofPropertyValuesHolder(
                     statusDot,
-                    PropertyValuesHolder.ofFloat("scaleX", 1f, 1.3f, 1f),
-                    PropertyValuesHolder.ofFloat("scaleY", 1f, 1.3f, 1f),
-                    PropertyValuesHolder.ofFloat("alpha", 0.6f, 1f, 0.6f)
+                    PropertyValuesHolder.ofFloat("scaleX", 1f, 1.4f, 1f),
+                    PropertyValuesHolder.ofFloat("scaleY", 1f, 1.4f, 1f),
+                    PropertyValuesHolder.ofFloat("alpha", 0.5f, 1f, 0.5f)
             );
-            pulseAnimator.setDuration(1500);
+            pulseAnimator.setDuration(1600);
             pulseAnimator.setRepeatCount(ObjectAnimator.INFINITE);
             pulseAnimator.setRepeatMode(ObjectAnimator.REVERSE);
             pulseAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
-            pulseAnimator.setStartDelay(600);
+            pulseAnimator.setStartDelay(900);
             pulseAnimator.start();
+        }
+    }
+
+    /**
+     * 装饰元素的持续浮动动画，增加画面灵动感
+     */
+    private void startFloatingAnimations() {
+        // 顶部右侧圆环：缓慢旋转
+        View decoRing1 = findViewById(R.id.deco_ring_1);
+        if (decoRing1 != null) {
+            ObjectAnimator ringRotator = ObjectAnimator.ofFloat(decoRing1, "rotation", 0f, 360f);
+            ringRotator.setDuration(8000);
+            ringRotator.setRepeatCount(ObjectAnimator.INFINITE);
+            ringRotator.setInterpolator(new AccelerateDecelerateInterpolator());
+            ringRotator.start();
+        }
+
+        // 顶部左侧菱形：缓慢浮动
+        View decoDiamond1 = findViewById(R.id.deco_diamond_1);
+        if (decoDiamond1 != null) {
+            ObjectAnimator diamondFloat = ObjectAnimator.ofFloat(decoDiamond1, "translationY", 0f, -12f, 0f);
+            diamondFloat.setDuration(3000);
+            diamondFloat.setRepeatCount(ObjectAnimator.INFINITE);
+            diamondFloat.setRepeatMode(ObjectAnimator.REVERSE);
+            diamondFloat.setInterpolator(new AccelerateDecelerateInterpolator());
+            diamondFloat.setStartDelay(200);
+            diamondFloat.start();
+
+            ObjectAnimator diamondRotate = ObjectAnimator.ofFloat(decoDiamond1, "rotation", 15f, 30f, 15f);
+            diamondRotate.setDuration(4000);
+            diamondRotate.setRepeatCount(ObjectAnimator.INFINITE);
+            diamondRotate.setRepeatMode(ObjectAnimator.REVERSE);
+            diamondRotate.setInterpolator(new AccelerateDecelerateInterpolator());
+            diamondRotate.start();
+        }
+
+        // 中间左侧小圆：缓慢浮动
+        View decoCircle1 = findViewById(R.id.deco_circle_1);
+        if (decoCircle1 != null) {
+            ObjectAnimator circleFloat = ObjectAnimator.ofFloat(decoCircle1, "translationX", 0f, 8f, 0f);
+            circleFloat.setDuration(2500);
+            circleFloat.setRepeatCount(ObjectAnimator.INFINITE);
+            circleFloat.setRepeatMode(ObjectAnimator.REVERSE);
+            circleFloat.setInterpolator(new AccelerateDecelerateInterpolator());
+            circleFloat.setStartDelay(300);
+            circleFloat.start();
+        }
+
+        // 中间右侧菱形：缓慢浮动
+        View decoDiamond2 = findViewById(R.id.deco_diamond_2);
+        if (decoDiamond2 != null) {
+            ObjectAnimator diamond2Float = ObjectAnimator.ofFloat(decoDiamond2, "translationY", 0f, -10f, 0f);
+            diamond2Float.setDuration(3500);
+            diamond2Float.setRepeatCount(ObjectAnimator.INFINITE);
+            diamond2Float.setRepeatMode(ObjectAnimator.REVERSE);
+            diamond2Float.setInterpolator(new AccelerateDecelerateInterpolator());
+            diamond2Float.setStartDelay(400);
+            diamond2Float.start();
+        }
+
+        // 中间右侧圆环：缓慢旋转
+        View decoRing2 = findViewById(R.id.deco_ring_2);
+        if (decoRing2 != null) {
+            ObjectAnimator ring2Rotator = ObjectAnimator.ofFloat(decoRing2, "rotation", 0f, -360f);
+            ring2Rotator.setDuration(10000);
+            ring2Rotator.setRepeatCount(ObjectAnimator.INFINITE);
+            ring2Rotator.setInterpolator(new AccelerateDecelerateInterpolator());
+            ring2Rotator.setStartDelay(500);
+            ring2Rotator.start();
         }
     }
 }
