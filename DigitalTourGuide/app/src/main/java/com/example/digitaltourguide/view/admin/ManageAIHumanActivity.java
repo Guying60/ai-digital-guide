@@ -46,7 +46,7 @@ import okhttp3.Response;
 public class ManageAIHumanActivity extends AppCompatActivity {
     private static final String TAG="ManageAIHumanActivity";
     private ImageView ivCover;
-    private TextView tvUpsert;
+    private TextView tvUpsert,tvScenicEdit;
     private Button btnGenerateTestVideo;
     private ActivityManagerAihumanBinding binding;
     private AIHumanViewModel viewModel;
@@ -86,6 +86,10 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         tvUpsert.setOnClickListener(v -> showUpsertDialog());
         btnGenerateTestVideo.setOnClickListener(v -> generateTestVideo());
         ivCover.setOnClickListener(v -> playCurrentVideo());
+        tvScenicEdit.setOnClickListener(v->{
+            startActivity(new Intent(ManageAIHumanActivity.this, ScenicEditActivity.class));
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+        });
 
         //观察上传视频结果
         viewModel.getUploadResult().observe(this,response->{
@@ -545,6 +549,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         ivCover = findViewById(R.id.iv_cover);
         tvUpsert = findViewById(R.id.tv_upsert);
         btnGenerateTestVideo = findViewById(R.id.btn_generate_test_video);
+        tvScenicEdit = findViewById(R.id.tab_scenic);
     }
 
 }

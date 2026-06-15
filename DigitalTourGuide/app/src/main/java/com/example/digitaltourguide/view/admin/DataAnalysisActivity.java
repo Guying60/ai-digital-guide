@@ -95,9 +95,10 @@ public class DataAnalysisActivity extends AppCompatActivity {
         });
 
         tabTouristAnalysis.setOnClickListener(v->{
-            Intent intent=new Intent(DataAnalysisActivity.this,TouristAnalysisActivity.class);
-            intent.putExtra("attraction_id",currentAttractionId);
+            Intent intent = new Intent(DataAnalysisActivity.this, TouristAnalysisActivity.class);
+            intent.putExtra("attraction_id", currentAttractionId);
             startActivity(intent);
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
         });
 
         tvBack.setOnClickListener(v->{

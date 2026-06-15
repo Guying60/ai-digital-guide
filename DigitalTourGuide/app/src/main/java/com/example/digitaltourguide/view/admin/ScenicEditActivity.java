@@ -2,8 +2,10 @@ package com.example.digitaltourguide.view.admin;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
@@ -25,6 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.example.digitaltourguide.R;
@@ -83,8 +86,7 @@ public class ScenicEditActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_scenic_edit);
-        binding= ActivityScenicEditBinding.inflate(getLayoutInflater());
+        binding = ActivityScenicEditBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         initView();
@@ -118,6 +120,7 @@ public class ScenicEditActivity extends AppCompatActivity {
             Intent intent = new Intent(ScenicEditActivity.this, ManageAIHumanActivity.class);
             intent.putExtra("attraction_id", currentAttractionId);
             startActivity(intent);
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
         });
     }
 
@@ -520,7 +523,18 @@ public class ScenicEditActivity extends AppCompatActivity {
     }
 
     private void checkPermissionAndOpenGallery() {
-        permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+：需要 READ_MEDIA_IMAGES 权限
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                    == PackageManager.PERMISSION_GRANTED) {
+                openGallery();
+            } else {
+                permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+        } else {
+            // Android 12 及以下：无需运行时权限，直接打开相册
+            openGallery();
+        }
     }
     private final ActivityResultLauncher<String> permissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
@@ -532,8 +546,8 @@ public class ScenicEditActivity extends AppCompatActivity {
     );
 
     private void openGallery() {
-        Intent intent=new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        intent.setType("image/*");
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
         galleryLauncher.launch(intent);
     }
     private final ActivityResultLauncher<Intent> galleryLauncher=registerForActivityResult(
