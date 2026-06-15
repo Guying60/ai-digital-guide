@@ -4,7 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
+import com.google.android.material.button.MaterialButton;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -12,7 +12,6 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import android.app.Dialog;
 import android.view.Gravity;
 import android.view.Window;
@@ -42,7 +41,7 @@ public class PointManagerActivity extends AppCompatActivity {
     private EditText etSearch;
     private RecyclerView rvScenic;
     private TextView tvDelete, tvCancel, tvBatchDelete;
-    private Button tvAdd;
+    private MaterialButton tvAdd;
     private boolean isBatchMode = false;
     private AttractionListAdapter adapter;
     private List<AddAttractionRequest> attractionList = new ArrayList<>();
@@ -94,12 +93,34 @@ public class PointManagerActivity extends AppCompatActivity {
             }
             @Override
             public void onDeleteClick(AddAttractionRequest item) {
-                new AlertDialog.Builder(PointManagerActivity.this)
-                        .setTitle("删除景点")
-                        .setMessage("确定要删除景点【" + item.getAttractionName() + "】吗？删除后不可恢复。")
-                        .setPositiveButton("删除", (dialog, which) -> deleteAttraction(item))
-                        .setNegativeButton("取消", null)
-                        .show();
+                Dialog dialog = new Dialog(PointManagerActivity.this);
+                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                View view = getLayoutInflater().inflate(R.layout.dialog_delete_confirm, null);
+                dialog.setContentView(view);
+
+                Window window = dialog.getWindow();
+                if (window != null) {
+                    window.setLayout(
+                            (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                            WindowManager.LayoutParams.WRAP_CONTENT
+                    );
+                    window.setGravity(Gravity.CENTER);
+                    window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+                }
+
+                TextView tvMessage = view.findViewById(R.id.tv_delete_message);
+                if (tvMessage != null) {
+                    tvMessage.setText("确定要删除景点【" + item.getAttractionName() + "】吗？删除后不可恢复。");
+                }
+
+                view.findViewById(R.id.btn_cancel_delete).setOnClickListener(v -> dialog.dismiss());
+                view.findViewById(R.id.btn_confirm_delete).setOnClickListener(v -> {
+                    dialog.dismiss();
+                    deleteAttraction(item);
+                });
+
+                dialog.setCanceledOnTouchOutside(true);
+                dialog.show();
             }
 
             @Override
@@ -142,21 +163,43 @@ public class PointManagerActivity extends AppCompatActivity {
             return;
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("批量删除")
-                .setMessage("确定要删除选中的 " + selectedIds.size() + " 个景点吗？")
-                .setPositiveButton("删除", (dialog, which) -> callBatchDeleteApi(selectedIds))
-                .setNegativeButton("取消", null)
-                .show();
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_delete_confirm, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        TextView tvMessage = view.findViewById(R.id.tv_delete_message);
+        if (tvMessage != null) {
+            tvMessage.setText("确定要删除选中的 " + selectedIds.size() + " 个景点吗？");
+        }
+
+        view.findViewById(R.id.btn_cancel_delete).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_confirm_delete).setOnClickListener(v -> {
+            dialog.dismiss();
+            callBatchDeleteApi(selectedIds);
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
 
     private void enterBatchMode() {
         isBatchMode = true;
         adapter.setMultiSelectMode(true);
         tvBatchDelete.setText("确认删除");
-        // 新增按钮 → 取消（不带图标）
+        // 新增按钮 → 取消（隐藏图标）
         tvAdd.setText("取消");
-        tvAdd.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+        tvAdd.setIconResource(0);
         if (tvCancel != null) tvCancel.setVisibility(View.GONE);
     }
 
@@ -164,9 +207,9 @@ public class PointManagerActivity extends AppCompatActivity {
         isBatchMode = false;
         adapter.setMultiSelectMode(false);
         tvBatchDelete.setText("批量删除");
-        // 取消 → 恢复新增按钮（带图标）
+        // 取消 → 恢复新增景点（带图标）
         tvAdd.setText(R.string.pm_add);
-        tvAdd.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_add_circle, 0, 0, 0);
+        tvAdd.setIconResource(R.drawable.ic_add_circle);
         if (tvCancel != null) tvCancel.setVisibility(View.GONE);
     }
 
@@ -370,6 +413,13 @@ public class PointManagerActivity extends AppCompatActivity {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_admin_menu);
 
+        // 设置管理员账号（从 SpUtils 读取）
+        TextView tvAdminName = (TextView) dialog.findViewById(R.id.tv_admin_name);
+        String adminUsername = SpUtils.getAdminUsername(this);
+        if (!adminUsername.isEmpty()) {
+            tvAdminName.setText("管理员：" + adminUsername);
+        }
+
         // 管理模式
         dialog.findViewById(R.id.menu_management_mode).setOnClickListener(v -> {
             Toast.makeText(this, "管理模式", Toast.LENGTH_SHORT).show();
@@ -403,6 +453,7 @@ public class PointManagerActivity extends AppCompatActivity {
         etSearch = findViewById(R.id.et_search);
         rvScenic = findViewById(R.id.rv_scenic);
         tvAdd = findViewById(R.id.tv_add);
+        // 初始状态下 MaterialButton 会自动从 XML 的 app:icon 加载图标
         tvBatchDelete=findViewById(R.id.tv_delete_batch);
     }
 }
