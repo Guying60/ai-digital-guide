@@ -565,7 +565,7 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(new Intent(this, MyActivity.class));
         });
         ivAdd.setOnClickListener(v->{
-            startActivity(new Intent(this, ChatActivity.class));
+            new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
         });
     }
 
