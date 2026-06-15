@@ -2,6 +2,8 @@ package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -53,6 +55,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private String currentOssUrl;       // 上传成功后的视频地址
     private String selectedVideoFileName=""; //保存选中的视频文件名，用于显示和确认
     private File selectedVideoFile; // 临时视频文件对象
+    private boolean hasVideoFrameShown = false; // 标记是否已展示视频首帧封面
     private AlertDialog uploadDialog,currentDialog;
     // 轮询
     private Handler preloadHandler = new Handler();
@@ -92,6 +95,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     Log.e(TAG, "========== 上传视频成功，将调用 upsertDigitalHuman ==========");
                     currentOssUrl = ossUrl;
                     Toast.makeText(this, "视频上传成功,请等待数字人配置...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
                     upsertDigitalHuman(ossUrl);  // ✅ 这里调用保存
 
                     //删除临时视频文件
@@ -218,7 +222,10 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     // 更新UI：有数字人
     private void updateUIForDigitalHumanExists() {
         Log.d(TAG, "updateUIForDigitalHumanExists, currentOssUrl = " + currentOssUrl);
-        ivCover.setImageResource(R.drawable.ic_aihuman_video); // 你的默认图
+        // 如果已经显示了视频首帧，不覆盖
+        if (!hasVideoFrameShown) {
+            ivCover.setImageResource(R.drawable.ic_aihuman_video);
+        }
         ivCover.setEnabled(true);
 
     }
@@ -447,6 +454,27 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
 
 
+    /**
+     * 从视频文件中提取第一帧作为封面显示在 ivCover 上
+     */
+    private void setVideoCoverFromFile(File videoFile) {
+        if (videoFile == null || !videoFile.exists()) return;
+        try {
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(videoFile.getAbsolutePath());
+            Bitmap frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            retriever.release();
+            if (frame != null) {
+                runOnUiThread(() -> {
+                    ivCover.setImageBitmap(frame);
+                    hasVideoFrameShown = true;
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "提取视频首帧失败：" + e.getMessage());
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -456,6 +484,8 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 try {
                     selectedVideoFileName = getFileNameFromUri(videoUri);
                     selectedVideoFile = copyUriToTempFile(videoUri, selectedVideoFileName);
+                    // 提取视频第一帧作为封面
+                    setVideoCoverFromFile(selectedVideoFile);
                     if (uploadDialog != null && uploadDialog.isShowing()) {
                         TextView tvSelected = uploadDialog.findViewById(R.id.tv_selected_video);
                         if (tvSelected != null) {
