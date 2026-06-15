@@ -34,9 +34,9 @@
 
     <!-- 全局页面切换过渡动画 -->
     <style name="WindowAnimationTransition">
-        <item name="android:activityOpenEnterAnimation">@anim/activity_slide_in</item>
-        <item name="android:activityOpenExitAnimation">@anim/activity_slide_out</item>
-        <item name="android:activityCloseEnterAnimation">@anim/activity_slide_in_back</item>
-        <item name="android:activityCloseExitAnimation">@anim/activity_slide_out_back</item>
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 </resources>
