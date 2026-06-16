@@ -95,8 +95,8 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             Intent intent = new Intent(TouristAnalysisActivity.this, DataAnalysisActivity.class);
             intent.putExtra("attraction_id", currentAttractionId);
             startActivity(intent);
-            overridePendingTransition(0, 0); // 可选，无缝切换
-            finish(); // 如果需要关闭当前页面，根据实际要求决定
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+            finish();
         });
     }
 

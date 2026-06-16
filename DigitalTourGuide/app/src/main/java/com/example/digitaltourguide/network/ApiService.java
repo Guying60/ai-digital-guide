@@ -11,6 +11,8 @@ import com.example.digitaltourguide.model.user.GuidePreference;
 import com.example.digitaltourguide.model.user.GuidePreferenceRequest;
 import com.example.digitaltourguide.model.user.HistoryResponse;
 import com.example.digitaltourguide.model.user.RegisterResponse;
+import com.example.digitaltourguide.model.user.ReviewPage;
+import com.example.digitaltourguide.model.user.SubmitReviewRequest;
 import com.example.digitaltourguide.model.user.UpdateUserRequest;
 import com.example.digitaltourguide.model.user.UserLoginData;
 
@@ -108,5 +110,31 @@ public interface ApiService {
     //1.13 查询导览偏好
     @GET("users/guide-preference")
     Call<BaseResponse<GuidePreference>> getGuidePreference();
+
+    //==================================================================
+    // 1.13 获取我的评价列表（游标分页）
+    //==================================================================
+    @GET("users/reviews")
+    Call<BaseResponse<ReviewPage>> getReviews(
+            @Query("lastId") String lastId,
+            @Query("pageSize") Integer pageSize,
+            @Query("status") Integer status
+    );
+
+    //==================================================================
+    // 1.14 提交评价
+    //==================================================================
+    @POST("users/reviews/submit")
+    Call<BaseResponse<Void>> submitReview(
+            @Body SubmitReviewRequest request
+    );
+
+    //==================================================================
+    // 1.15 删除评价
+    //==================================================================
+    @DELETE("users/reviews/{reviewId}")
+    Call<BaseResponse<Void>> deleteReview(
+            @Path("reviewId") String reviewId
+    );
 }
 

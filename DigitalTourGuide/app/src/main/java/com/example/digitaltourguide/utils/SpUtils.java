@@ -100,6 +100,18 @@ public class SpUtils {
         init(context);
         return sp.getString("admin_id", "");
     }
+
+    // 保存管理员账号（用户名）
+    public static void saveAdminUsername(Context context, String username) {
+        init(context);
+        sp.edit().putString("admin_username", username).apply();
+    }
+
+    // 获取管理员账号（用户名）
+    public static String getAdminUsername(Context context) {
+        init(context);
+        return sp.getString("admin_username", "");
+    }
     // 存储管理员token
     public static void saveAdminToken(Context context, String token) {
         init(context);

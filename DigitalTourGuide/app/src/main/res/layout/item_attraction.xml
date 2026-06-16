@@ -105,23 +105,23 @@
             android:gravity="end"
             android:orientation="horizontal">
 
-            <TextView
+            <Button
                 android:id="@+id/tv_edit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="60dp"
+                android:layout_height="35dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="4dp"
                 android:text="编辑"
-                android:textColor="#7854F4"
+                android:textColor="@color/white"
                 android:textSize="13sp"
-                android:background="@drawable/bg_chip_unselected" />
+                app:backgroundTint="#7854F4" />
 
-            <TextView
+            <Button
                 android:id="@+id/tv_delete"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="60dp"
+                android:layout_height="35dp"
                 android:layout_marginStart="8dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -130,7 +130,8 @@
                 android:text="删除"
                 android:textColor="#FF4D4F"
                 android:textSize="13sp"
-                android:background="@drawable/bg_btn_danger_outline" />
+                android:backgroundTint="@color/profile_error_container"
+                />
         </LinearLayout>
 
     </RelativeLayout>

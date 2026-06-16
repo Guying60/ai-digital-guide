@@ -21,7 +21,19 @@
             android:layout_height="wrap_content"
             android:background="@color/profile_surface"
             android:translationZ="0dp"
-            app:elevation="0dp"/>
+            app:elevation="0dp">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/topAppBar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/profile_surface"
+                app:navigationContentDescription="@string/back"
+                app:navigationIcon="@drawable/ic_arrow_back"
+                app:title="个人资料"
+                app:titleTextColor="@color/profile_on_surface" />
+
+        </com.google.android.material.appbar.AppBarLayout>
 
         <!-- Scrollable Content -->
         <androidx.core.widget.NestedScrollView

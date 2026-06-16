@@ -16,7 +16,10 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <style name="Theme.DigitalTourGuide" parent="Base.Theme.DigitalTourGuide" />
+    <style name="Theme.DigitalTourGuide" parent="Base.Theme.DigitalTourGuide">
+        <!-- 全局页面切换动画 -->
+        <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
+    </style>
 
     <!-- PointManager theme: status bar blends with #F7F8FA background -->
     <style name="Theme.DigitalTourGuide.PointManager" parent="Theme.DigitalTourGuide">
@@ -27,5 +30,13 @@
     <style name="Theme.DigitalTourGuide.Profile" parent="Base.Theme.DigitalTourGuide">
         <item name="android:windowBackground">@color/profile_background</item>
         <item name="android:statusBarColor">@color/profile_surface</item>
+    </style>
+
+    <!-- 全局页面切换过渡动画 -->
+    <style name="WindowAnimationTransition">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 </resources>

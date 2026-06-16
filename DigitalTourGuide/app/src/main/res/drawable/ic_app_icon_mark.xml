@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+
+    <!-- 外环 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:pathData="M14,2.5C20.351,2.5 25.5,7.649 25.5,14C25.5,20.351 20.351,25.5 14,25.5C7.649,25.5 2.5,20.351 2.5,14C2.5,7.649 7.649,2.5 14,2.5Z" />
+
+    <!-- 中心圆点 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14,11.5C15.381,11.5 16.5,12.619 16.5,14C16.5,15.381 15.381,16.5 14,16.5C12.619,16.5 11.5,15.381 11.5,14C11.5,12.619 12.619,11.5 14,11.5Z" />
+
+    <!-- 北向指针 (compass needle north) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14,4L16.5,12.5L14,10L11.5,12.5Z" />
+
+    <!-- 南向指针 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:alpha="0.4"
+        android:pathData="M14,24L11.5,15.5L14,18L16.5,15.5Z" />
+</vector>

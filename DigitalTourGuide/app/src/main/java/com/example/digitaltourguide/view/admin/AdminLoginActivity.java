@@ -106,6 +106,7 @@ public class AdminLoginActivity extends AppCompatActivity {
                         // ===== 核心：存储Token与过期时间（实现登录记忆）=====
                         SpUtils.saveAdminTokenWithExpire(AdminLoginActivity.this, token, expiresIn);
                         SpUtils.saveAdminId(AdminLoginActivity.this, adminId);
+                        SpUtils.saveAdminUsername(AdminLoginActivity.this, username);
                         SpUtils.saveLastLoginType(AdminLoginActivity.this, "admin");
 
                         Toast.makeText(AdminLoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();

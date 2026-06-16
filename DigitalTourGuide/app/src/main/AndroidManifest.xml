@@ -70,6 +70,10 @@
             android:exported="true" />
 
         <activity
+            android:name=".view.user.MyJudgeActivity"
+            android:exported="true" />
+
+        <activity
             android:name=".view.user.MyPerActivity"
             android:exported="true"
             android:theme="@style/Theme.DigitalTourGuide" />
@@ -100,6 +104,11 @@
             android:name=".view.admin.ManageAIHumanActivity"
             android:exported="true" >
         </activity>
+
+        <activity
+            android:name=".view.admin.RecordVideoActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".view.admin.ScenicEditActivity"

@@ -117,6 +117,13 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- Splash screen strings -->
+    <string name="splash_app_title">数字人导游</string>
+    <string name="splash_app_subtitle">您的 AI 智能旅游助手</string>
+    <string name="splash_loading_status">正在启动导游服务...</string>
+    <string name="splash_cloud_verify">云端安全验证</string>
+    <string name="splash_app_icon_text">AI</string>
+
     <!-- PointManager strings -->
     <string name="pm_title">景点管理</string>
     <string name="pm_logout">退出登录</string>

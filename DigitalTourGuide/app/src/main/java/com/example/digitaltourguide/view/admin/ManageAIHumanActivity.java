@@ -2,6 +2,8 @@ package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,7 +46,7 @@ import okhttp3.Response;
 public class ManageAIHumanActivity extends AppCompatActivity {
     private static final String TAG="ManageAIHumanActivity";
     private ImageView ivCover;
-    private TextView tvUpsert;
+    private TextView tvUpsert,tvScenicEdit;
     private Button btnGenerateTestVideo;
     private ActivityManagerAihumanBinding binding;
     private AIHumanViewModel viewModel;
@@ -53,6 +55,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private String currentOssUrl;       // 上传成功后的视频地址
     private String selectedVideoFileName=""; //保存选中的视频文件名，用于显示和确认
     private File selectedVideoFile; // 临时视频文件对象
+    private boolean hasVideoFrameShown = false; // 标记是否已展示视频首帧封面
     private AlertDialog uploadDialog,currentDialog;
     // 轮询
     private Handler preloadHandler = new Handler();
@@ -62,6 +65,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private Runnable testVideoRunnable;
     private boolean isPollingTestVideo = false;
     private static final int REQUEST_CODE_SELECT_VIDEO = 100;
+    private static final int REQUEST_CODE_RECORD_VIDEO = 101;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +87,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         tvUpsert.setOnClickListener(v -> showUpsertDialog());
         btnGenerateTestVideo.setOnClickListener(v -> generateTestVideo());
         ivCover.setOnClickListener(v -> playCurrentVideo());
+        tvScenicEdit.setOnClickListener(v->{
+            Intent intent = new Intent(ManageAIHumanActivity.this, ScenicEditActivity.class);
+            intent.putExtra("attraction_id", attractionId);
+            startActivity(intent);
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+        });
 
         //观察上传视频结果
         viewModel.getUploadResult().observe(this,response->{
@@ -92,6 +102,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     Log.e(TAG, "========== 上传视频成功，将调用 upsertDigitalHuman ==========");
                     currentOssUrl = ossUrl;
                     Toast.makeText(this, "视频上传成功,请等待数字人配置...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
                     upsertDigitalHuman(ossUrl);  // ✅ 这里调用保存
 
                     //删除临时视频文件
@@ -218,7 +229,10 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     // 更新UI：有数字人
     private void updateUIForDigitalHumanExists() {
         Log.d(TAG, "updateUIForDigitalHumanExists, currentOssUrl = " + currentOssUrl);
-        ivCover.setImageResource(R.drawable.ic_aihuman_video); // 你的默认图
+        // 如果已经显示了视频首帧，不覆盖
+        if (!hasVideoFrameShown) {
+            ivCover.setImageResource(R.drawable.ic_aihuman_video);
+        }
         ivCover.setEnabled(true);
 
     }
@@ -250,6 +264,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         TextView tvAttractionId = dialogView.findViewById(R.id.tv_attraction_id);
         TextView tvSelectedVideo = dialogView.findViewById(R.id.tv_selected_video);
         Button btnSelectVideo = dialogView.findViewById(R.id.btn_select_video);
+        Button btnRecordVideo = dialogView.findViewById(R.id.btn_record_video);
         Button btnUpload = dialogView.findViewById(R.id.btn_upload);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
 
@@ -260,6 +275,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("video/*");
             startActivityForResult(intent,REQUEST_CODE_SELECT_VIDEO);
+        });
+
+        //录制视频按钮
+        btnRecordVideo.setOnClickListener(v->{
+            Intent intent=new Intent(ManageAIHumanActivity.this, RecordVideoActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_RECORD_VIDEO);
         });
 
         //上传视频按钮
@@ -447,6 +468,27 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
 
 
+    /**
+     * 从视频文件中提取第一帧作为封面显示在 ivCover 上
+     */
+    private void setVideoCoverFromFile(File videoFile) {
+        if (videoFile == null || !videoFile.exists()) return;
+        try {
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(videoFile.getAbsolutePath());
+            Bitmap frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            retriever.release();
+            if (frame != null) {
+                runOnUiThread(() -> {
+                    ivCover.setImageBitmap(frame);
+                    hasVideoFrameShown = true;
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "提取视频首帧失败：" + e.getMessage());
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -456,6 +498,8 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 try {
                     selectedVideoFileName = getFileNameFromUri(videoUri);
                     selectedVideoFile = copyUriToTempFile(videoUri, selectedVideoFileName);
+                    // 提取视频第一帧作为封面
+                    setVideoCoverFromFile(selectedVideoFile);
                     if (uploadDialog != null && uploadDialog.isShowing()) {
                         TextView tvSelected = uploadDialog.findViewById(R.id.tv_selected_video);
                         if (tvSelected != null) {
@@ -466,6 +510,26 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                     Toast.makeText(this, "读取视频文件失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else if (requestCode == REQUEST_CODE_RECORD_VIDEO && resultCode == RESULT_OK && data != null) {
+            String path = data.getStringExtra(RecordVideoActivity.EXTRA_VIDEO_PATH);
+            if (!TextUtils.isEmpty(path)) {
+                File recorded = new File(path);
+                if (recorded.exists() && recorded.length() > 0) {
+                    // 录制文件已落在 cacheDir，可直接复用上传流程
+                    selectedVideoFile = recorded;
+                    selectedVideoFileName = recorded.getName();
+                    setVideoCoverFromFile(selectedVideoFile);
+                    if (uploadDialog != null && uploadDialog.isShowing()) {
+                        TextView tvSelected = uploadDialog.findViewById(R.id.tv_selected_video);
+                        if (tvSelected != null) {
+                            tvSelected.setText("已录制：" + selectedVideoFileName);
+                        }
+                    }
+                    Toast.makeText(this, "录制完成，可点击上传", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "录制文件无效，请重试", Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -515,6 +579,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         ivCover = findViewById(R.id.iv_cover);
         tvUpsert = findViewById(R.id.tv_upsert);
         btnGenerateTestVideo = findViewById(R.id.btn_generate_test_video);
+        tvScenicEdit = findViewById(R.id.tab_scenic);
     }
 
 }

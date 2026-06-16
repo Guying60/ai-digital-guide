@@ -750,41 +750,6 @@
                         android:src="@drawable/ic_check"
                         android:visibility="visible" />
                 </FrameLayout>
-
-                <FrameLayout
-                    android:id="@+id/tag_relic"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?attr/selectableItemBackground"
-                    android:padding="0dp">
-
-                    <TextView
-                        android:id="@+id/tv_tag_relic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_chip_filter_unselected"
-                        android:gravity="center"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="8dp"
-                        android:text="文物收藏"
-                        android:textColor="@color/profile_on_surface_variant"
-                        android:textSize="12sp" />
-
-                    <ImageView
-                        android:id="@+id/check_tag_relic"
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
-                        android:layout_gravity="top|end"
-                        android:layout_marginTop="-4dp"
-                        android:layout_marginEnd="-4dp"
-                        android:background="@drawable/bg_circle_check"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_check"
-                        android:visibility="gone" />
-                </FrameLayout>
             </LinearLayout>
 
             <!-- Row 2 -->
@@ -1435,19 +1400,7 @@
                     android:textColor="@color/profile_on_primary"
                     android:textSize="12sp" />
 
-                <TextView
-                    android:id="@+id/suggestion_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_chip_filter_selected"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="6dp"
-                    android:text="结合建筑艺术"
-                    android:textColor="@color/profile_on_primary"
-                    android:textSize="12sp" />
+
             </LinearLayout>
 
             <LinearLayout

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160"
+    android:autoMirrored="false">
+
+    <!-- ====== 外环 ====== -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#004BD7"
+        android:strokeWidth="2"
+        android:alpha="0.25"
+        android:pathData="M80,8C119.765,8 152,40.235 152,80C152,119.765 119.765,152 80,152C40.235,152 8,119.765 8,80C8,40.235 40.235,8 80,8Z" />
+
+    <!-- ====== 中层环 ====== -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#004BD7"
+        android:strokeWidth="1.2"
+        android:alpha="0.18"
+        android:pathData="M80,22C112.033,22 138,47.967 138,80C138,112.033 112.033,138 80,138C47.967,138 22,112.033 22,80C22,47.967 47.967,22 80,22Z" />
+
+    <!-- ====== 内层环 ====== -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#004BD7"
+        android:strokeWidth="0.8"
+        android:alpha="0.12"
+        android:pathData="M80,36C104.301,36 124,55.699 124,80C124,104.301 104.301,124 80,124C55.699,124 36,104.301 36,80C36,55.699 55.699,36 80,36Z" />
+
+    <!-- ====== 位置标记 (核心视觉) - 现代风格定位图标 ====== -->
+    <!-- 外圈背景 -->
+    <path
+        android:fillColor="#E8F0FF"
+        android:strokeColor="#004BD7"
+        android:strokeWidth="1.5"
+        android:pathData="M80,42C96.569,42 110,55.431 110,72C110,80.228 103.774,90.337 97.346,98.656C90.918,106.975 84.508,113.765 81.544,116.729C80.554,117.719 79.446,117.719 78.456,116.729C75.492,113.765 69.082,106.975 62.654,98.656C56.226,90.337 50,80.228 50,72C50,55.431 63.431,42 80,42Z" />
+
+    <!-- 中心圆 (定位的目标点) -->
+    <path
+        android:fillColor="#004BD7"
+        android:pathData="M80,59C87.18,59 93,64.82 93,72C93,79.18 87.18,85 80,85C72.82,85 67,79.18 67,72C67,64.82 72.82,59 80,59Z" />
+
+    <!-- 中心小圆点 (高亮) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M80,65C83.866,65 87,68.134 87,72C87,75.866 83.866,79 80,79C76.134,79 73,75.866 73,72C73,68.134 76.134,65 80,65Z" />
+
+    <!-- ====== 四个方位装饰点 ====== -->
+    <!-- 北 -->
+    <path
+        android:fillColor="#004BD7"
+        android:alpha="0.35"
+        android:pathData="M80,12C81.657,12 83,13.343 83,15C83,16.657 81.657,18 80,18C78.343,18 77,16.657 77,15C77,13.343 78.343,12 80,12Z" />
+
+    <!-- 东 -->
+    <path
+        android:fillColor="#004BD7"
+        android:alpha="0.25"
+        android:pathData="M148,80C148,81.657 146.657,83 145,83C143.343,83 142,81.657 142,80C142,78.343 143.343,77 145,77C146.657,77 148,78.343 148,80Z" />
+
+    <!-- 南 -->
+    <path
+        android:fillColor="#004BD7"
+        android:alpha="0.25"
+        android:pathData="M80,148C81.657,148 83,146.657 83,145C83,143.343 81.657,142 80,142C78.343,142 77,143.343 77,145C77,146.657 78.343,148 80,148Z" />
+
+    <!-- 西 -->
+    <path
+        android:fillColor="#004BD7"
+        android:alpha="0.25"
+        android:pathData="M12,80C12,81.657 13.343,83 15,83C16.657,83 18,81.657 18,80C18,78.343 16.657,77 15,77C13.343,77 12,78.343 12,80Z" />
+
+    <!-- ====== 十字方位线 ====== -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#004BD7"
+        android:strokeWidth="0.8"
+        android:alpha="0.15"
+        android:pathData="M80,24 v8 M80,128 v8 M24,80 h8 M128,80 h8" />
+
+    <!-- ====== 装饰性小菱形 (NE/SW) ====== -->
+    <path
+        android:fillColor="#2ADEC0"
+        android:alpha="0.3"
+        android:strokeColor="#2ADEC0"
+        android:strokeWidth="0"
+        android:pathData="M106,37l4,4l-4,4l-4,-4Z" />
+
+    <path
+        android:fillColor="#2ADEC0"
+        android:alpha="0.2"
+        android:strokeColor="#2ADEC0"
+        android:strokeWidth="0"
+        android:pathData="M54,123l3,3l-3,3l-3,-3Z" />
+
+    <!-- ====== 连接弧线 (现代科技感) ====== -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2ADEC0"
+        android:strokeWidth="1"
+        android:alpha="0.2"
+        android:pathData="M18,48A62,62 0 0,1 48,18" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2ADEC0"
+        android:strokeWidth="1"
+        android:alpha="0.2"
+        android:pathData="M142,112A62,62 0 0,1 112,142" />
+</vector>

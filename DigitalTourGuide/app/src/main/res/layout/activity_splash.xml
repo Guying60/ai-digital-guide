@@ -1,85 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/ic_splash_background"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:background="@drawable/bg_splash_gradient"
+    android:keepScreenOn="true">
 
-    <!-- 顶部留白 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.1" />
-
-    <!-- 机器人图标（你可以替换为自己的图片） -->
-    <ImageView
-        android:layout_width="160dp"
-        android:layout_height="160dp"
-        android:layout_gravity="center_horizontal"
-        android:src="@mipmap/bg_ai_robot" />
-
-    <!-- 标题文字 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="24dp"
-        android:text="AI导游"
-        android:textColor="#007AFF"
-        android:textSize="48sp"
-        android:textStyle="bold" />
-
-    <!-- 副标题文字 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="12dp"
-        android:text="你的24h智能旅行助手"
-        android:textColor="#333333"
-        android:textSize="20sp" />
-
-    <!-- 中间留白 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.2" />
-
-    <!-- 底部文字 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="16dp"
-        android:text="探索全球景点 · AI导游伴你"
-        android:textColor="#007AFF"
-        android:textSize="18sp" />
-
-    <!-- 进度条 -->
+    <!-- ========== 中央主视觉:Logo + 文字 ========== -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/title_block"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:orientation="horizontal">
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.42">
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="4dp"
-            android:layout_weight="1"
-            android:background="#007AFF" />
+        <!-- Logo(放大,白色光晕晕开方块硬边) -->
+        <FrameLayout
+            android:id="@+id/character_frame"
+            android:layout_width="360dp"
+            android:layout_height="360dp">
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="4dp"
-            android:layout_weight="1"
-            android:background="#E0E0E0" />
+            <!-- 柔和白色光晕:罩住人像、把 JPG 白底硬边向外渐隐到背景 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_logo_halo" />
+
+            <ImageView
+                android:id="@+id/character_image"
+                android:layout_width="170dp"
+                android:layout_height="170dp"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/splash_app_title"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_splash" />
+        </FrameLayout>
+
+        <!-- 主标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.04"
+            android:text="@string/splash_app_title"
+            android:textColor="@color/splash_ink"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- 副标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.22"
+            android:text="@string/splash_app_subtitle"
+            android:textAllCaps="true"
+            android:textColor="@color/splash_muted"
+            android:textSize="11sp" />
     </LinearLayout>
 
-    <!-- 底部留白 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.1" />
+    <!-- ========== 底部:极简加载 ========== -->
+    <LinearLayout
+        android:id="@+id/bottom_section"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="56dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-</LinearLayout>
+        <ProgressBar
+            android:id="@+id/loading_progress"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:indeterminateTint="@color/splash_accent" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.08"
+            android:text="@string/splash_loading_status"
+            android:textColor="@color/splash_muted"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- ========== 动画占位(保留 Java 引用的 ID,避免空指针) ========== -->
+    <View
+        android:id="@+id/top_branding"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/app_icon_badge"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/status_badge"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/status_dot"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

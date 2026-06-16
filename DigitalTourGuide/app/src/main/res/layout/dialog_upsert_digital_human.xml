@@ -25,6 +25,13 @@
         android:text="选择视频文件" />
 
     <Button
+        android:id="@+id/btn_record_video"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="录制视频" />
+
+    <Button
         android:id="@+id/btn_upload"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

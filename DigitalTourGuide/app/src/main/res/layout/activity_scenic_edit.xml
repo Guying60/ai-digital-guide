@@ -414,14 +414,14 @@
                                 android:layout_width="200dp"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-
+                                android:background="@drawable/bg_file_card"
                                 android:padding="16dp"
                                 android:layout_marginEnd="12dp">
 
                                 <FrameLayout
                                     android:layout_width="40dp"
                                     android:layout_height="40dp"
-                                    android:background="@drawable/bg_pdf_badge"
+
                                     android:layout_marginBottom="12dp">
 
                                     <ImageView
@@ -537,5 +537,21 @@
         android:textColor="#FFFFFF"
         android:textSize="18sp"
         android:textStyle="bold" />
+
+    <!-- 左上角返回箭头（固定，悬浮于内容之上） -->
+    <ImageView
+        android:id="@+id/btn_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:padding="8dp"
+        android:src="@drawable/ic_arrow_back"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/se_back" />
 
 </RelativeLayout>

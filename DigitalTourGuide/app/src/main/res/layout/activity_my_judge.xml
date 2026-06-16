@@ -147,11 +147,13 @@
 
             <!-- ── Footer ── -->
             <LinearLayout
+                android:id="@+id/footer_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:gravity="center"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:visibility="gone">
 
                 <View
                     android:layout_width="0dp"
