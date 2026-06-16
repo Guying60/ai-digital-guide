@@ -366,10 +366,14 @@ public class MyJudgeActivity extends AppCompatActivity {
     }
 
     private void updateStarDisplay(ImageView[] stars, int count) {
+        int goldColor = getColor(R.color.profile_star_yellow);
+        int grayColor = getColor(R.color.profile_outline_variant);
         for (int i = 0; i < 5; i++) {
-            stars[i].setImageResource(i < count
+            boolean selected = i < count;
+            stars[i].setImageResource(selected
                     ? R.drawable.ic_star_filled
                     : R.drawable.ic_star_outline);
+            stars[i].setColorFilter(selected ? goldColor : grayColor);
         }
     }
 

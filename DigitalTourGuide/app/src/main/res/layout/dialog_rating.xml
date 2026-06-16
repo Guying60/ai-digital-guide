@@ -31,40 +31,35 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="1星"
-            android:src="@drawable/ic_star_filled"
-            app:tint="@color/profile_outline_variant" />
+            android:src="@drawable/ic_star_filled" />
 
         <ImageView
             android:id="@+id/star_2"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="2星"
-            android:src="@drawable/ic_star_filled"
-            app:tint="@color/profile_outline_variant" />
+            android:src="@drawable/ic_star_filled" />
 
         <ImageView
             android:id="@+id/star_3"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="3星"
-            android:src="@drawable/ic_star_filled"
-            app:tint="@color/profile_outline_variant" />
+            android:src="@drawable/ic_star_filled" />
 
         <ImageView
             android:id="@+id/star_4"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="4星"
-            android:src="@drawable/ic_star_filled"
-            app:tint="@color/profile_outline_variant" />
+            android:src="@drawable/ic_star_filled" />
 
         <ImageView
             android:id="@+id/star_5"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="5星"
-            android:src="@drawable/ic_star_filled"
-            app:tint="@color/profile_outline_variant" />
+            android:src="@drawable/ic_star_filled" />
     </LinearLayout>
 
     <!-- ── 评分标签 (可点击切换) ── -->

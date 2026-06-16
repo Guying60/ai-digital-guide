@@ -70,6 +70,10 @@
             android:exported="true" />
 
         <activity
+            android:name=".view.user.MyJudgeActivity"
+            android:exported="true" />
+
+        <activity
             android:name=".view.user.MyPerActivity"
             android:exported="true"
             android:theme="@style/Theme.DigitalTourGuide" />
