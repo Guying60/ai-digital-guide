@@ -56,6 +56,12 @@ public class MuseTalkConnector {
         if (museTalkSession == null || !museTalkSession.isOpen()) {
             return;
         }
+        // 重置诊断计数器
+        MuseTalkHandler handler = handlers.get(ctx.getSid());
+        if (handler != null) {
+            handler.pyVideoCount = 0;
+            handler.lastPyVideoTime = 0;
+        }
         try {
             String json = objectMapper.createObjectNode()
                     .put("type", "interrupt")
@@ -72,6 +78,15 @@ public class MuseTalkConnector {
     private class MuseTalkHandler extends AbstractWebSocketHandler {
 
         private final ChatSessionContext ctx;
+        private long lastPyVideoTime = 0;
+        private int pyVideoCount = 0;
+        // ★ 句级诊断：追踪每句的总字节数、帧数、耗时
+        private int pyCurSentenceId = -1;
+        private long pySentenceStartWallMs = 0;
+        private long pySentenceBytes = 0;
+        private int pySentenceFrameCount = 0;
+        private long pySentenceFirstSendMs = 0;   // 本句首帧 sender.send() 完成时刻
+        private long pySentenceLastSendMs = 0;    // 本句末帧 sender.send() 完成时刻
 
         MuseTalkHandler(ChatSessionContext ctx) {
             this.ctx = ctx;
@@ -99,16 +114,29 @@ public class MuseTalkConnector {
                 case "ready" -> sender.sendJson(ctx, "ready", null);
                 case "done" -> {
                     int sentenceId = node.has("sentence_id") ? node.get("sentence_id").asInt() : 0;
-                    log.info("[Python WS] 句子完毕 sentence_id={}", sentenceId);
+                    // ★ 句级诊断：句子完成时打印统计
+                    long doneWallMs = System.currentTimeMillis();
+                    long sentenceWallMs = pySentenceStartWallMs > 0 ? doneWallMs - pySentenceStartWallMs : 0;
+                    long effectiveThroughput = sentenceWallMs > 0 ? pySentenceBytes * 1000 / sentenceWallMs : 0;
+                    long sendSpan = pySentenceLastSendMs > 0 ? pySentenceLastSendMs - pySentenceFirstSendMs : 0;
+                    log.info("[Python WS] 句子完毕 sentence_id={} frames={} bytes={} pyRecv→doneWall={}ms sendSpan={}ms effectiveThroughput={}B/s",
+                            sentenceId, pySentenceFrameCount, pySentenceBytes,
+                            sentenceWallMs, sendSpan, effectiveThroughput);
 
                     // 推进全局 PTS 偏移（该句所有视频帧已发送完毕）
                     ctx.getPtsTracker().advanceOnDone();
 
                     // 转发 done 消息给前端（前端可用于 UI 状态更新，不再用于 PTS 偏移）
+                    // 经 pacer 排在本句末帧之后释放，避免越过仍在排队的视频帧提前到达
                     ObjectNode doneMsg = objectMapper.createObjectNode();
                     doneMsg.put("type", "done");
                     doneMsg.put("sentence_id", sentenceId);
-                    sender.send(ctx, new TextMessage(doneMsg.toString()));
+                    com.guying.websocket.session.OutboundPacer pacer = ctx.getOutboundPacer();
+                    if (pacer != null) {
+                        pacer.enqueueControl(new TextMessage(doneMsg.toString()));
+                    } else {
+                        sender.send(ctx, new TextMessage(doneMsg.toString()));
+                    }
                 }
                 case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);
@@ -128,6 +156,39 @@ public class MuseTalkConnector {
             // 解析本地 PTS，转换为全局 PTS 并写回
             int localPtsMs = ((raw[2] & 0xFF) << 24) | ((raw[3] & 0xFF) << 16)
                     | ((raw[4] & 0xFF) << 8) | (raw[5] & 0xFF);
+
+            // ★ 诊断日志：记录从 Python 收到帧的时间点
+            long pyNow = System.currentTimeMillis();
+            long pyInterval = lastPyVideoTime == 0 ? 0 : pyNow - lastPyVideoTime;
+            lastPyVideoTime = pyNow;
+            pyVideoCount++;
+
+            // ★ 句级诊断：检测句子切换，打印上一句的统计
+            if (sentenceId != pyCurSentenceId) {
+                if (pyCurSentenceId >= 0 && pySentenceFrameCount > 0) {
+                    long sentenceWallMs = pySentenceLastSendMs - pySentenceStartWallMs;
+                    long effectiveThroughput = sentenceWallMs > 0 ? pySentenceBytes * 1000 / sentenceWallMs : 0;
+                    log.info("[Python WS] ⇧ SENTENCE-DONE sid={}: frames={} bytes={} sendWall={}ms firstSend→lastSend={}ms effectiveThroughput={}B/s",
+                            pyCurSentenceId, pySentenceFrameCount, pySentenceBytes,
+                            sentenceWallMs,
+                            pySentenceLastSendMs - pySentenceFirstSendMs,
+                            effectiveThroughput);
+                }
+                pyCurSentenceId = sentenceId;
+                pySentenceStartWallMs = pyNow;
+                pySentenceBytes = 0;
+                pySentenceFrameCount = 0;
+                pySentenceFirstSendMs = 0;
+                pySentenceLastSendMs = 0;
+            }
+            pySentenceBytes += raw.length;
+            pySentenceFrameCount++;
+
+            if (pyVideoCount <= 30 || pyInterval > 100 || pyVideoCount % 50 == 0) {
+                log.info("[Python WS] ⇩ PY-RECV: interval={}ms pts={} sid={} len={} total={}",
+                        pyInterval, localPtsMs, sentenceId, raw.length, pyVideoCount);
+            }
+
             int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
             raw[2] = (byte) (globalPtsMs >> 24);
             raw[3] = (byte) (globalPtsMs >> 16);
@@ -139,8 +200,25 @@ public class MuseTalkConnector {
             androidPayload[0] = 0x03;
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
-            // 即时流式转发视频帧给前端（不做批量缓冲）
-            sender.send(ctx, new BinaryMessage(androidPayload));
+            // 入队 OutboundPacer，由其按全局 PTS 时钟择时发送，消除 bufferbloat（pacer 未就绪则直发兜底）
+            long beforeSend = System.currentTimeMillis();
+            com.guying.websocket.session.OutboundPacer pacer = ctx.getOutboundPacer();
+            if (pacer != null) {
+                pacer.enqueueVideo(globalPtsMs, new BinaryMessage(androidPayload));
+            } else {
+                sender.send(ctx, new BinaryMessage(androidPayload));
+            }
+            long sendCost = System.currentTimeMillis() - beforeSend;
+
+            // ★ 句级诊断：记录首帧/末帧的 sender.send() 完成时刻
+            long sendDoneMs = System.currentTimeMillis();
+            if (pySentenceFirstSendMs == 0) pySentenceFirstSendMs = sendDoneMs;
+            pySentenceLastSendMs = sendDoneMs;
+
+            if (pyVideoCount <= 30 || sendCost > 50 || pyVideoCount % 50 == 0) {
+                log.info("[Python WS] ⇧ WS-SEND: pts={} globalPts={} sid={} sendCost={}ms total={}",
+                        localPtsMs, globalPtsMs, sentenceId, sendCost, pyVideoCount);
+            }
         }
 
         @Override

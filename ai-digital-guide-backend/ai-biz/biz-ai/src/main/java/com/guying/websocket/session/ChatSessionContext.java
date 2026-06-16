@@ -29,6 +29,8 @@ public class ChatSessionContext {
     @Setter private volatile WebSocketSession cosyVoiceSession;
     @Setter private volatile SpeechTranscriber transcriber;
     @Setter private volatile ExecutorService ttsExecutor;
+    /** 按 PTS 时钟节流的视频出站发送器，afterConnectionEstablished 创建。 */
+    @Setter private volatile OutboundPacer outboundPacer;
 
     @Setter
     private volatile String pendingImage;
