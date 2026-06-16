@@ -102,6 +102,11 @@
         </activity>
 
         <activity
+            android:name=".view.admin.RecordVideoActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".view.admin.ScenicEditActivity"
             android:exported="true" >
 

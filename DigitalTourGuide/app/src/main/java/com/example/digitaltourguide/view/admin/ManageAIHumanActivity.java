@@ -65,6 +65,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private Runnable testVideoRunnable;
     private boolean isPollingTestVideo = false;
     private static final int REQUEST_CODE_SELECT_VIDEO = 100;
+    private static final int REQUEST_CODE_RECORD_VIDEO = 101;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -263,6 +264,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         TextView tvAttractionId = dialogView.findViewById(R.id.tv_attraction_id);
         TextView tvSelectedVideo = dialogView.findViewById(R.id.tv_selected_video);
         Button btnSelectVideo = dialogView.findViewById(R.id.btn_select_video);
+        Button btnRecordVideo = dialogView.findViewById(R.id.btn_record_video);
         Button btnUpload = dialogView.findViewById(R.id.btn_upload);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
 
@@ -273,6 +275,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("video/*");
             startActivityForResult(intent,REQUEST_CODE_SELECT_VIDEO);
+        });
+
+        //录制视频按钮
+        btnRecordVideo.setOnClickListener(v->{
+            Intent intent=new Intent(ManageAIHumanActivity.this, RecordVideoActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_RECORD_VIDEO);
         });
 
         //上传视频按钮
@@ -502,6 +510,26 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                     Toast.makeText(this, "读取视频文件失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else if (requestCode == REQUEST_CODE_RECORD_VIDEO && resultCode == RESULT_OK && data != null) {
+            String path = data.getStringExtra(RecordVideoActivity.EXTRA_VIDEO_PATH);
+            if (!TextUtils.isEmpty(path)) {
+                File recorded = new File(path);
+                if (recorded.exists() && recorded.length() > 0) {
+                    // 录制文件已落在 cacheDir，可直接复用上传流程
+                    selectedVideoFile = recorded;
+                    selectedVideoFileName = recorded.getName();
+                    setVideoCoverFromFile(selectedVideoFile);
+                    if (uploadDialog != null && uploadDialog.isShowing()) {
+                        TextView tvSelected = uploadDialog.findViewById(R.id.tv_selected_video);
+                        if (tvSelected != null) {
+                            tvSelected.setText("已录制：" + selectedVideoFileName);
+                        }
+                    }
+                    Toast.makeText(this, "录制完成，可点击上传", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "录制文件无效，请重试", Toast.LENGTH_SHORT).show();
                 }
             }
         }
