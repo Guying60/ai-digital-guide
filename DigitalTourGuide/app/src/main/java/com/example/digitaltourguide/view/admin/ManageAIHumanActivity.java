@@ -87,7 +87,9 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         btnGenerateTestVideo.setOnClickListener(v -> generateTestVideo());
         ivCover.setOnClickListener(v -> playCurrentVideo());
         tvScenicEdit.setOnClickListener(v->{
-            startActivity(new Intent(ManageAIHumanActivity.this, ScenicEditActivity.class));
+            Intent intent = new Intent(ManageAIHumanActivity.this, ScenicEditActivity.class);
+            intent.putExtra("attraction_id", attractionId);
+            startActivity(intent);
             overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
         });
 

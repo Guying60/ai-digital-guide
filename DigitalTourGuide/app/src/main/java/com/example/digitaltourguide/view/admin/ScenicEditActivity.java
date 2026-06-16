@@ -69,6 +69,7 @@ public class ScenicEditActivity extends AppCompatActivity {
     private Button btnSave;
     private LinearLayout llUpload;
     private TextView tvAIHuman,tvEditCover;
+    private ImageView ivBack;
     private Spinner spinnerType;
     private EditText etAttractionName;
     private boolean isCoverChanged = false; // 封面是否修改
@@ -372,7 +373,6 @@ public class ScenicEditActivity extends AppCompatActivity {
                                         .into(ivCover);
                                spinnerType.setSelection(currentAttraction.getType());
 
-                                Toast.makeText(ScenicEditActivity.this, "回显成功", Toast.LENGTH_SHORT).show();
                                 // 重置所有修改标志
                                 isCoverChanged = false;
                                 isFileChanged = false;
@@ -681,6 +681,16 @@ public class ScenicEditActivity extends AppCompatActivity {
         etAttractionName = findViewById(R.id.et_title);
         tvAIHuman=findViewById(R.id.tab_digital_edit);
         llUpload = findViewById(R.id.ll_upload);
+
+        // 左上角返回箭头：回到点位管理页
+        ivBack = findViewById(R.id.btn_back);
+        ivBack.setOnClickListener(v -> {
+            Intent intent = new Intent(ScenicEditActivity.this, PointManagerActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+        });
 
 
         llUpload.setOnClickListener(v -> {

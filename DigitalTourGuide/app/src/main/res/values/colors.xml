@@ -75,4 +75,11 @@
     <color name="chat_outline_variant">#C8C4D7</color>
     <color name="chat_green_dot">#22C55E</color>
     <color name="chat_green_text">#16A34A</color>
+
+    <!-- ===================== Splash Screen (蓝白·简约) ===================== -->
+    <color name="splash_bg_top">#FFFFFF</color>
+    <color name="splash_bg_bottom">#EAF0FF</color>
+    <color name="splash_ink">#16233B</color>
+    <color name="splash_accent">#2F6BFF</color>
+    <color name="splash_muted">#8893A8</color>
 </resources>

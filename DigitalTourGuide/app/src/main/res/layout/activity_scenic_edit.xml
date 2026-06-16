@@ -538,4 +538,20 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
+    <!-- 左上角返回箭头（固定，悬浮于内容之上） -->
+    <ImageView
+        android:id="@+id/btn_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:padding="8dp"
+        android:src="@drawable/ic_arrow_back"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/se_back" />
+
 </RelativeLayout>
