@@ -48,28 +48,28 @@ public class MyPerActivity extends AppCompatActivity {
 
     // ── 兴趣标签 ──
     private static final int[] TAG_CONTAINER_IDS = {
-            R.id.tag_historical, R.id.tag_architecture, R.id.tag_royal, R.id.tag_relic,
+            R.id.tag_historical, R.id.tag_architecture, R.id.tag_royal,
             R.id.tag_nature, R.id.tag_photo, R.id.tag_myth,
             R.id.tag_folk, R.id.tag_food, R.id.tag_intangible
     };
     private static final int[] TAG_CHECK_IDS = {
-            R.id.check_tag_historical, R.id.check_tag_architecture, R.id.check_tag_royal, R.id.check_tag_relic,
+            R.id.check_tag_historical, R.id.check_tag_architecture, R.id.check_tag_royal,
             R.id.check_tag_nature, R.id.check_tag_photo, R.id.check_tag_myth,
             R.id.check_tag_folk, R.id.check_tag_food, R.id.check_tag_intangible
     };
     private static final int[] TAG_TEXT_IDS = {
-            R.id.tv_tag_historical, R.id.tv_tag_architecture, R.id.tv_tag_royal, R.id.tv_tag_relic,
+            R.id.tv_tag_historical, R.id.tv_tag_architecture, R.id.tv_tag_royal,
             R.id.tv_tag_nature, R.id.tv_tag_photo, R.id.tv_tag_myth,
             R.id.tv_tag_folk, R.id.tv_tag_food, R.id.tv_tag_intangible
     };
     private static final String[] TAG_LABELS = {
-            "历史文化", "建筑艺术", "皇家故事", "文物收藏",
+            "历史文化", "建筑艺术", "皇家故事",
             "自然生态", "摄影打卡", "神话传说",
             "民俗风情", "美食文化", "非遗文化"
     };
     // TAG_LABELS 对应的 API 枚举名（按相同下标一一对应）
     private static final String[] TAG_ENUM_NAMES = {
-            "HISTORY_CULTURE", "ARCHITECTURE_ART", "ROYAL_STORIES", "HERITAGE_COLLECTION",
+            "HISTORY_CULTURE", "ARCHITECTURE_ART", "ROYAL_STORIES",
             "NATURE_ECOLOGY", "PHOTOGRAPHY", "MYTHS_LEGENDS",
             "FOLK_CULTURE", "FOOD_CULTURE", "INTANGIBLE_HERITAGE"
     };
@@ -298,7 +298,7 @@ public class MyPerActivity extends AppCompatActivity {
         });
 
         int[] suggestionIds = {
-                R.id.suggestion_1, R.id.suggestion_2, R.id.suggestion_3,
+                R.id.suggestion_1, R.id.suggestion_2,
                 R.id.suggestion_4, R.id.suggestion_5
         };
         for (int id : suggestionIds) {
