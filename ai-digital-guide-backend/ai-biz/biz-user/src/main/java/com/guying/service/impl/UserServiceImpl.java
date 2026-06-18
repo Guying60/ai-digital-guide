@@ -110,7 +110,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
             UserInfoVO userInfoVO = new UserInfoVO();
             userInfoVO.setNickname((String) entries.get("nickname"));
-            userInfoVO.setGender(GenderEnum.fromCode(Integer.parseInt((String) entries.get("gender"))).getCode());
+            userInfoVO.setGender(Integer.parseInt((String) entries.get("gender")));
             userInfoVO.setAge(Integer.valueOf((String) entries.get("age")));
             return userInfoVO;
         }else{

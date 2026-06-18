@@ -40,7 +40,7 @@ public class UserInternalServiceImpl implements UserInternalService {
 
         // 所有字段先给默认值，避免提示词模板变量为空
         Map<String, String> map = new HashMap<>();
-        map.put("gender", genderEnum.getDesc());
+        map.put("gender", String.valueOf(genderEnum.getCode()));
         map.put("age", user.getAge() == null ? "未知" : user.getAge().toString());
         map.put("nickname", user.getNickname() == null ? "未知" : user.getNickname());
         map.put("guideStyle", "未知");
