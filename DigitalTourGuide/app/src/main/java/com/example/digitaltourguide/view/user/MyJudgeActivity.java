@@ -1,6 +1,7 @@
 package com.example.digitaltourguide.view.user;
 
 import android.app.Dialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -77,6 +78,15 @@ public class MyJudgeActivity extends AppCompatActivity {
         filterPending = findViewById(R.id.filter_pending);
 
         tvEdit = findViewById(R.id.tv_edit_reviews);
+
+        // 返回箭头
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> {
+                startActivity(new Intent(MyJudgeActivity.this, MyActivity.class));
+                finish();
+            });
+        }
 
         // RecyclerView 设置
         rvReviews.setLayoutManager(new LinearLayoutManager(this));

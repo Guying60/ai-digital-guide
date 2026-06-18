@@ -3,7 +3,42 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/profile_surface_container_low"
     android:orientation="vertical">
+
+    <!-- ===================== TopAppBar ===================== -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/profile_surface_container_low"
+        app:navigationContentDescription="@string/back"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="我的评价"
+        app:titleTextColor="@color/profile_on_surface">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_star_filled"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/tv_edit_reviews"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:text="编辑"
+            android:textColor="@color/profile_primary"
+            android:textSize="14sp" />
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- ===================== 我的评价 (My Reviews) ===================== -->
     <com.google.android.material.card.MaterialCardView
@@ -19,42 +54,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-
-            <!-- ── Header: 我的评价 + 编辑 ── -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
-
-                <TextView
-                    style="@style/TextAppearance_Profile_SectionTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="我的评价"
-                    android:textColor="@color/profile_primary" />
-
-                <TextView
-                    android:id="@+id/tv_edit_reviews"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:text="编辑"
-                    android:textColor="@color/profile_primary"
-                    android:textSize="14sp"
-                    android:background="?attr/selectableItemBackground"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="4dp" />
-            </LinearLayout>
 
             <!-- ── Filter Chips ── -->
             <HorizontalScrollView
