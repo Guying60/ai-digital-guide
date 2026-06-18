@@ -35,6 +35,12 @@ public class AVSyncPlayer {
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     // MuseTalk server: 25fps → 40ms per frame
     private static final long FRAME_INTERVAL_MS = 40;
+    // ★ P2.2 音频主时钟门控参数（videoFeedLoop 按音频真实播放头择时呈现视频帧 → 真 lip-sync）
+    private static final long SYNC_LEAD_TOL_MS = 25;     // 视频可超前音频 ≤25ms 再渲染（>10ms 越过 getPlaybackHeadPosition 量化噪声）
+    private static final long SYNC_DROP_TOL_MS = 100;    // 视频滞后音频 >100ms 则丢帧追赶
+    private static final long SYNC_PROJECT_CAP_MS = 200; // 两次音频更新间最多向前投影 200ms（超出视为停滞、冻结视频）
+    private static final long SYNC_WAIT_SLICE_MS = 20;   // 单次睡眠片，循环复检 released/generation/surface，不做一次性长睡
+    private static final long SYNC_MAX_WAIT_MS = 700;    // 安全阀：单帧累计等待上限，防音频线程意外死亡导致永久冻结
     // Data format (type byte NO LONGER stripped by ChatActivity — B1 optimization):
     // Audio: [typeFlag:1B][sentenceId:2B][ptsMs:4B][PCM:N]  → header = 7 bytes
     // Video: [typeFlag:1B][sentenceId:2B][ptsMs:4B][keyFrame:1B][H.264:N] → header = 8 bytes
@@ -93,6 +99,8 @@ public class AVSyncPlayer {
     private volatile Thread videoThread;  // videoFeedLoop 线程引用，用于安全退出
     // ★ 音画同步：视频基于音频播放位置做节流，防止视频跑在音频前面（Bug 1）
     private volatile long audioPlaybackPtsMs = 0;   // 音频当前播放位置的估计 PTS
+    // ★ P2.2: audioPlaybackPtsMs 最近一次更新的墙钟时刻；videoFeedLoop 据此在两次音频更新之间按实时投影音频头，避免读到陈旧值导致门控抖动
+    private volatile long audioPlaybackWallMs = 0;
     private volatile boolean audioStarted = false;   // 首次音频写入后置 true，videoFeedLoop 启动阶段检查
     private final java.util.concurrent.atomic.AtomicBoolean startPlaybackRunning =
             new java.util.concurrent.atomic.AtomicBoolean(false);  // 防重复启动（Bug 2）
@@ -339,6 +347,7 @@ public class AVSyncPlayer {
         enqCompleted.set(0);
         audioStarted = false;
         audioPlaybackPtsMs = 0;
+        audioPlaybackWallMs = 0;
     }
 
     /**
@@ -399,6 +408,7 @@ public class AVSyncPlayer {
         enqCompleted.set(0);
         audioStarted = false;
         audioPlaybackPtsMs = 0;
+        audioPlaybackWallMs = 0;
     }
 
     public void release() {
@@ -477,6 +487,7 @@ public class AVSyncPlayer {
         // ★ 重置音画同步状态
         audioStarted = false;
         audioPlaybackPtsMs = 0;
+        audioPlaybackWallMs = 0;
         new Thread(this::audioPlayLoop, "av-audio").start();
     }
 
@@ -576,7 +587,10 @@ public class AVSyncPlayer {
                         long bufferedMs = Math.max(0, bufferedSamples) * 1000 / AUDIO_SAMPLE_RATE;
                         // 当前音频播放位置 ≈ 已写入部分的末尾 PTS - 缓冲时长
                         long writtenEndPtsMs = audioPtsMs + pcmDurationMs * offset / pcm.length;
-                        audioPlaybackPtsMs = writtenEndPtsMs - bufferedMs;
+                        // ★ P2.2: 先发布墙钟、再发布 pts（读端按 pts→wall 顺序读，保证投影偏保守，避免视频超前）
+                        long newHead = writtenEndPtsMs - bufferedMs;
+                        audioPlaybackWallMs = System.currentTimeMillis();
+                        audioPlaybackPtsMs = newHead;
                     }
                     long writeCost = System.currentTimeMillis() - tWrite;
                     if (written > 0) {
@@ -622,6 +636,22 @@ public class AVSyncPlayer {
         if (LOG) Log.i(TAG, "audioPlayLoop: end");
     }
 
+    /**
+     * ★ P2.2: 估计「此刻」音频真实播放头 PTS（ms）。
+     * 以 audioPlayLoop 每 chunk 更新的 audioPlaybackPtsMs 为基准，按距上次更新的墙钟时长向前实时投影
+     * （音频 1.0× 实时播放），最多投影 SYNC_PROJECT_CAP_MS，避免两次更新之间读到陈旧值导致视频门控抖动；
+     * 超过上限即视为音频停滞，不再投影（videoFeedLoop 据此冻结视频以保持同步）。
+     */
+    private long projectedAudioHeadMs() {
+        long pts = audioPlaybackPtsMs;          // 先读 pts（配合发布顺序：audioPlayLoop 先写 wall 后写 pts）
+        long wall = audioPlaybackWallMs;        // 再读 wall
+        if (wall == 0) return pts;
+        long elapsed = System.currentTimeMillis() - wall;
+        if (elapsed < 0) elapsed = 0;
+        if (elapsed > SYNC_PROJECT_CAP_MS) elapsed = SYNC_PROJECT_CAP_MS;
+        return pts + elapsed;
+    }
+
     // ====================== VIDEO DECODE & RENDER ======================
 
     private void videoFeedLoop() {
@@ -653,6 +683,8 @@ public class AVSyncPlayer {
         long lastRenderTime = 0;
         int videoFeedCount = 0;
         int videoRenderCount = 0;
+        boolean firstFrameRendered = false;  // ★ P2.2: 首帧立即渲染，之后才进入音频主时钟门控
+        int videoDropCount = 0;              // ★ P2.2: 因滞后音频而丢弃显示的帧数（已解码，仅不显示）
         long videoStartWallMs = System.currentTimeMillis();
         // ★ 诊断：循环性能分解
         int loopIter = 0;           // 总循环迭代数
@@ -760,65 +792,105 @@ public class AVSyncPlayer {
                 if ((outInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                     c.releaseOutputBuffer(outIdx, false);
                 } else {
-                    long now = System.currentTimeMillis();
-                    long elapsed = now - lastRenderTime;
-                    if (elapsed < FRAME_INTERVAL_MS) {
-                        try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }
+                    // ★ P2.2 音频主时钟门控：首帧立即渲染；之后按音频真实播放头择时呈现 → 真 lip-sync
+                    long framePtsMs = outInfo.presentationTimeUs / 1000;  // us→ms（后端全局 PTS）
+                    boolean drop = false;
+                    if (!firstFrameRendered) {
+                        // 首帧立即渲染：数字人尽快出画面，避免起播长时间持有解码 buffer / 黑屏
+                    } else if (audioStarted) {
+                        // 以音频真实播放头为基准：视频超前则等待，滞后过多则丢帧追赶
+                        long waited = 0;
+                        while (!released && myGen == generation && surface != null) {
+                            long diff = framePtsMs - projectedAudioHeadMs();  // >0 视频超前；<0 视频滞后
+                            if (diff <= SYNC_LEAD_TOL_MS) {
+                                if (diff < -SYNC_DROP_TOL_MS) drop = true;     // 滞后过多 → 丢帧追赶
+                                break;
+                            }
+                            if (waited >= SYNC_MAX_WAIT_MS) break;             // 安全阀：音频疑似停滞，强制呈现
+                            long slice = Math.min(Math.min(diff - SYNC_LEAD_TOL_MS, SYNC_WAIT_SLICE_MS),
+                                                  SYNC_MAX_WAIT_MS - waited);
+                            try { Thread.sleep(slice); } catch (InterruptedException e) { return; }
+                            waited += slice;
+                        }
+                        if (released || myGen != generation) return;
+                    } else {
+                        // 音频尚未启动（极短起播窗口）：退化为墙钟 40ms 节拍，保证有画面
+                        long elapsed = System.currentTimeMillis() - lastRenderTime;
+                        if (elapsed < FRAME_INTERVAL_MS) {
+                            try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }
+                        }
                     }
-                    long tRenderStart = System.currentTimeMillis();
-                    c.releaseOutputBuffer(outIdx, true);
-                    long renderCost = System.currentTimeMillis() - tRenderStart;
-                    if (LOG) loopTotalRenderMs += renderCost;
-                    lastRenderTime = System.currentTimeMillis();
-                    videoRenderCount++;
-                    diagVideoRenderPtsMs = outInfo.presentationTimeUs / 1000;  // us→ms
-                    diagVideoRenderWallMs = System.currentTimeMillis();
 
-                    if (LOG && (dequeueOutCost > 10 || renderCost > 10 || videoRenderCount % 25 == 0)) {
-                        Log.w(TAG, "▼ VIDEO-RENDER: pts=" + (outInfo.presentationTimeUs / 1000)
-                            + "ms deqOut=" + dequeueOutCost + "ms render=" + renderCost
-                            + "ms outSize=" + outInfo.size + " flags=" + outInfo.flags
-                            + " #" + videoRenderCount);
-                    }
+                    if (drop) {
+                        // 仅不显示该帧；帧已解码、仍在解码器参考池，P 帧依赖完好
+                        c.releaseOutputBuffer(outIdx, false);
+                        videoDropCount++;
+                        if (LOG && videoDropCount % 10 == 1) {
+                            Log.w(TAG, "⏩ VIDEO-DROP: pts=" + framePtsMs + " behind audioHead by "
+                                + (projectedAudioHeadMs() - framePtsMs) + "ms drops=" + videoDropCount);
+                        }
+                    } else {
+                        long tRenderStart = System.currentTimeMillis();
+                        c.releaseOutputBuffer(outIdx, true);
+                        long renderCost = System.currentTimeMillis() - tRenderStart;
+                        if (LOG) loopTotalRenderMs += renderCost;
+                        firstFrameRendered = true;
+                        lastRenderTime = System.currentTimeMillis();  // 仅墙钟回退分支会用到
+                        videoRenderCount++;
+                        diagVideoRenderPtsMs = framePtsMs;
+                        diagVideoRenderWallMs = System.currentTimeMillis();
 
-                    // ★ 每隔约 2 秒（50 帧 @25fps）输出一次音画同步综合报告
-                    if (LOG && videoRenderCount % 50 == 0) {
-                        long aPts = diagAudioPtsMs;
-                        long aGlobal = diagAudioGlobalPtsMs;
-                        long vFeedPts = diagVideoFeedPtsMs;
-                        long vFeedGlobal = diagVideoFeedGlobalPtsMs;
-                        long vRenderPts = diagVideoRenderPtsMs;
-                        long wallNow = System.currentTimeMillis();
-                        long audioAge = wallNow - diagAudioWallMs;
-                        long videoFeedAge = wallNow - diagVideoFeedWallMs;
-                        long videoRenderAge = wallNow - diagVideoRenderWallMs;
-                        // ★ 诊断：循环性能分解
-                        long diagElapsed = wallNow - loopLastDiagWallMs;
-                        Log.w(TAG, "╔══ SYNC-REPORT @" + videoRenderCount + " renders, " + videoFeedCount + " feeds, iter=" + loopIter + " ══╗");
-                        Log.w(TAG, "║ audio:  pts=" + aPts + " globalPts=" + aGlobal
-                            + " (age=" + audioAge + "ms) aQ=" + audioQueue.size());
-                        Log.w(TAG, "║ video:  feedPts=" + vFeedPts + " feedGlobal=" + vFeedGlobal
-                            + " (age=" + videoFeedAge + "ms)");
-                        Log.w(TAG, "║ render: pts=" + vRenderPts
-                            + " (age=" + videoRenderAge + "ms) vQ=" + videoQueueSize.get()
-                            + " enqBacklog=" + (enqSubmitted.get() - enqCompleted.get()));
-                        Log.w(TAG, "║ LOOP-DIAG " + diagElapsed + "ms:"
-                            + " idleEmptyQ=" + loopIdleEmptyQ + " idleCodecFull=" + loopIdleCodecFull
-                            + " noOutput=" + loopNoOutput);
-                        Log.w(TAG, "║ LOOP-COST: deqOut=" + loopTotalDeqOutMs + "ms render=" + loopTotalRenderMs
-                            + "ms deqIn=" + loopTotalDeqInMs + "ms qIn=" + loopTotalQInMs + "ms");
-                        Log.w(TAG, "║ Δ(audioGlobal-videoFeedGlobal)=" + (aGlobal - vFeedGlobal) + "ms"
-                            + " Δ(audioGlobal-videoRender)=" + (aGlobal - vRenderPts) + "ms");
-                        Log.w(TAG, "╚══════════════════════════════════╝");
-                        // 重置诊断计数器
-                        loopLastDiagWallMs = wallNow;
-                        loopIdleEmptyQ = 0;
-                        loopIdleCodecFull = 0;
-                        loopNoOutput = 0;
-                        loopTotalDeqOutMs = 0;
-                        loopTotalRenderMs = 0;
-                        loopTotalDeqInMs = 0;
-                        loopTotalQInMs = 0;
+                        if (LOG && (dequeueOutCost > 10 || renderCost > 10 || videoRenderCount % 25 == 0)) {
+                            Log.w(TAG, "▼ VIDEO-RENDER: pts=" + framePtsMs
+                                + "ms deqOut=" + dequeueOutCost + "ms render=" + renderCost
+                                + "ms outSize=" + outInfo.size + " flags=" + outInfo.flags
+                                + " #" + videoRenderCount);
+                        }
+
+                        // ★ 每隔约 2 秒（50 帧 @25fps）输出一次音画同步综合报告
+                        if (LOG && videoRenderCount % 50 == 0) {
+                            long aPts = diagAudioPtsMs;
+                            long aGlobal = diagAudioGlobalPtsMs;
+                            long vFeedPts = diagVideoFeedPtsMs;
+                            long vFeedGlobal = diagVideoFeedGlobalPtsMs;
+                            long vRenderPts = diagVideoRenderPtsMs;
+                            long wallNow = System.currentTimeMillis();
+                            long audioAge = wallNow - diagAudioWallMs;
+                            long videoFeedAge = wallNow - diagVideoFeedWallMs;
+                            long videoRenderAge = wallNow - diagVideoRenderWallMs;
+                            // ★ 诊断：循环性能分解
+                            long diagElapsed = wallNow - loopLastDiagWallMs;
+                            // ★ P2.2: 真实播放头 lip-sync 指标（Δ≈0 同步良好；>0 视频滞后音频；<0 视频超前）
+                            long aHead = audioPlaybackPtsMs;
+                            long staleAudio = (audioPlaybackWallMs == 0) ? -1 : (wallNow - audioPlaybackWallMs);
+                            long lipSyncDelta = aHead - vRenderPts;
+                            Log.w(TAG, "╔══ SYNC-REPORT @" + videoRenderCount + " renders, " + videoFeedCount + " feeds, iter=" + loopIter + " ══╗");
+                            Log.w(TAG, "║ audio:  pts=" + aPts + " globalPts=" + aGlobal
+                                + " (age=" + audioAge + "ms) aQ=" + audioQueue.size());
+                            Log.w(TAG, "║ video:  feedPts=" + vFeedPts + " feedGlobal=" + vFeedGlobal
+                                + " (age=" + videoFeedAge + "ms)");
+                            Log.w(TAG, "║ render: pts=" + vRenderPts
+                                + " (age=" + videoRenderAge + "ms) vQ=" + videoQueueSize.get()
+                                + " enqBacklog=" + (enqSubmitted.get() - enqCompleted.get()));
+                            Log.w(TAG, "║ LIP-SYNC: audioHead=" + aHead + " proj=" + projectedAudioHeadMs()
+                                + " stale=" + staleAudio + "ms videoRender=" + vRenderPts
+                                + " Δ=" + lipSyncDelta + "ms drops=" + videoDropCount + " audioStarted=" + audioStarted);
+                            Log.w(TAG, "║ LOOP-DIAG " + diagElapsed + "ms:"
+                                + " idleEmptyQ=" + loopIdleEmptyQ + " idleCodecFull=" + loopIdleCodecFull
+                                + " noOutput=" + loopNoOutput);
+                            Log.w(TAG, "║ LOOP-COST: deqOut=" + loopTotalDeqOutMs + "ms render=" + loopTotalRenderMs
+                                + "ms deqIn=" + loopTotalDeqInMs + "ms qIn=" + loopTotalQInMs + "ms");
+                            Log.w(TAG, "╚══════════════════════════════════╝");
+                            // 重置诊断计数器
+                            loopLastDiagWallMs = wallNow;
+                            loopIdleEmptyQ = 0;
+                            loopIdleCodecFull = 0;
+                            loopNoOutput = 0;
+                            loopTotalDeqOutMs = 0;
+                            loopTotalRenderMs = 0;
+                            loopTotalDeqInMs = 0;
+                            loopTotalQInMs = 0;
+                        }
                     }
                 }
             } else {
