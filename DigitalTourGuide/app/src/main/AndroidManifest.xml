@@ -88,11 +88,6 @@
             android:name=".view.user.MyActivity"
             android:exported="true" />
 
-        <activity
-            android:name=".view.admin.AdminLoginActivity"
-            android:exported="true">
-
-        </activity>
 
         <activity
             android:name=".view.admin.AdminRegisterActivity"

@@ -58,47 +58,64 @@
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="28dp" />
 
-            <!-- ========== Segmented Pill Toggle ========== -->
-            <LinearLayout
+            <!-- ========== Segmented Pill Toggle (with sliding indicator) ========== -->
+            <FrameLayout
+                android:id="@+id/toggle_container"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:orientation="horizontal"
-                android:background="@drawable/bg_login_toggle_container"
-                android:gravity="center"
                 android:layout_marginBottom="28dp"
-                android:padding="4dp"
-                android:elevation="1dp">
+                android:padding="4dp">
 
-                <!-- Normal User (selected by default) -->
-                <TextView
-                    android:id="@+id/tv_normal_user"
-                    android:layout_width="0dp"
+                <!-- Container background -->
+                <View
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="@string/login_tab_normal"
-                    android:textSize="13sp"
-                    android:textColor="@color/login_on_primary"
-                    android:gravity="center"
-                    android:background="@drawable/bg_login_toggle_selected"
-                    android:fontFamily="sans-serif-medium"
-                    android:clickable="true"
-                    android:focusable="true" />
+                    android:background="@drawable/bg_login_toggle_container" />
 
-                <!-- Admin User -->
-                <TextView
-                    android:id="@+id/tv_admin_login"
+                <!-- Sliding purple indicator -->
+                <View
+                    android:id="@+id/toggle_indicator"
                     android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:background="@drawable/bg_login_toggle_selected" />
+
+                <!-- Tab labels (must be on top) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="@string/login_tab_admin"
-                    android:textSize="13sp"
-                    android:textColor="@color/login_on_surface_variant"
-                    android:gravity="center"
-                    android:background="@drawable/bg_login_toggle_unselected"
-                    android:fontFamily="sans-serif-medium"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </LinearLayout>
+                    android:orientation="horizontal"
+                    android:elevation="4dp">
+
+                    <!-- Normal User (selected by default) -->
+                    <TextView
+                        android:id="@+id/tv_normal_user"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="@string/login_tab_normal"
+                        android:textSize="13sp"
+                        android:textColor="@color/login_on_primary"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <!-- Admin User -->
+                    <TextView
+                        android:id="@+id/tv_admin_login"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="@string/login_tab_admin"
+                        android:textSize="13sp"
+                        android:textColor="@color/login_on_surface_variant"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
+            </FrameLayout>
 
             <!-- ========== Account Input ========== -->
             <FrameLayout

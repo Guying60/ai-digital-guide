@@ -435,7 +435,9 @@ public class PointManagerActivity extends AppCompatActivity {
         // 退出登录
         dialog.findViewById(R.id.menu_logout).setOnClickListener(v -> {
             dialog.dismiss();
-            startActivity(new Intent(PointManagerActivity.this, AdminLoginActivity.class));
+            Intent logoutIntent = new Intent(PointManagerActivity.this, com.example.digitaltourguide.view.user.UserLoginActivity.class);
+            logoutIntent.putExtra("login_mode", "admin");
+            startActivity(logoutIntent);
             finishAffinity();  // 清除所有 Activity 栈
         });
 

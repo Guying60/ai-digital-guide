@@ -86,8 +86,10 @@ public class ProfileInfoActivity extends AppCompatActivity {
     private void initListener() {
 
         // 返回按钮 → 回到上一个页面
-        ((com.google.android.material.appbar.MaterialToolbar) findViewById(R.id.topAppBar))
-                .setNavigationOnClickListener(v -> finish());
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> finish());
+        }
 
         // 退出登录
         btnOutLogin.setOnClickListener(v -> {

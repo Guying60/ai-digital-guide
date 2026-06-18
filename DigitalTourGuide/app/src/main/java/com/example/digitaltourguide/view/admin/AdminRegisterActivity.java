@@ -69,8 +69,9 @@ public class AdminRegisterActivity extends AppCompatActivity {
 
 
                         // 6. 跳转登录页，回传用户名
-                        Intent intent = new Intent(AdminRegisterActivity.this, AdminLoginActivity.class);
+                        Intent intent = new Intent(AdminRegisterActivity.this, com.example.digitaltourguide.view.user.UserLoginActivity.class);
                         intent.putExtra("username", username);
+                        intent.putExtra("login_mode", "admin");
                         startActivity(intent);
                     } else {
                         // 后端返回非成功码
