@@ -67,6 +67,22 @@ public class WsMessageSender {
         send(session, lock, new TextMessage(resp.toString()));
     }
 
+    /**
+     * 发送结构化消息：{"type": type, "data": <payload 序列化后的 JSON>}。
+     * 供路线时间轴等需要下发嵌套对象的场景使用，前端可直接读 data，无需二次解析。
+     */
+    public void sendJson(ChatSessionContext ctx, String type, Object payload) {
+        if (ctx == null) return;
+        WebSocketSession session = ctx.getUserSession();
+        if (session == null || !session.isOpen()) return;
+        ObjectNode resp = objectMapper.createObjectNode();
+        resp.put("type", type);
+        if (payload != null) {
+            resp.set("data", objectMapper.valueToTree(payload));
+        }
+        send(session, ctx.getSendLock(), new TextMessage(resp.toString()));
+    }
+
     public void send(ChatSessionContext ctx, WebSocketMessage<?> message) {
         if (ctx == null) return;
         send(ctx.getUserSession(), ctx.getSendLock(), message);

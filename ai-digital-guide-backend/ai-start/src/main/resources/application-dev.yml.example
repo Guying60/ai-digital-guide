@@ -38,3 +38,5 @@ cpp:
     ws-url: <your-musetalk-ws-url>
   cosyVoice:
     ws-url: <your-cosyvoice-ws-url>
+  amap:
+    web-key: <your-amap-web-service-key>

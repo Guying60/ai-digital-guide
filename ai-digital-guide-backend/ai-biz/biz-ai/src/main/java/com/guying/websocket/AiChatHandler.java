@@ -7,6 +7,8 @@ import com.guying.common.constants.RedisConstants;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
 import com.guying.attractions.service.ReviewInternalService;
+import com.guying.pojo.vo.RoutePlanVO;
+import com.guying.service.RouteRecommendationService;
 import com.guying.user.service.UserInternalService;
 import com.guying.websocket.chat.AiChatService;
 import com.guying.websocket.musetalk.MuseTalkConnector;
@@ -74,6 +76,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
+    @Autowired
+    private RouteRecommendationService routeRecommendationService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -126,6 +131,19 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             }
             case "ping" -> sender.sendJson(ctx, "pong", null);
             case "interrupt" -> handleInterrupt(ctx);
+            case "routeGenerate" -> routeRecommendationService.generateAndPush(ctx);
+            case "routeArrive" -> {
+                RoutePlanVO updated = routeRecommendationService.markArrived(ctx, node.get("stopIndex").asInt());
+                if (updated != null) {
+                    sender.sendJson(ctx, "routeUpdate", updated);
+                } else {
+                    sender.sendJson(ctx, "routeError", "当前没有可更新的路线");
+                }
+            }
+            case "routeClose" -> {
+                routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
+                sender.sendJson(ctx, "routeClosed", (String) null);
+            }
             default -> log.warn("未知的客户端消息类型: {}", type);
         }
     }
@@ -161,6 +179,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         }
         // 对话结束，自动创建待评价记录
         reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        // 路线生命周期跟随连接，断开即清理
+        routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
         OutboundPacer pacer = ctx.getOutboundPacer();
         if (pacer != null) {
             pacer.shutdown();

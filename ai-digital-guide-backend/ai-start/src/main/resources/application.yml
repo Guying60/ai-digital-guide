@@ -108,6 +108,10 @@ spring:
   cosyVoice:
     ws-url: ${cpp.cosyVoice.ws-url}
 
+  # ---- 高德地图 Web 服务（仅地标坐标解析，非路径规划；缺省则路线降级为无坐标） ----
+  amap:
+    web-key: ${cpp.amap.web-key:}
+
   # ---- 阿里云 NLS 语音识别 ----
   aliyun:
     nls:
