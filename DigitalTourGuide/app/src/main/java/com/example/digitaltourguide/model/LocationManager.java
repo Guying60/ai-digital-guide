@@ -88,15 +88,11 @@ public class LocationManager {
     /**
      * 单次详细定位 — 返回省市/区/adcode，用于景点编辑页获取坐标
      */
-    public void startDetailLocation(Context context, OnDetailLocationListener listener) {
+    public void startDetailLocation(Context context, OnDetailLocationListener listener) throws Exception {
         if (locationClient != null) {
             stopLocation();
         }
-        try {
-            locationClient = new AMapLocationClient(context);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        locationClient = new AMapLocationClient(context);
 
         AMapLocationClientOption option = new AMapLocationClientOption();
         option.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
@@ -115,8 +111,10 @@ public class LocationManager {
                         location.getAdCode(),
                         location.getAddress());
             } else {
+                int errCode = location != null ? location.getErrorCode() : -1;
                 String error = location != null ? location.getErrorInfo() : "未知错误";
-                listener.onLocationError(error);
+                String fullError = "[code=" + errCode + "] " + error;
+                listener.onLocationError(fullError);
             }
         });
         locationClient.startLocation();

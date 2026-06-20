@@ -24,9 +24,11 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
@@ -89,6 +91,7 @@ public class ScenicEditActivity extends AppCompatActivity {
     private String selectedCoverUrl; // 选中的图片本地路径/上传后的coverUrl
     private FileUploadUtil fileUploadUtil;
     private static final String TAG="ScenicEditActivity";
+    private static final int REQUEST_LOCATION_PERMISSION = 2001;
     private ActivityScenicEditBinding binding;
 
     @Override
@@ -565,6 +568,18 @@ public class ScenicEditActivity extends AppCompatActivity {
         req.setAdcode(savedAdcode);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                fetchDeviceLocation(); // 授权成功，重新获取定位
+            } else {
+                Toast.makeText(this, "需要定位权限才能获取坐标", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private void checkPermissionAndOpenGallery() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+：需要 READ_MEDIA_IMAGES 权限
@@ -707,10 +722,32 @@ public class ScenicEditActivity extends AppCompatActivity {
      * 获取设备 GPS 位置并逆地理编码获取省市/区/adcode
      */
     private void fetchDeviceLocation() {
+        // 高德 SDK 需要同时检查精确定位和粗略定位权限
+        boolean hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        if (!hasFine || !hasCoarse) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    REQUEST_LOCATION_PERMISSION);
+            return;
+        }
+        // 检查系统定位服务是否开启
+        android.location.LocationManager locMgr = (android.location.LocationManager)
+                getSystemService(LOCATION_SERVICE);
+        if (locMgr != null && !locMgr.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+                && !locMgr.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)) {
+            Toast.makeText(this, "请先开启GPS或网络定位服务", Toast.LENGTH_LONG).show();
+            return;
+        }
         Toast.makeText(this, "正在获取位置...", Toast.LENGTH_SHORT).show();
         LocationManager lm = new LocationManager();
         try {
-            lm.startDetailLocation(this, new LocationManager.OnDetailLocationListener() {
+            lm.startDetailLocation(getApplicationContext(), new LocationManager.OnDetailLocationListener() {
                 @Override
                 public void onLocationSuccess(double latitude, double longitude,
                                               String province, String city, String district,
@@ -739,13 +776,15 @@ public class ScenicEditActivity extends AppCompatActivity {
 
                 @Override
                 public void onLocationError(String error) {
+                    Log.e(TAG, "定位失败详情: " + error);
                     runOnUiThread(() -> {
-                        Toast.makeText(ScenicEditActivity.this, "定位失败: " + error, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ScenicEditActivity.this, "定位失败: " + error + "\n请确保GPS已开启且网络正常", Toast.LENGTH_LONG).show();
                     });
                 }
             });
         } catch (Exception e) {
-            Toast.makeText(this, "定位启动失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "定位启动异常", e);
+            Toast.makeText(this, "定位启动失败: " + e.toString(), Toast.LENGTH_LONG).show();
         }
     }
 
