@@ -39,9 +39,15 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.digitaltourguide.R;
+import com.example.digitaltourguide.model.BaseResponse;
+import com.example.digitaltourguide.model.LocationManager;
+import com.example.digitaltourguide.model.user.RoutePlanVO;
+import com.example.digitaltourguide.model.user.RouteStopVO;
+import com.example.digitaltourguide.network.ApiService;
 import com.example.digitaltourguide.utils.ImageUtils;
 import com.example.digitaltourguide.utils.SpUtils;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.Gson;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -102,6 +108,14 @@ public class ChatActivity extends AppCompatActivity {
     // 数字人视频播放相关（AVSyncPlayer 统一管理音画同步）
     private TextureView tvDigitalHuman;
     private AVSyncPlayer avSyncPlayer;
+    // 路线数轴
+    private RouteTimelineView routeTimeline;
+    // GPS 到达判定
+    private LocationManager arrivalLocationManager;
+    private int gpsNearbyCount = 0;               // 连续在范围内的定位次数
+    private int lastAutoArrivedStopIndex = -1;    // 防止重复上报
+    private static final int ARRIVAL_DISTANCE_M = 50;   // 到达判定距离阈值（米）
+    private static final int ARRIVAL_CONFIRM_COUNT = 3; // 连续 N 次在范围内才触发（3×2s=6s）
     private int binaryMsgCount = 0;           // 二进制消息计数器，用于限频日志
     private volatile boolean isAutoFrameRunning = false;
 
@@ -583,6 +597,8 @@ public class ChatActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(ChatActivity.this, "✅ 连接成功！", Toast.LENGTH_SHORT).show();
                     startHeartbeat();
+                    // 1.16.1 恢复当前激活路线
+                    loadCurrentRoute();
                 });
             }
 
@@ -668,6 +684,38 @@ public class ChatActivity extends AppCompatActivity {
                         });
                     } else if ("pong".equals(type)) {
                         Log.d("MYTEST", "✅ 心跳回复正常");
+                    } else if ("routeTimeline".equals(type)) {
+                        // 1.16.2 路线生成成功，下发完整数轴
+                        RoutePlanVO route = new Gson().fromJson(json.optString("data"), RoutePlanVO.class);
+                        runOnUiThread(() -> {
+                            if (route != null && route.hasStops()) {
+                                routeTimeline.setRoute(route);
+                                startArrivalMonitoring(route);
+                                Log.d("MYTEST", "路线已展示: " + route.getTitle() + " stops=" + route.getStops().size());
+                            }
+                        });
+                    } else if ("routeUpdate".equals(type)) {
+                        // 1.16.2 到达上报后，服务端下发更新后的数轴
+                        RoutePlanVO route = new Gson().fromJson(json.optString("data"), RoutePlanVO.class);
+                        runOnUiThread(() -> {
+                            if (route != null && route.hasStops()) {
+                                routeTimeline.setRoute(route);
+                                startArrivalMonitoring(route);
+                                Log.d("MYTEST", "路线已更新: " + route.getTitle());
+                            }
+                        });
+                    } else if ("routeClosed".equals(type)) {
+                        // 1.16.2 路线已关闭，清空数轴但保留生成按钮
+                        runOnUiThread(() -> {
+                            routeTimeline.clearRoute();
+                            stopArrivalMonitoring();
+                            Log.d("MYTEST", "路线已关闭");
+                        });
+                    } else if ("routeError".equals(type)) {
+                        // 1.16.2 路线生成失败
+                        String errText = json.optString("text", "路线生成失败");
+                        Log.w("MYTEST", "路线错误: " + errText);
+                        runOnUiThread(() -> Toast.makeText(ChatActivity.this, errText, Toast.LENGTH_SHORT).show());
                     } else if ("error".equals(type)) {
                         String errorMsg = json.optString("text");
                         Log.d("MYTEST", "❌ 后端报错：" + errorMsg);
@@ -897,12 +945,18 @@ public class ChatActivity extends AppCompatActivity {
         if(imageAnalysis!=null && webSocketClient!=null){
             startAutoFrameSend();
         }
+        // 恢复 GPS 路线到达监控
+        RoutePlanVO currentRoute = routeTimeline != null ? routeTimeline.getCurrentRoute() : null;
+        if (currentRoute != null && currentRoute.hasStops()) {
+            startArrivalMonitoring(currentRoute);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         stopAutoFrameSend();
+        stopArrivalMonitoring();
     }
 
     //页面销毁时释放资源
@@ -910,6 +964,7 @@ public class ChatActivity extends AppCompatActivity {
     protected void onDestroy() {
         stopAutoFrameSend();
         stopHeartbeat();
+        stopArrivalMonitoring();
         super.onDestroy();
         isRecording = false;
         if (audioRecord != null) {
@@ -945,6 +1000,46 @@ public class ChatActivity extends AppCompatActivity {
         avSyncPlayer.setSubtitleCallback(text -> {
             // 字幕更新回调（如需要）
         });
+
+        // 路线数轴
+        routeTimeline = findViewById(R.id.route_timeline);
+        routeTimeline.setOnGenerateClickListener(() -> {
+            if (webSocketClient != null && wsConnected) {
+                try {
+                    JSONObject msg = new JSONObject();
+                    msg.put("type", "routeGenerate");
+                    webSocketClient.send(msg.toString());
+                    Log.d(TAG, "发送路线生成请求: routeGenerate");
+                } catch (JSONException e) {
+                    Log.e(TAG, "构造 routeGenerate 失败", e);
+                }
+            } else {
+                Toast.makeText(this, "WebSocket 未连接", Toast.LENGTH_SHORT).show();
+            }
+        });
+        routeTimeline.setOnCloseClickListener(() -> {
+            new AlertDialog.Builder(ChatActivity.this)
+                    .setTitle("关闭路线")
+                    .setMessage("确认关闭当前 AI 推荐路线？")
+                    .setPositiveButton("确认", (d, w) -> sendRouteClose())
+                    .setNegativeButton("取消", null)
+                    .show();
+        });
+        routeTimeline.setOnStopClickListener(stop -> {
+            if (stop.isCurrent()) {
+                // 当前站 → 确认到达
+                new AlertDialog.Builder(ChatActivity.this)
+                        .setTitle("到达确认")
+                        .setMessage("确认已到达「" + stop.getName() + "」？")
+                        .setPositiveButton("确认到达", (d, w) -> sendRouteArrive(stop.getStopIndex()))
+                        .setNegativeButton("取消", null)
+                        .show();
+            } else if (stop.isUpcoming()) {
+                Toast.makeText(this, "请先到达「" + stop.getName() + "」", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "已到达: " + stop.getName(), Toast.LENGTH_SHORT).show();
+            }
+        });
         tvDigitalHuman.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(@NonNull SurfaceTexture st, int width, int height) {
@@ -970,4 +1065,162 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
     }
+
+    // ====================== 路线相关 ======================
+
+    /**
+     * 1.16.1 恢复当前激活路线（WebSocket 连接成功后调用）
+     */
+    private void loadCurrentRoute() {
+        if (attractionId == null || attractionId.isEmpty()) return;
+        ApiService.getInstance().getCurrentRoute(attractionId).enqueue(new retrofit2.Callback<BaseResponse<RoutePlanVO>>() {
+            @Override
+            public void onResponse(retrofit2.Call<BaseResponse<RoutePlanVO>> call,
+                                   retrofit2.Response<BaseResponse<RoutePlanVO>> response) {
+                BaseResponse<RoutePlanVO> body = response.body();
+                if (body != null && body.getCode() == 1 && body.getData() != null) {
+                    RoutePlanVO route = body.getData();
+                    runOnUiThread(() -> {
+                        routeTimeline.setRoute(route);
+                        startArrivalMonitoring(route);
+                        Log.d(TAG, "路线恢复成功: " + route.getTitle() + " stops=" + route.getStops().size());
+                    });
+                } else {
+                    Log.d(TAG, "无激活路线，data=" + (body != null ? body.getData() : "null"));
+                    // 不显示数轴，用户可手动点击"AI路线"按钮生成
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<BaseResponse<RoutePlanVO>> call, Throwable t) {
+                Log.e(TAG, "路线恢复请求失败: " + t.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 1.16.2 上报到达某地标（手动点选兜底）
+     */
+    private void sendRouteArrive(int stopIndex) {
+        if (webSocketClient == null || !wsConnected) {
+            Toast.makeText(this, "WebSocket 未连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            JSONObject msg = new JSONObject();
+            msg.put("type", "routeArrive");
+            msg.put("stopIndex", stopIndex);
+            webSocketClient.send(msg.toString());
+            Log.d(TAG, "发送到达上报: stopIndex=" + stopIndex);
+        } catch (JSONException e) {
+            Log.e(TAG, "构造 routeArrive 失败", e);
+        }
+    }
+
+    /**
+     * 1.16.2 关闭并清除当前路线
+     */
+    private void sendRouteClose() {
+        if (webSocketClient == null || !wsConnected) {
+            Toast.makeText(this, "WebSocket 未连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            JSONObject msg = new JSONObject();
+            msg.put("type", "routeClose");
+            webSocketClient.send(msg.toString());
+            Log.d(TAG, "发送关闭路线: routeClose");
+        } catch (JSONException e) {
+            Log.e(TAG, "构造 routeClose 失败", e);
+        }
+    }
+
+    // ====================== GPS 自动到达判定 ======================
+
+    /**
+     * 启动 GPS 连续定位，检测是否到达当前地标
+     */
+    private void startArrivalMonitoring(RoutePlanVO route) {
+        RouteStopVO currentStop = route.getCurrentStop();
+        if (currentStop == null) {
+            // 所有站都已到达
+            stopArrivalMonitoring();
+            return;
+        }
+        // 该站已上报过就不重复监控
+        if (currentStop.getStopIndex() == lastAutoArrivedStopIndex) return;
+
+        // 没有有效坐标，只能靠手动
+        if (currentStop.getLongitude() == null || currentStop.getLatitude() == null) {
+            Log.d(TAG, "当前站无坐标，跳过GPS判定: " + currentStop.getName());
+            return;
+        }
+
+        // 先停旧监控再开新的（routeUpdate 会触发重启）
+        stopArrivalMonitoring();
+        gpsNearbyCount = 0;
+        arrivalLocationManager = new LocationManager();
+
+        try {
+            arrivalLocationManager.startContinuousLocation(this, new LocationManager.OnLocationListener() {
+                @Override
+                public void onLocationSuccess(double lat, double lng, String address) {
+                    if (currentStop.getLongitude() == null || currentStop.getLatitude() == null) return;
+
+                    double distance = haversineDistance(lat, lng,
+                            currentStop.getLatitude(), currentStop.getLongitude());
+
+                    if (distance < ARRIVAL_DISTANCE_M) {
+                        gpsNearbyCount++;
+                        Log.d(TAG, "GPS到达检测: 距「" + currentStop.getName() + "」"
+                                + String.format("%.0f", distance) + "m, 连续" + gpsNearbyCount + "次");
+                        if (gpsNearbyCount >= ARRIVAL_CONFIRM_COUNT) {
+                            Log.i(TAG, "GPS自动到达: " + currentStop.getName());
+                            lastAutoArrivedStopIndex = currentStop.getStopIndex();
+                            gpsNearbyCount = 0;
+                            runOnUiThread(() -> {
+                                Toast.makeText(ChatActivity.this,
+                                        "已自动到达「" + currentStop.getName() + "」", Toast.LENGTH_SHORT).show();
+                                sendRouteArrive(currentStop.getStopIndex());
+                            });
+                        }
+                    } else {
+                        gpsNearbyCount = 0;  // 离开范围，重置计数
+                    }
+                }
+
+                @Override
+                public void onLocationError(String error) {
+                    // GPS 失败不影响手动判定，仅记录日志
+                    Log.w(TAG, "GPS定位失败: " + error);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "启动GPS连续定位失败: " + e.getMessage());
+        }
+    }
+
+    private void stopArrivalMonitoring() {
+        if (arrivalLocationManager != null) {
+            arrivalLocationManager.stopLocation();
+            arrivalLocationManager = null;
+        }
+        gpsNearbyCount = 0;
+        lastAutoArrivedStopIndex = -1;
+    }
+
+    /**
+     * Haversine 公式计算两点距离（米），避免额外 SDK 依赖
+     */
+    private double haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+        final double R = 6371000; // 地球半径（米）
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
 }

@@ -14,6 +14,7 @@ import com.example.digitaltourguide.model.user.RegisterResponse;
 import com.example.digitaltourguide.model.user.ReviewPage;
 import com.example.digitaltourguide.model.user.SubmitReviewRequest;
 import com.example.digitaltourguide.model.user.UpdateUserRequest;
+import com.example.digitaltourguide.model.user.RoutePlanVO;
 import com.example.digitaltourguide.model.user.UserLoginData;
 
 import java.util.List;
@@ -135,6 +136,13 @@ public interface ApiService {
     @DELETE("users/reviews/{reviewId}")
     Call<BaseResponse<Void>> deleteReview(
             @Path("reviewId") String reviewId
+    );
+    //==================================================================
+    // 1.16.1 恢复当前激活路线（REST）
+    //==================================================================
+    @GET("users/route/current")
+    Call<BaseResponse<RoutePlanVO>> getCurrentRoute(
+            @Query("attractionId") String attractionId
     );
 }
 

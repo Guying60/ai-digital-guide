@@ -69,6 +69,13 @@
 
     </FrameLayout>
 
+    <!-- 路线数轴（数字人下方、字幕上方） -->
+    <com.example.digitaltourguide.view.user.RouteTimelineView
+        android:id="@+id/route_timeline"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="#2A2A2A"/>
+
     <!-- 字幕区域（数字人下方、图标上方） -->
     <TextView
         android:id="@+id/tv_subtitle"

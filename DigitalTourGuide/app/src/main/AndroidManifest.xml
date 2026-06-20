@@ -13,6 +13,14 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"
         tools:node="replace"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
 
     <application
         android:name=".model.MyApplication"
@@ -30,6 +38,10 @@
         android:networkSecurityConfig="@xml/network_security_config"
         >
 
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="5c1b9fb736b8d2e3142b34ba06d1e0a1" />
+
         <activity android:name=".view.SplashActivity"
                   android:exported="true">
             <intent-filter>
@@ -42,6 +54,7 @@
             android:exported="true">
 
     </activity>
+
         <activity
             android:name=".view.user.HistoryActivity"
             android:exported="true">

@@ -64,5 +64,6 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("com.google.android.exoplayer:exoplayer:2.19.1")
     implementation("com.google.android.material:material:1.11.0")
-
+    // 3D地图 SDK（已内置 Location 功能）
+    implementation("com.amap.api:3dmap:10.0.600")
 }
