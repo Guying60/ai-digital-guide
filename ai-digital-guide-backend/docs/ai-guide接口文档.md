@@ -172,36 +172,45 @@
 
 ---
 
-## 1.5 用户获取景点列表（游标分页）
+## 1.5 用户获取附近景点列表（按距离排序，游标分页）
 
 **请求 URL：** `GET /users/attractions`
 
+**接口说明：** 前端定位后传入用户当前经纬度与所在城市，**仅返回该城市内的景点**，并按距用户**由近到远**排序。游标基于 `(距离, id)`：翻页时需把上一页返回的 `nextDistance` 与 `nextLastId` 一并回传。
+
 **请求参数（Query）：**
 
-| 参数名   | 类型    | 必填 | 说明                                           |
-| -------- | ------- | ---- | ---------------------------------------------- |
-| keyWord  | String  | 否   | 搜索关键词，匹配景点名称，长度不超过 20 个字符 |
-| lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
-| pageSize | Integer | 是   | 每页条数，推荐传 6                             |
+| 参数名        | 类型    | 必填 | 说明                                                         |
+| ------------- | ------- | ---- | ------------------------------------------------------------ |
+| city          | String  | 是   | 当前所在城市（精确匹配，如 `广州市`），前端定位得到           |
+| userLongitude | Double  | 是   | 用户当前经度（GCJ-02 高德坐标系）                            |
+| userLatitude  | Double  | 是   | 用户当前纬度（GCJ-02 高德坐标系）                            |
+| keyWord       | String  | 否   | 搜索关键词，匹配景点名称，长度不超过 20 个字符               |
+| lastDistance  | Double  | 否   | 距离游标，上一页最后一条的 `distance`（米），首次请求不传     |
+| lastId        | String  | 否   | 与 `lastDistance` 配合的二级游标（同距离时按 id），首次不传   |
+| pageSize      | Integer | 是   | 每页条数，推荐传 6                                           |
 
-> 当用户点击某条景点进入对话时，将列表中的 `id` 作为 `attractionId` 建立 WebSocket 连接
+> 当用户点击某条景点进入对话时，将列表中的 `id` 作为 `attractionId` 建立 WebSocket 连接。
+> 坐标缺失（未定位）的景点不会出现在结果中。
 
 **请求示例：**
 
 ```
-GET /users/attractions?keyWord=故宫&pageSize=6
-GET /users/attractions?lastId=1234567890123456789&pageSize=6
+GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.129163&pageSize=6
+GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.129163&lastDistance=1523.6&lastId=1234567890123456789&pageSize=6
 ```
 
 **响应参数说明：**
 
-| 字段              | 类型    | 说明                              |
-| ----------------- | ------- | --------------------------------- |
-| list[].id         | String  | 景点 ID                           |
-| list[].attractionName | String  | 景点名称                      |
-| list[].coverUrl   | String  | 封面图片地址                      |
-| nextLastId        | String  | 下一页游标，为 null 表示无更多数据 |
-| hasMore           | Boolean | 是否还有更多数据                  |
+| 字段              | 类型    | 说明                                        |
+| ----------------- | ------- | ------------------------------------------- |
+| list[].id         | String  | 景点 ID                                     |
+| list[].attractionName | String  | 景点名称                                |
+| list[].coverUrl   | String  | 封面图片地址                                |
+| list[].distance   | Double  | 距用户的距离（米）                          |
+| nextLastId        | String  | 下一页二级游标，为 null 表示无更多数据       |
+| nextDistance      | Double  | 下一页距离游标（米），翻页时回传，无更多为 null |
+| hasMore           | Boolean | 是否还有更多数据                            |
 
 **响应示例：**
 
@@ -213,10 +222,12 @@ GET /users/attractions?lastId=1234567890123456789&pageSize=6
       {
         "id": "1234567890",
         "attractionName": "故宫博物院",
-        "coverUrl": "https://oss.example.com/cover/xxx.jpg"
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+        "distance": 845.2
       }
     ],
     "nextLastId": "1234567890123456789",
+    "nextDistance": 1523.6,
     "hasMore": true
   },
   "msg": "success"
@@ -235,13 +246,17 @@ GET /users/attractions?lastId=1234567890123456789&pageSize=6
 | -------- | ------- | ---- | ---------------------------------------------- |
 | keyWord  | String  | 否   | 搜索关键词，匹配景点名称，长度不超过 20 个字符 |
 | type     | Integer | 否   | 历史类型筛选，不传则查全部                     |
+| city     | String  | 否   | 按城市（地区）筛选，不传则查全部               |
 | lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
 | pageSize | Integer | 是   | 每页条数                                       |
+
+> `city` 为旅游发生时该景点所属城市（下单时冗余记录）；定位功能上线前的历史记录该字段为空，按城市筛选时不会命中。
 
 **请求示例：**
 
 ```
 GET /tourHistory?keyWord=故宫&type=1&pageSize=10
+GET /tourHistory?city=广州市&pageSize=10
 GET /tourHistory?lastId=1234567890123456789&pageSize=10
 ```
 
@@ -253,6 +268,7 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
 | list[].attractionName | String  | 景点名称                          |
 | list[].coverUrl       | String  | 封面图片地址                      |
 | list[].conversationId | String  | 对话 ID                           |
+| list[].city           | String  | 景点所属城市                      |
 | nextLastId            | String  | 下一页游标，为 null 表示无更多数据 |
 | hasMore               | Boolean | 是否还有更多数据                  |
 
@@ -267,7 +283,8 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
         "id": "23123131344",
         "attractionName": "故宫博物院",
         "coverUrl": "https://oss.example.com/cover/xxx.jpg",
-        "conversationId": "1234567890123456789"
+        "conversationId": "1234567890123456789",
+        "city": "北京市"
       }
     ],
     "nextLastId": "1234567890123456789",
@@ -676,6 +693,182 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 
 ---
 
+## 1.16 AI 路线推荐（灵动岛数轴）
+
+> **功能概述**：依据用户个性化偏好，从知识库文档中由 AI 结构化输出一串有序地标，前端以「灵动岛」数轴形式展示（含 已到达/进行中/未到达 状态）。**路线的生成与状态推送走 WebSocket**（与数字人对话同一连接 `/chat`），仅在 AI 数字人对话页存在；路线生命周期跟随 WS 连接，断开即清理。本节的 REST 接口仅用于刷新/重连后**恢复**当前已激活的路线。
+>
+> **坐标系说明**：地标坐标由后端调用高德 Web 服务预解析，返回 **GCJ-02（火星坐标）**。前端做定位与到达判定时，**定位取点与坐标比对必须统一使用高德坐标系**（如高德 JS SDK），切勿混用浏览器/系统原生 GPS（WGS-84），否则存在数十~数百米偏移。
+>
+> **到达判定**：由前端拿地标坐标/名称做定位检测，判定到达后通过 WS `routeArrive` 回报后端持久化；同时应保留手动点选兜底（室内/密集地标场景 GPS 不可靠）。
+>
+> **降级**：若未配置高德 Key、配额超限或某地标解析失败，对应节点 `resolved=false`、坐标字段为空，路线仍正常下发，前端可回退为自行用地标名定位。
+
+### 1.16.1 恢复当前激活路线（REST）
+
+**请求 URL：** `GET /users/route/current`
+
+**认证方式：** Bearer Token（用户 JWT）
+
+**接口说明：** 返回该用户在指定景点下当前已激活的路线（含各节点最新到达状态）。无激活路线时 `data` 为 `null`。
+
+**请求参数（Query）：**
+
+| 参数名       | 类型   | 必填 | 说明      |
+| ------------ | ------ | ---- | --------- |
+| attractionId | String | 是   | 景点 ID   |
+
+**请求示例：** `GET /users/route/current?attractionId=80000000000000001`
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": {
+    "routeId": "f1c2e0a8-6b3d-4a2e-9c11-7a0b8d2e5f3a",
+    "title": "故宫中轴线·皇家建筑精华游",
+    "summary": "沿中轴线一路向北，看尽明清皇家建筑的礼制与气派。",
+    "attractionId": 80000000000000001,
+    "cityName": "北京市",
+    "adcode": "110101",
+    "centerLng": 116.397026,
+    "centerLat": 39.918058,
+    "generatedAt": 1718700000000,
+    "stops": [
+      {
+        "stopIndex": 0,
+        "name": "午门",
+        "searchKeyword": "故宫午门",
+        "recommendReason": "故宫正门，了解皇家礼制的第一站。",
+        "estimatedMinutes": 15,
+        "longitude": 116.397026,
+        "latitude": 39.913423,
+        "address": "北京市东城区景山前街4号",
+        "poiId": "B000A8UIN8",
+        "resolved": true,
+        "status": "ARRIVED"
+      },
+      {
+        "stopIndex": 1,
+        "name": "太和殿",
+        "searchKeyword": "故宫太和殿",
+        "recommendReason": "俗称金銮殿，紫禁城内规格最高的建筑。",
+        "estimatedMinutes": 25,
+        "longitude": 116.390742,
+        "latitude": 39.917565,
+        "address": "北京市东城区故宫内",
+        "poiId": "B000A8UIN9",
+        "resolved": true,
+        "status": "CURRENT"
+      }
+    ]
+  }
+}
+```
+
+**成功响应参数说明（data：RoutePlanVO）：**
+
+| 字段        | 类型   | 说明                                                  |
+| ----------- | ------ | ----------------------------------------------------- |
+| routeId     | String | 路线唯一 ID                                           |
+| title       | String | 路线标题                                              |
+| summary     | String | 路线总览说明                                          |
+| attractionId| Long   | 所属景点 ID                                           |
+| cityName    | String | 高德锚点城市名（前端定位限定城市用），未解析为 null   |
+| adcode      | String | 高德锚点 adcode，未解析为 null                        |
+| centerLng   | Number | 景点中心点经度（GCJ-02），未解析为 null               |
+| centerLat   | Number | 景点中心点纬度（GCJ-02），未解析为 null               |
+| generatedAt | Long   | 生成时间（epoch 毫秒）                                |
+| stops       | Array  | 有序地标节点，见下表                                  |
+
+**stops[i]（RouteStopVO）：**
+
+| 字段             | 类型    | 说明                                                       |
+| ---------------- | ------- | ---------------------------------------------------------- |
+| stopIndex        | Number  | 0 基序号，按游览顺序                                       |
+| name             | String  | 地标展示名                                                 |
+| searchKeyword    | String  | 利于地图检索的具体地点名                                   |
+| recommendReason  | String  | 推荐理由                                                   |
+| estimatedMinutes | Number  | 建议游览时长（分钟）                                       |
+| longitude        | Number  | 经度（GCJ-02），未解析为 null                              |
+| latitude         | Number  | 纬度（GCJ-02），未解析为 null                              |
+| address          | String  | 高德地址，未解析为 null                                    |
+| poiId            | String  | 高德 POI id，未解析为 null                                 |
+| resolved         | Boolean | 是否成功解析到坐标；false 时前端需自行用地标名定位         |
+| status           | String  | 节点状态：`UPCOMING` 未到达 / `CURRENT` 进行中 / `ARRIVED` 已到达 |
+
+**无激活路线响应示例：**
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": null
+}
+```
+
+### 1.16.2 WebSocket 路线协议
+
+复用数字人对话的 WebSocket 连接（`/chat?token=<jwt>&attractionId=<id>`）。消息为 JSON 文本帧，以 `type` 字段区分。
+
+**客户端 → 服务端（入站）：**
+
+| type           | 附加字段            | 说明                                             |
+| -------------- | ------------------- | ------------------------------------------------ |
+| `routeGenerate`| 无                  | 触发生成个性化路线（异步，结果以 `routeTimeline` 推回） |
+| `routeArrive`  | `stopIndex` (Number)| 上报某节点已到达；后端置该节点为已到达并前移当前指针 |
+| `routeClose`   | 无                  | 关闭并清除当前路线                               |
+
+请求示例：
+
+```json
+{ "type": "routeGenerate" }
+```
+```json
+{ "type": "routeArrive", "stopIndex": 0 }
+```
+```json
+{ "type": "routeClose" }
+```
+
+**服务端 → 客户端（出站）：**
+
+| type            | 载荷                       | 说明                                       |
+| --------------- | -------------------------- | ------------------------------------------ |
+| `routeTimeline` | `data`：RoutePlanVO        | 路线生成成功，下发完整数轴                 |
+| `routeUpdate`   | `data`：RoutePlanVO        | 某节点到达后，下发更新后的完整数轴         |
+| `routeClosed`   | 无                         | 路线已关闭                                 |
+| `routeError`    | `text`：错误说明           | 无资料 / 生成失败 / 无可更新路线           |
+
+出站示例（结构同 1.16.1 的 `data`，置于 `data` 字段）：
+
+```json
+{
+  "type": "routeTimeline",
+  "data": {
+    "routeId": "f1c2e0a8-6b3d-4a2e-9c11-7a0b8d2e5f3a",
+    "title": "故宫中轴线·皇家建筑精华游",
+    "summary": "沿中轴线一路向北，看尽明清皇家建筑的礼制与气派。",
+    "attractionId": 80000000000000001,
+    "cityName": "北京市",
+    "adcode": "110101",
+    "centerLng": 116.397026,
+    "centerLat": 39.918058,
+    "generatedAt": 1718700000000,
+    "stops": [
+      { "stopIndex": 0, "name": "午门", "searchKeyword": "故宫午门", "recommendReason": "故宫正门。", "estimatedMinutes": 15, "longitude": 116.397026, "latitude": 39.913423, "address": "北京市东城区景山前街4号", "poiId": "B000A8UIN8", "resolved": true, "status": "CURRENT" }
+    ]
+  }
+}
+```
+
+```json
+{ "type": "routeError", "text": "暂无可生成路线的景点资料" }
+```
+
+---
+
 # 二、管理员端接口
 
 ## 2.1 管理员注册
@@ -748,6 +941,14 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 | coverUrl       | String  | 是   | 封面图片地址                                                 |
 | attractionName | String  | 是   | 景点名称，中英文或数字，2-20 个字符                          |
 | type           | Integer | 是   | 景点类型：0 主题乐园 / 1 博物馆与展馆 / 2 自然公园 / 3 风景名胜与休闲度假 / 4 历史文化 / 5 古镇水乡 / 6 动植物园与水族馆 / 7 现代地标 |
+| longitude      | Double  | 是   | 经度（GCJ-02 高德坐标系），前端定位后传入，范围 -180~180     |
+| latitude       | Double  | 是   | 纬度（GCJ-02 高德坐标系），前端定位后传入，范围 -90~90       |
+| city           | String  | 是   | 所在城市（地区筛选键，如 `北京市`）                          |
+| province       | String  | 否   | 所在省                                                       |
+| district       | String  | 否   | 所在区/县                                                    |
+| adcode         | String  | 否   | 高德区域编码                                                 |
+
+> `longitude/latitude/city` 由前端调用高德定位/地理逆编码得到后随表单提交。
 
 **请求示例：**
 
@@ -755,7 +956,13 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 {
   "coverUrl": "https://oss.example.com/cover/xxx.jpg",
   "attractionName": "故宫博物院",
-  "type": 1
+  "type": 1,
+  "longitude": 116.397026,
+  "latitude": 39.918058,
+  "province": "北京市",
+  "city": "北京市",
+  "district": "东城区",
+  "adcode": "110101"
 }
 ```
 
@@ -788,6 +995,12 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 | coverUrl       | String  | 否   | 封面图片地址           |
 | attractionName | String  | 否   | 景点名称               |
 | type           | Integer | 否   | 景点类型（枚举同 2.3） |
+| longitude      | Double  | 否   | 经度（GCJ-02），不传则不更新 |
+| latitude       | Double  | 否   | 纬度（GCJ-02），不传则不更新 |
+| province       | String  | 否   | 所在省                 |
+| city           | String  | 否   | 所在城市               |
+| district       | String  | 否   | 所在区/县              |
+| adcode         | String  | 否   | 高德区域编码           |
 
 **请求示例：**
 
@@ -796,7 +1009,13 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
   "id": "2044387096879357953",
   "attractionName": "故宫博物院（更新名）",
   "coverUrl": "https://oss.example.com/cover/new.jpg",
-  "type": 4
+  "type": 4,
+  "longitude": 116.397026,
+  "latitude": 39.918058,
+  "province": "北京市",
+  "city": "北京市",
+  "district": "东城区",
+  "adcode": "110101"
 }
 ```
 
@@ -809,7 +1028,13 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
     "id": "2044387096879357953",
     "attractionName": "故宫博物院（更新名）",
     "coverUrl": "https://oss.example.com/cover/new.jpg",
-    "type": 4
+    "type": 4,
+    "longitude": 116.397026,
+    "latitude": 39.918058,
+    "province": "北京市",
+    "city": "北京市",
+    "district": "东城区",
+    "adcode": "110101"
   },
   "msg": "success"
 }
@@ -881,6 +1106,7 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 | -------- | ------- | ---- | ------------------------------------------- |
 | keyWord  | String  | 否   | 搜索关键词，匹配景点名称，不超过 20 个字符  |
 | type     | Integer | 否   | 景点类型筛选，不传则查全部                  |
+| city     | String  | 否   | 按城市（地区）筛选，不传则查全部            |
 | lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传 |
 | pageSize | Integer | 否   | 每页条数，默认 6                            |
 
@@ -888,6 +1114,7 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 
 ```
 GET /admins/attractions?keyWord=故宫&type=1&pageSize=6
+GET /admins/attractions?city=北京市&pageSize=6
 GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 ```
 
@@ -901,7 +1128,9 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
       {
         "id": "2044359968888639490",
         "attractionName": "故宫博物院",
-        "type": 1
+        "coverUrl": "https://oss.example.com/cover/xxx.jpg",
+        "type": 1,
+        "city": "北京市"
       }
     ],
     "nextLastId": "2044359968888639490",
@@ -934,7 +1163,13 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
     "id": "2044359968888639490",
     "attractionName": "故宫博物院",
     "coverUrl": "https://oss.example.com/cover/xxx.jpg",
-    "type": 1
+    "type": 1,
+    "longitude": 116.397026,
+    "latitude": 39.918058,
+    "province": "北京市",
+    "city": "北京市",
+    "district": "东城区",
+    "adcode": "110101"
   },
   "msg": "success"
 }

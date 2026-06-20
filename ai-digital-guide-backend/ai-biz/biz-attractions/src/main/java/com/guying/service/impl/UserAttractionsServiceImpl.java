@@ -1,13 +1,11 @@
 package com.guying.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.guying.common.result.ScrollResult;
 import com.guying.converter.UserAttractionsConverter;
 import com.guying.mapper.AttractionsMapper;
 import com.guying.pojo.dto.AttractionsPageQueryDTO;
 import com.guying.pojo.entity.Attraction;
-import com.guying.pojo.vo.AttractionDetailVO;
 import com.guying.pojo.vo.AttractionsAroundPageQueryVO;
 import com.guying.service.UserAttractionsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,23 +29,33 @@ public class UserAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, A
      */
     @Override
     public ScrollResult<AttractionsAroundPageQueryVO> getAttractionsAround(AttractionsPageQueryDTO attractionsPageQueryDTO) {
-        LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(StringUtils.hasText(attractionsPageQueryDTO.getKeyWord()), Attraction::getAttractionName, attractionsPageQueryDTO.getKeyWord())
-                .lt(StringUtils.hasText(attractionsPageQueryDTO.getLastId()), Attraction::getId, attractionsPageQueryDTO.getLastId())
-                .orderByDesc(Attraction::getId)
-                .last("limit " + (attractionsPageQueryDTO.getPageSize()+1));
+        int pageSize = attractionsPageQueryDTO.getPageSize();
+        Long lastId = StringUtils.hasText(attractionsPageQueryDTO.getLastId())
+                ? Long.valueOf(attractionsPageQueryDTO.getLastId())
+                : null;
 
-        List<Attraction> attractions = attractionsMapper.selectList(queryWrapper);
-        boolean hasMore = attractions.size() > attractionsPageQueryDTO.getPageSize();
+        // 限定当前城市,按距离用户由近到远排序,基于(距离,id)游标分页
+        List<Attraction> attractions = attractionsMapper.selectAround(
+                attractionsPageQueryDTO.getCity(),
+                attractionsPageQueryDTO.getUserLongitude(),
+                attractionsPageQueryDTO.getUserLatitude(),
+                attractionsPageQueryDTO.getKeyWord(),
+                attractionsPageQueryDTO.getLastDistance(),
+                lastId,
+                pageSize + 1);
+
+        boolean hasMore = attractions.size() > pageSize;
         if (hasMore) {
             attractions.removeLast();
         }
-        Long nextLastId = attractions.isEmpty() ? null : attractions.getLast().getId();
+        Attraction last = attractions.isEmpty() ? null : attractions.getLast();
+        Long nextLastId = last == null ? null : last.getId();
+        Double nextDistance = last == null ? null : last.getDistance();
 
         List<AttractionsAroundPageQueryVO> attractionsAroundPageQueryVOList =
                 userAttractionsConverter.toAttractionsAroundPageQueryVOList(attractions);
 
-        return new ScrollResult<>(attractionsAroundPageQueryVOList, nextLastId, hasMore);
+        return new ScrollResult<>(attractionsAroundPageQueryVOList, nextLastId, hasMore, nextDistance);
     }
 
 

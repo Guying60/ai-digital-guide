@@ -10,4 +10,5 @@ public class AttractionListVO {
     private String attractionName;
     private String coverUrl;
     private Integer type;
+    private String city;
 }

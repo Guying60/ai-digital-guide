@@ -39,6 +39,7 @@
           AND create_time BETWEEN #{startTime} AND #{endTime}
           AND CHAR_LENGTH(content) BETWEEN 5 AND 500
         ORDER BY create_time DESC
+        LIMIT 100
     </select>
 
 </mapper>

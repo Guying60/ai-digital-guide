@@ -27,6 +27,25 @@ public class Attraction {
      */
     private Integer type;
 
+    /**
+     * 经度(GCJ-02 高德坐标系)
+     */
+    private Double longitude;
+    /**
+     * 纬度(GCJ-02 高德坐标系)
+     */
+    private Double latitude;
+
+    private String province;
+    /**
+     * 市(地区筛选键)
+     */
+    private String city;
+    private String district;
+    /**
+     * 高德区域编码
+     */
+    private String adcode;
 
     private Long adminId;
 
@@ -35,5 +54,10 @@ public class Attraction {
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
+    /**
+     * 距离用户的距离(米),非数据库字段,由附近景点查询动态计算
+     */
+    @TableField(exist = false)
+    private Double distance;
 
 }

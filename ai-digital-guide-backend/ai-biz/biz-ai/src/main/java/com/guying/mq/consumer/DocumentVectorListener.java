@@ -61,6 +61,7 @@ public class DocumentVectorListener {
             TokenTextSplitter splitter = TokenTextSplitter.builder()
                     .withChunkSize(800)
                     .withMinChunkSizeChars(350)
+                    .withMaxNumChunks(10000)
                     .withKeepSeparator(true)
                     .build();
             List<Document> finalChunks = new ArrayList<>();

@@ -1,5 +1,7 @@
 package com.guying.pojo.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -14,7 +16,7 @@ public class AttractionUpdateDTO {
     private Long id;
 
     private String coverUrl;
-    @Pattern(regexp = "^[\u4e00-\u9fa5a-zA-Z0-9]{2,20}$", message = "必须中英文，数字2到20个字")
+    @Pattern(regexp = "^[一-龥a-zA-Z0-9]{2,20}$", message = "必须中英文，数字2到20个字")
     private String attractionName;
 
     /**
@@ -23,4 +25,26 @@ public class AttractionUpdateDTO {
     @Min(value = 0, message = "请选择正确的类型")
     @Max(value = 7, message = "请选择正确的类型")
     private Integer type;
+
+    /**
+     * 经度(GCJ-02),可选,不传则不更新
+     */
+    @DecimalMin(value = "-180.0", message = "经度不合法")
+    @DecimalMax(value = "180.0", message = "经度不合法")
+    private Double longitude;
+
+    /**
+     * 纬度(GCJ-02),可选,不传则不更新
+     */
+    @DecimalMin(value = "-90.0", message = "纬度不合法")
+    @DecimalMax(value = "90.0", message = "纬度不合法")
+    private Double latitude;
+
+    private String province;
+
+    private String city;
+
+    private String district;
+
+    private String adcode;
 }

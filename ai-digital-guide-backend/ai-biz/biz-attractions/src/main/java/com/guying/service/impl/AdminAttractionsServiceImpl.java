@@ -223,6 +223,7 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         queryWrapper.eq(Attraction::getAdminId, adminId)
                 .like(StringUtils.hasText(attractionListQueryDTO.getKeyWord()), Attraction::getAttractionName, attractionListQueryDTO.getKeyWord())
                 .eq(attractionListQueryDTO.getType() != null, Attraction::getType, attractionListQueryDTO.getType())
+                .eq(StringUtils.hasText(attractionListQueryDTO.getCity()), Attraction::getCity, attractionListQueryDTO.getCity())
                 .lt(StringUtils.hasText(attractionListQueryDTO.getLastId()), Attraction::getId, attractionListQueryDTO.getLastId())
                 .orderByDesc(Attraction::getCreateTime)
                 .last("limit " + (attractionListQueryDTO.getPageSize()+1));

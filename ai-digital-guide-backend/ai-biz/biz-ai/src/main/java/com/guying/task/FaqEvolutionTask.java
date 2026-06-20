@@ -12,6 +12,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -49,9 +50,12 @@ public class FaqEvolutionTask {
     @Scheduled(cron = "0 0 2 * * ?")
     public void execute() {
         log.info("开始执行FAQ进化任务");
-        //获取所有热点问题的所属景点Id
-        Set<String> keys = redisTemplate.keys(HOT_QUESTION_KEY + "*");
-        if(keys == null || keys.isEmpty()){
+        //获取所有热点问题的所属景点Id（使用 SCAN 替代 KEYS 避免阻塞 Redis）
+        Set<String> keys = new HashSet<>();
+        try (var cursor = redisTemplate.scan(ScanOptions.scanOptions().match(HOT_QUESTION_KEY + "*").count(100).build())) {
+            cursor.forEachRemaining(keys::add);
+        }
+        if(keys.isEmpty()){
             log.info("昨日没有热点问题");
             return;
         }
@@ -65,6 +69,12 @@ public class FaqEvolutionTask {
             // 截流改名，防止新问题乱入
             Boolean renamed = redisTemplate.renameIfAbsent(key, processingKey);
             if (Boolean.FALSE.equals(renamed)) continue;
+            Long setSize = redisTemplate.opsForSet().size(processingKey);
+            if (setSize != null && setSize > 2000) {
+                log.warn("景点 {} 的热点问题数量过大（{}），跳过本批次，等待下次进化任务处理", attractionId, setSize);
+                redisTemplate.delete(processingKey);
+                continue;
+            }
             Set<String> queries = redisTemplate.opsForSet().members(processingKey);
             log.info("开始处理景点{}的热点问题", attractionId);
             // 如果没有热点问题，则删除处理键并继续下一个景点

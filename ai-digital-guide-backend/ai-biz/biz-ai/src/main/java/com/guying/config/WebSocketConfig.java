@@ -35,9 +35,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public ServletServerContainerFactoryBean createWebSocketContainer() {
         ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
 
-        container.setMaxTextMessageBufferSize(15 * 5000 * 1024);
+        container.setMaxTextMessageBufferSize(2 * 5000 * 1024);
 
-        container.setMaxBinaryMessageBufferSize(15 * 5000 * 1024);
+        container.setMaxBinaryMessageBufferSize(2 * 5000 * 1024);
 
         // 可选：设置空闲超时时间（毫秒），例如 5 分钟无数据传输则断开连接
         // container.setMaxSessionIdleTimeout(5 * 60 * 1000L);

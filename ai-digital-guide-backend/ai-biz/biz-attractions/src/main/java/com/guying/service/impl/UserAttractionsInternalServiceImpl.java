@@ -34,6 +34,7 @@ public class UserAttractionsInternalServiceImpl implements UserAttractionsIntern
         attractionDTO.setAttractionName(attraction.getAttractionName());
         attractionDTO.setCoverUrl(attraction.getCoverUrl());
         attractionDTO.setType(attraction.getType());
+        attractionDTO.setCity(attraction.getCity());
         return attractionDTO;
     }
 

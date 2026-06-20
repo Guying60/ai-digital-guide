@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.guying.mapper.AttractionsMapper">
+
+    <!-- 当前城市内,按距离用户由近到远排序,基于(距离,id)游标分页 -->
+    <select id="selectAround" resultType="com.guying.pojo.entity.Attraction">
+        SELECT id, attraction_name, cover_url, type, longitude, latitude,
+        (6371000 * acos(
+        LEAST(1, GREATEST(-1,
+        cos(radians(#{userLat})) * cos(radians(latitude)) *
+        cos(radians(longitude) - radians(#{userLng})) +
+        sin(radians(#{userLat})) * sin(radians(latitude))
+        ))
+        )) AS distance
+        FROM tb_attraction
+        WHERE city = #{city}
+        <if test="keyWord != null and keyWord != ''">
+            AND attraction_name LIKE CONCAT('%', #{keyWord}, '%')
+        </if>
+        HAVING distance IS NOT NULL
+        <if test="lastDistance != null and lastId != null">
+            AND (distance > #{lastDistance}
+            OR (distance = #{lastDistance} AND id > #{lastId}))
+        </if>
+        ORDER BY distance ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

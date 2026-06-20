@@ -17,6 +17,11 @@ public class UserTourHistoryPageQueryDTO {
 
     private Integer type;
 
+    /**
+     * 按城市(地区)筛选,可空
+     */
+    private String city;
+
     private String lastId;
     private Integer pageSize = 6;
 

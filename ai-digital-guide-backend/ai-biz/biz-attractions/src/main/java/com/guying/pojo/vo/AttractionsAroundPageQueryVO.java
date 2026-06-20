@@ -11,6 +11,9 @@ public class AttractionsAroundPageQueryVO {
     private Long id;
     private String coverUrl;
     private String attractionName;
-    private String distance;
+    /**
+     * 距用户的距离(米)
+     */
+    private Double distance;
 
 }

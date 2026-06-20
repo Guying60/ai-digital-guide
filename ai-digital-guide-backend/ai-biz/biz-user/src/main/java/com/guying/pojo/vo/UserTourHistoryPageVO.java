@@ -12,6 +12,7 @@ public class UserTourHistoryPageVO {
     private String attractionName;
     private String coverUrl;
     private String conversationId;
+    private String city;
 
 
 }

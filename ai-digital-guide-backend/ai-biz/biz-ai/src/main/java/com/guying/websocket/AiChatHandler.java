@@ -188,6 +188,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         closeQuietly(ctx.getMuseTalkSession(), "MuseTalk", sid);
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);
+        sender.removeSession(sid);
         log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
     }
 

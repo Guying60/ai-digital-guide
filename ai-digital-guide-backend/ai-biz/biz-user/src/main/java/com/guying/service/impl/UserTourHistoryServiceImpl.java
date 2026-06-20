@@ -44,6 +44,7 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
         queryWrapper.eq(UserTourHistory::getUserId, userId)
                 .like(StringUtils.hasText(userTourHistoryPageQueryDTO.getKeyWord()), UserTourHistory::getAttractionName, userTourHistoryPageQueryDTO.getKeyWord())
                 .eq(userTourHistoryPageQueryDTO.getType() != null, UserTourHistory::getType, userTourHistoryPageQueryDTO.getType())
+                .eq(StringUtils.hasText(userTourHistoryPageQueryDTO.getCity()), UserTourHistory::getCity, userTourHistoryPageQueryDTO.getCity())
                 .lt(StringUtils.hasText(userTourHistoryPageQueryDTO.getLastId()), UserTourHistory::getId, userTourHistoryPageQueryDTO.getLastId())
                 .orderByDesc(UserTourHistory::getCreateTime)
                 .last("limit " + (userTourHistoryPageQueryDTO.getPageSize()+1));

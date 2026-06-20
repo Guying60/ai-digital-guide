@@ -31,6 +31,11 @@ public class UserTourHistory {
 
     private Integer type;
 
+    /**
+     * 市(冗余自景点,用于地区筛选)
+     */
+    private String city;
+
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

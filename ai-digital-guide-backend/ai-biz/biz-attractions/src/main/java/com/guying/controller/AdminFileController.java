@@ -71,6 +71,9 @@ public class AdminFileController {
         if (file == null || file.isEmpty()) {
             return Result.error("上传的文件不能为空");
         }
+        if (file.getSize() > 100 * 1024 * 1024) {
+            return Result.error("文件过大，请上传不超过 100MB 的文档");
+        }
         Long adminId = AdminContext.getAdminId();
         String contentType = file.getContentType();
         // 定义合法的文档 MIME 类型

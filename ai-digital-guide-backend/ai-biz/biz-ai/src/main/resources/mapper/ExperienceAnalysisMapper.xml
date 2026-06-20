@@ -56,5 +56,6 @@
           AND m.type = 'USER'
           AND a.create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
         ORDER BY a.focus, RAND()
+        LIMIT 500
     </select>
 </mapper>
