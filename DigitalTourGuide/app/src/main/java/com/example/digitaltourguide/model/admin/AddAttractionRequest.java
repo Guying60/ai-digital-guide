@@ -1,81 +1,108 @@
 package com.example.digitaltourguide.model.admin;
 
+import com.google.gson.annotations.SerializedName;
+
+/**
+ * 2.3 新增景点 / 2.4 更新景点 请求体
+ */
 public class AddAttractionRequest {
+
+    @SerializedName("id")
     private String id;
+
+    @SerializedName("coverUrl")
     private String coverUrl;
+
+    @SerializedName("attractionName")
     private String attractionName;
-    private int type;
+
+    @SerializedName("type")
+    private Integer type;
+
+    // ===== 2.3 / 2.4 新增字段 =====
+    @SerializedName("longitude")
+    private Double longitude;
+
+    @SerializedName("latitude")
+    private Double latitude;
+
+    @SerializedName("city")
+    private String city;
+
+    @SerializedName("province")
+    private String province;
+
+    @SerializedName("district")
+    private String district;
+
+    @SerializedName("adcode")
+    private String adcode;
+
+    // ===== 旧字段（暂留兼容） =====
+    @SerializedName("rating")
     private Double rating;
+
+    @SerializedName("reviewCount")
     private Integer reviewCount;
+
+    @SerializedName("openHours")
     private String openHours;
 
-    // 构造函数（新增用，不带id）
-    public AddAttractionRequest(String coverUrl, String attractionName, int type) {
+    // ---- 构造函数 ----
+
+    /** 新增用（不带 id）：必填字段 */
+    public AddAttractionRequest(String coverUrl, String attractionName, Integer type) {
         this.coverUrl = coverUrl;
         this.attractionName = attractionName;
         this.type = type;
     }
 
-    public String getCoverUrl() {
-        return coverUrl;
-    }
-    // 构造函数（更新用，带id）
-    public AddAttractionRequest(String id, String coverUrl, String attractionName, int type) {
+    /** 更新用（带 id）：必填字段 */
+    public AddAttractionRequest(String id, String coverUrl, String attractionName, Integer type) {
         this.id = id;
         this.coverUrl = coverUrl;
         this.attractionName = attractionName;
         this.type = type;
     }
 
-    public String getId() {
-        return id;
-    }
+    // ---- getters & setters ----
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public void setCoverUrl(String coverUrl) {
-        this.coverUrl = coverUrl;
-    }
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
 
-    public String getAttractionName() {
-        return attractionName;
-    }
+    public String getAttractionName() { return attractionName; }
+    public void setAttractionName(String attractionName) { this.attractionName = attractionName; }
 
-    public void setAttractionName(String attractionName) {
-        this.attractionName = attractionName;
-    }
+    public Integer getType() { return type; }
+    public void setType(Integer type) { this.type = type; }
 
-    public int getType() {
-        return type;
-    }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-    public void setType(int type) {
-        this.type = type;
-    }
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
-    public Double getRating() {
-        return rating;
-    }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
 
-    public void setRating(Double rating) {
-        this.rating = rating;
-    }
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
 
-    public Integer getReviewCount() {
-        return reviewCount;
-    }
+    public String getDistrict() { return district; }
+    public void setDistrict(String district) { this.district = district; }
 
-    public void setReviewCount(Integer reviewCount) {
-        this.reviewCount = reviewCount;
-    }
+    public String getAdcode() { return adcode; }
+    public void setAdcode(String adcode) { this.adcode = adcode; }
 
-    public String getOpenHours() {
-        return openHours;
-    }
+    public Double getRating() { return rating; }
+    public void setRating(Double rating) { this.rating = rating; }
 
-    public void setOpenHours(String openHours) {
-        this.openHours = openHours;
-    }
+    public Integer getReviewCount() { return reviewCount; }
+    public void setReviewCount(Integer reviewCount) { this.reviewCount = reviewCount; }
+
+    public String getOpenHours() { return openHours; }
+    public void setOpenHours(String openHours) { this.openHours = openHours; }
 }
