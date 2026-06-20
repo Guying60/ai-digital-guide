@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+
+import com.example.digitaltourguide.view.user.UserLoginActivity;
 import com.google.android.material.button.MaterialButton;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -435,10 +437,12 @@ public class PointManagerActivity extends AppCompatActivity {
         // 退出登录
         dialog.findViewById(R.id.menu_logout).setOnClickListener(v -> {
             dialog.dismiss();
-            Intent logoutIntent = new Intent(PointManagerActivity.this, com.example.digitaltourguide.view.user.UserLoginActivity.class);
-            logoutIntent.putExtra("login_mode", "admin");
-            startActivity(logoutIntent);
-            finishAffinity();  // 清除所有 Activity 栈
+            SpUtils.clearAdminInfo(PointManagerActivity.this);
+            Intent intent = new Intent(PointManagerActivity.this, UserLoginActivity.class);
+            intent.putExtra("login_mode", "admin");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finishAffinity();
         });
 
         Window window = dialog.getWindow();

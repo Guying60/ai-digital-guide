@@ -11,7 +11,17 @@ public class LocationManager {
     private OnLocationListener listener;
 
     public interface OnLocationListener{
-        void onLocationSuccess(double latitude,double longitude,String address);
+        void onLocationSuccess(double latitude, double longitude, String address);
+        void onLocationError(String error);
+    }
+
+    /**
+     * 详细定位回调 — 用于编辑页获取省市/区/adcode
+     */
+    public interface OnDetailLocationListener {
+        void onLocationSuccess(double latitude, double longitude,
+                               String province, String city, String district,
+                               String adcode, String address);
         void onLocationError(String error);
     }
 
@@ -70,6 +80,43 @@ public class LocationManager {
                         location.getLatitude(),
                         location.getLongitude(),
                         location.getAddress());
+            }
+        });
+        locationClient.startLocation();
+    }
+
+    /**
+     * 单次详细定位 — 返回省市/区/adcode，用于景点编辑页获取坐标
+     */
+    public void startDetailLocation(Context context, OnDetailLocationListener listener) {
+        if (locationClient != null) {
+            stopLocation();
+        }
+        try {
+            locationClient = new AMapLocationClient(context);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        AMapLocationClientOption option = new AMapLocationClientOption();
+        option.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+        option.setOnceLocation(true);
+        option.setNeedAddress(true);
+
+        locationClient.setLocationOption(option);
+        locationClient.setLocationListener(location -> {
+            if (location != null && location.getErrorCode() == 0) {
+                listener.onLocationSuccess(
+                        location.getLatitude(),
+                        location.getLongitude(),
+                        location.getProvince(),
+                        location.getCity(),
+                        location.getDistrict(),
+                        location.getAdCode(),
+                        location.getAddress());
+            } else {
+                String error = location != null ? location.getErrorInfo() : "未知错误";
+                listener.onLocationError(error);
             }
         });
         locationClient.startLocation();

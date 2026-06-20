@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.databinding.ActivityScenicEditBinding;
+import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.admin.AddAttractionRequest;
 import com.example.digitaltourguide.model.admin.AdminAttraction;
 import com.example.digitaltourguide.model.BaseResponse;
@@ -77,6 +78,12 @@ public class ScenicEditActivity extends AppCompatActivity {
     private boolean isNameChanged = false;
     private boolean isContentChanged = false;
     private boolean isTypeChanged = false;
+    private boolean isLocationChanged = false;   // 位置是否修改
+    // 位置信息
+    private Double savedLongitude, savedLatitude;
+    private String savedProvince, savedCity, savedDistrict, savedAdcode;
+    // 位置显示控件
+    private TextView tvLongitude, tvLatitude, tvLocationAddress;
     int currentFileIndex=0;
     private List<File> fileList = new ArrayList<>();
     private String selectedCoverUrl; // 选中的图片本地路径/上传后的coverUrl
@@ -327,6 +334,7 @@ public class ScenicEditActivity extends AppCompatActivity {
             isFileChanged = false;
             isNameChanged = false;
             isTypeChanged = false;
+                                isLocationChanged = false;
             updateSaveButtonState();
             btnSave.setText("添加景点");
             // 如果封面没有上传，按钮可能不可用，但这里让按钮可用（后续保存时会校验封面）
@@ -373,12 +381,32 @@ public class ScenicEditActivity extends AppCompatActivity {
                                         .into(ivCover);
                                spinnerType.setSelection(currentAttraction.getType());
 
+                                // 回显位置信息
+                                savedLongitude = currentAttraction.getLongitude();
+                                savedLatitude = currentAttraction.getLatitude();
+                                savedProvince = currentAttraction.getProvince();
+                                savedCity = currentAttraction.getCity();
+                                savedDistrict = currentAttraction.getDistrict();
+                                savedAdcode = currentAttraction.getAdcode();
+                                if (savedLongitude != null && savedLatitude != null) {
+                                    tvLongitude.setText(String.format("%.6f", savedLongitude));
+                                    tvLongitude.setTextColor(getColor(R.color.black));
+                                    tvLatitude.setText(String.format("%.6f", savedLatitude));
+                                    tvLatitude.setTextColor(getColor(R.color.black));
+                                    String addr = savedProvince != null ? savedProvince : "";
+                                    addr += savedCity != null ? " " + savedCity : "";
+                                    addr += savedDistrict != null ? " " + savedDistrict : "";
+                                    tvLocationAddress.setText(addr.trim());
+                                    tvLocationAddress.setTextColor(getColor(R.color.black));
+                                }
+
                                 // 重置所有修改标志
                                 isCoverChanged = false;
                                 isFileChanged = false;
                                 isNameChanged = false;
                                 isContentChanged = false;
                                 isTypeChanged = false;
+                                isLocationChanged = false;
                                 updateSaveButtonState();
                             }// 2. 无景点（code=400）：弹窗提示msg
                             else if (result.getCode() == 400) {
@@ -395,6 +423,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                                 isNameChanged = false;
                                 isContentChanged = false;
                                 isTypeChanged = false;
+                                isLocationChanged = false;
                                 updateSaveButtonState();
                                 btnSave.setText("添加景点");
                                 btnSave.setEnabled(false);
@@ -480,6 +509,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                     attractionName,
                     type
             );
+            fillLocationData(request);
             call = RetrofitClient.getAdminApiService().updateAttraction("Bearer " + token, request);
         } else {
             // 新增模式：使用 POST 接口，不传 id
@@ -488,6 +518,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                     attractionName,
                     type
             );
+            fillLocationData(request);
             call = RetrofitClient.getAdminApiService().addAttraction("Bearer " + token, request);
         }
 
@@ -520,6 +551,18 @@ public class ScenicEditActivity extends AppCompatActivity {
                 Toast.makeText(ScenicEditActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    /**
+     * 把位置数据填入请求体
+     */
+    private void fillLocationData(AddAttractionRequest req) {
+        req.setLongitude(savedLongitude);
+        req.setLatitude(savedLatitude);
+        req.setProvince(savedProvince);
+        req.setCity(savedCity);
+        req.setDistrict(savedDistrict);
+        req.setAdcode(savedAdcode);
     }
 
     private void checkPermissionAndOpenGallery() {
@@ -655,9 +698,55 @@ public class ScenicEditActivity extends AppCompatActivity {
 
     //按钮状态修改
     private void updateSaveButtonState() {
-        boolean hasAnyChange = isCoverChanged || isFileChanged || isNameChanged || isContentChanged || isTypeChanged;
+        boolean hasAnyChange = isCoverChanged || isFileChanged || isNameChanged || isContentChanged || isTypeChanged || isLocationChanged;
         btnSave.setEnabled(hasAnyChange);
         btnSave.setAlpha(hasAnyChange ? 1.0f : 0.5f);
+    }
+
+    /**
+     * 获取设备 GPS 位置并逆地理编码获取省市/区/adcode
+     */
+    private void fetchDeviceLocation() {
+        Toast.makeText(this, "正在获取位置...", Toast.LENGTH_SHORT).show();
+        LocationManager lm = new LocationManager();
+        try {
+            lm.startDetailLocation(this, new LocationManager.OnDetailLocationListener() {
+                @Override
+                public void onLocationSuccess(double latitude, double longitude,
+                                              String province, String city, String district,
+                                              String adcode, String address) {
+                    runOnUiThread(() -> {
+                        savedLongitude = longitude;
+                        savedLatitude = latitude;
+                        savedProvince = province;
+                        savedCity = city;
+                        savedDistrict = district;
+                        savedAdcode = adcode;
+
+                        tvLongitude.setText(String.format("%.6f", longitude));
+                        tvLongitude.setTextColor(getColor(R.color.black));
+                        tvLatitude.setText(String.format("%.6f", latitude));
+                        tvLatitude.setTextColor(getColor(R.color.black));
+                        tvLocationAddress.setText((address != null && !address.isEmpty())
+                                ? address : (province + " " + city + " " + district));
+                        tvLocationAddress.setTextColor(getColor(R.color.black));
+
+                        isLocationChanged = true;
+                        updateSaveButtonState();
+                        Toast.makeText(ScenicEditActivity.this, "位置获取成功", Toast.LENGTH_SHORT).show();
+                    });
+                }
+
+                @Override
+                public void onLocationError(String error) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(ScenicEditActivity.this, "定位失败: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+        } catch (Exception e) {
+            Toast.makeText(this, "定位启动失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void initTypeSpinner() {
@@ -741,6 +830,13 @@ public class ScenicEditActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
+
+        // 位置信息
+        tvLongitude = findViewById(R.id.tv_longitude);
+        tvLatitude = findViewById(R.id.tv_latitude);
+        tvLocationAddress = findViewById(R.id.tv_location_address);
+        Button btnGetLocation = findViewById(R.id.btn_get_location);
+        btnGetLocation.setOnClickListener(v -> fetchDeviceLocation());
     }
 
     private int findFirstEmptySlot() {
