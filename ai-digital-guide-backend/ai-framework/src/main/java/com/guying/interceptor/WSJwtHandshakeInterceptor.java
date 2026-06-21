@@ -66,14 +66,17 @@ public class WSJwtHandshakeInterceptor implements HandshakeInterceptor {
                 if (expireTime <= 1000 * 60 * 60 * 24) {
                     redisTemplate.expire(USER_LOGIN_KEY + uuid, LOGIN_TOKEN_EXPIRE_TIME, TimeUnit.MILLISECONDS);
                 }
-                Long userId = Long.parseLong(jwtUtil.getSubject(token));
+                Long userId = Long.parseLong(claims.getSubject());
                 //存放用户ID
                 attributes.put("userId", userId);
                 //存放景点ID
                 String attractionId = servletRequest.getServletRequest().getParameter("attractionId");
-                if (StringUtils.hasText(attractionId)) {
-                    attributes.put("attractionId", Long.parseLong(attractionId));
+                if (!StringUtils.hasText(attractionId) || "null".equals(attractionId)) {
+                    log.warn("WebSocket 握手拒绝：未选择景点");
+                    response.setStatusCode(HttpStatus.BAD_REQUEST);
+                    return false;
                 }
+                attributes.put("attractionId", Long.parseLong(attractionId));
                 return true;
             } catch (Exception e) { // 把这里的 NumberFormatException 改成了宽泛的 Exception，防止 jwtUtil 解析失败抛出其他异常导致崩溃
                 log.warn("WebSocket 握手拒绝：Token 解析失败", e);

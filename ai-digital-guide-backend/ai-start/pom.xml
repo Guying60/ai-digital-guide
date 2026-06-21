@@ -37,6 +37,10 @@
             <artifactId>biz-ai</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <!-- 测试只在 start 模块跑 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

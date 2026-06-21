@@ -18,6 +18,11 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+
+import com.example.digitaltourguide.BuildConfig;
+import java.net.InetAddress;
+import java.net.Socket;
+import javax.net.SocketFactory;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -118,6 +123,9 @@ public class ChatActivity extends AppCompatActivity {
     private static final int ARRIVAL_CONFIRM_COUNT = 3; // 连续 N 次在范围内才触发（3×2s=6s）
     private int binaryMsgCount = 0;           // 二进制消息计数器，用于限频日志
     private volatile boolean isAutoFrameRunning = false;
+    // ★ 诊断：WebSocket 文本消息接收延迟追踪（Bug 4）
+    private long lastTextMsgTime = 0;
+    private int textMsgCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,11 +160,6 @@ public class ChatActivity extends AppCompatActivity {
                 Toast.makeText(this,"停止录音",Toast.LENGTH_SHORT).show();
                 stopRecord();
             } else {
-                //开始录音前，如果数字人正在播放，先打断
-                if(avSyncPlayer != null && avSyncPlayer.isPlaying()){
-                    sendInterrupt();
-                    stopPlayback();
-                }
                 // 未录音 -> 开始录音
                 if (isRecordReady()) {
                     Toast.makeText(this,"开始录音",Toast.LENGTH_SHORT).show();
@@ -172,11 +175,6 @@ public class ChatActivity extends AppCompatActivity {
             if(text.isEmpty()){
                 Toast.makeText(this,"请输入文本",Toast.LENGTH_SHORT).show();
                 return;
-            }
-            //发送前，如果数字人正在播放，就打断
-            if(avSyncPlayer != null && avSyncPlayer.isPlaying()){
-                sendInterrupt();
-                stopPlayback();
             }
             sendTextMessage(text);
             etMessage.setText("");//清空输入框
@@ -562,16 +560,35 @@ public class ChatActivity extends AppCompatActivity {
 
         // 1. 获取你登录后的信息（已经能拿到了）
         String token = SpUtils.getUserToken(ChatActivity.this);
-        Log.d("TEST_TOKEN", "token ="+token);
         String userId = SpUtils.getUserId(this);
 
-        String wsUrl = "wss://ai.guying.xyz/ai-project/chat" + "?attractionId=" + attractionId;
+        // 2. 构建 WebSocket URL（景点ID 通过 query parameter 传递）
+        String wsUrl = "wss://ai.guying.xyz/ai-project/chat"
+                + "?attractionId=" + attractionId;
 
-        // 2. 构建 OkHttp 客户端（支持 wss 安全协议）
+        // 3. 构建 OkHttp 客户端（支持 wss 安全协议）
+        // ★ TCP_NODELAY: 禁用 Nagle 算法，视频/音频帧立即发送不等待合并
+        SocketFactory noDelayFactory = new SocketFactory() {
+            private final SocketFactory delegate = SocketFactory.getDefault();
+            private Socket apply(Socket s) {
+                try {
+                    s.setTcpNoDelay(true);
+                    s.setReceiveBufferSize(512 * 1024);  // 512KB 接收缓冲避免丢帧
+                    s.setSendBufferSize(256 * 1024);
+                } catch (java.net.SocketException ignored) {}
+                return s;
+            }
+            @Override public Socket createSocket() throws java.io.IOException { return apply(delegate.createSocket()); }
+            @Override public Socket createSocket(String host, int port) throws java.io.IOException { return apply(delegate.createSocket(host, port)); }
+            @Override public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws java.io.IOException { return apply(delegate.createSocket(host, port, localHost, localPort)); }
+            @Override public Socket createSocket(InetAddress host, int port) throws java.io.IOException { return apply(delegate.createSocket(host, port)); }
+            @Override public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws java.io.IOException { return apply(delegate.createSocket(address, port, localAddress, localPort)); }
+        };
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)   // WebSocket 不设读超时，靠心跳保活
                 .writeTimeout(30, TimeUnit.SECONDS)
+                .socketFactory(noDelayFactory)
                 .addNetworkInterceptor(chain -> {
                     Request original = chain.request();
                     // 去掉压缩扩展头，强制后端不使用压缩
@@ -582,10 +599,10 @@ public class ChatActivity extends AppCompatActivity {
                 })
                 .build();
 
-        // 3. 构建请求（Header 完全正确）
+        // 4. 构建请求（token 通过 Authorization header 传递）
         Request request = new Request.Builder()
                 .url(wsUrl)
-                .addHeader("Authorization", "Bearer " + token)  // 空格一定有！
+                .addHeader("Authorization", "Bearer " + token)
                 .build();
 
         // 4. 连接 WebSocket
@@ -623,7 +640,18 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
                 super.onMessage(webSocket, text);
-                Log.d("MYTEST", "收到后端消息：" + text);
+                // ★ 诊断：记录文本消息接收间隔，追踪 WebSocket 延迟（Bug 4）
+                long textNow = System.currentTimeMillis();
+                long textInterval = lastTextMsgTime == 0 ? 0 : textNow - lastTextMsgTime;
+                lastTextMsgTime = textNow;
+                textMsgCount++;
+                if (textInterval > 500 || textMsgCount <= 20 || textMsgCount % 20 == 0) {
+                    Log.w(TAG, "⇩ TEXT-RECV: interval=" + textInterval + "ms len=" + text.length()
+                            + " total=" + textMsgCount + " preview="
+                            + (text.length() > 80 ? text.substring(0, 80) : text));
+                } else {
+                    Log.d("MYTEST", "收到后端消息：" + text);
+                }
                 try {
                     JSONObject json = new JSONObject(text);
                     String type = json.optString("type");
@@ -743,25 +771,22 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onMessage(@NonNull WebSocket webSocket, @NonNull ByteString bytes) {
 
-                byte[] payload = bytes.toByteArray();
+                // P1/B1: 只做一次拷贝，type flag 保留在头部交给 AVSyncPlayer 解析
+                byte[] raw = bytes.toByteArray();
                 binaryMsgCount++;
-                // ★ 高频二进制消息（25fps 视频+音频），每 50 条才打一次日志，避免 logcat I/O 阻塞 WebSocket 线程
-                if (binaryMsgCount % 50 == 1) {
-                    Log.d("BINARY", "收到二进制数据 #" + binaryMsgCount + "，长度=" + payload.length);
+                if (BuildConfig.DEBUG && binaryMsgCount % 50 == 1) {
+                    Log.d("BINARY", "收到二进制数据 #" + binaryMsgCount + "，长度=" + raw.length);
                 }
 
-                if (payload.length == 0) return;
+                if (raw.length == 0) return;
 
-                // 1. 读取首字节标识位
-                int typeFlag = payload[0] & 0xFF;
-                byte[] frameData = new byte[payload.length - 1];
-                System.arraycopy(payload, 1, frameData, 0, frameData.length);
-
-                // 2. 交给 AVSyncPlayer 处理（内部分拣到 AudioQueue / VideoQueue）
+                int typeFlag = raw[0] & 0xFF;
+                // ★ B2: 使用异步入队，将帧处理从 WebSocket reader 线程卸载到独立线程，
+                // 确保 reader 能全速从 TCP buffer 读取数据，消除锁竞争和 I/O 阻塞
                 if (typeFlag == 0x01) {  // 音频
-                    if (avSyncPlayer != null) avSyncPlayer.onAudioData(frameData);
+                    if (avSyncPlayer != null) avSyncPlayer.onAudioDataAsync(raw);
                 } else if (typeFlag == 0x03) {  // H.264 视频
-                    if (avSyncPlayer != null) avSyncPlayer.onVideoData(frameData);
+                    if (avSyncPlayer != null) avSyncPlayer.onVideoDataAsync(raw);
                 } else {
                     Log.w("BINARY", "未知 typeFlag: 0x" + Integer.toHexString(typeFlag));
                 }
@@ -1044,6 +1069,9 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onSurfaceTextureAvailable(@NonNull SurfaceTexture st, int width, int height) {
                 if (avSyncPlayer != null) {
+                    // ★ 必须在创建 Surface 前设置缓冲区大小，否则 MediaCodec 输出帧
+                    // 无法正确渲染到 TextureView（某些设备上画面完全不显示）
+                    st.setDefaultBufferSize(AVSyncPlayer.VIDEO_WIDTH, AVSyncPlayer.VIDEO_HEIGHT);
                     avSyncPlayer.onSurfaceReady(new Surface(st));
                     avSyncPlayer.updateTransform();
                 }

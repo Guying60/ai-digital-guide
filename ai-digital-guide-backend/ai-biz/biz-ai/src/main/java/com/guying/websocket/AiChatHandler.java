@@ -14,6 +14,7 @@ import com.guying.websocket.nls.NlsTranscriberManager;
 import com.guying.websocket.protocol.WsMessageSender;
 import com.guying.websocket.session.ChatSessionContext;
 import com.guying.websocket.session.ChatSessionRegistry;
+import com.guying.websocket.session.OutboundPacer;
 import com.guying.websocket.tts.CosyVoiceConnector;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -85,6 +86,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         try {
             // executor 必须最先初始化，保证后续 emitSentence 总能提交 TTS 任务
             ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
+            // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
+            ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
             publishUserTourHistory(ctx);
             museTalkConnector.connect(ctx);
@@ -158,6 +161,10 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         }
         // 对话结束，自动创建待评价记录
         reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        OutboundPacer pacer = ctx.getOutboundPacer();
+        if (pacer != null) {
+            pacer.shutdown();
+        }
         closeQuietly(ctx.getMuseTalkSession(), "MuseTalk", sid);
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);
@@ -179,6 +186,10 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
         ctx.getPtsTracker().onInterrupt();
+        OutboundPacer pacer = ctx.getOutboundPacer();
+        if (pacer != null) {
+            pacer.reset();
+        }
         ExecutorService old = ctx.getTtsExecutor();
         if (old != null && !old.isShutdown()) {
             old.shutdownNow();

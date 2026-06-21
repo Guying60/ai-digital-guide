@@ -2,6 +2,7 @@ package com.guying.websocket.chat;
 
 import com.guying.attractions.service.UserAttractionsInternalService;
 import com.guying.common.constants.RedisConstants;
+import com.guying.common.enums.GenderEnum;
 import com.guying.prompt.AiSystemConstants;
 import com.guying.rag.VectorSearchService;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,12 @@ public class DynamicPromptService {
         Map<String, Object> dynamicPrompt = stringRedisTemplate
                 .<String, Object>opsForHash()
                 .entries(RedisConstants.USER_INFO_KEY + userId);
+        // gender 存的是数字码(0/1/2)，转成中文描述供提示词使用
+        Object genderVal = dynamicPrompt.get("gender");
+        if (genderVal != null) {
+            int code = Integer.parseInt((String) genderVal);
+            dynamicPrompt.put("gender", GenderEnum.fromCode(code).getDesc());
+        }
         dynamicPrompt.put("locationInfo", "");
         dynamicPrompt.put("absoluteFact", "");
         dynamicPrompt.put("context", "");

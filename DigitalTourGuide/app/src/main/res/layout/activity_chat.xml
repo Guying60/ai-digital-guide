@@ -50,11 +50,10 @@
         android:layout_weight="1"
         tools:ignore="MissingClass,InflatedId,,All">
 
-        <!-- 数字人区域（左侧，占满剩余空间）。H.264 MediaCodec 硬解直渲到 TextureView -->
+        <!-- 数字人区域（全屏填充）。H.264 MediaCodec 硬解直渲到 TextureView -->
         <TextureView
             android:id="@+id/tv_digital_human"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
             />
 
