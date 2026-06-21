@@ -350,6 +350,8 @@ public class ScenicEditActivity extends AppCompatActivity {
                     public void onResponse(retrofit2.Call<BaseResponse<AdminAttraction>> call,
                                            retrofit2.Response<BaseResponse<AdminAttraction>> response) {
 
+                        if (isFinishing() || isDestroyed()) return;
+
                         if (!response.isSuccessful()) {
                             Toast.makeText(ScenicEditActivity.this, "请求失败：" + response.code(), Toast.LENGTH_SHORT).show();
                             return;
@@ -376,7 +378,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                                 }
                                 etAttractionName.setText(currentAttraction.getAttractionName());
                                 // 填充UI
-                                Glide.with(ScenicEditActivity.this)
+                                Glide.with(getApplicationContext())
                                         .load(coverUrl)
                                         .placeholder(R.drawable.ic_add)
                                         .into(ivCover);
@@ -453,6 +455,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<BaseResponse<List<FileItem>>> call,
                                            Response<BaseResponse<List<FileItem>>> response) {
+                        if (isFinishing() || isDestroyed()) return;
                         Log.d(TAG, "文件回显 response.code() = " + response.code());
                         if (response.isSuccessful() && response.body() != null) {
                             BaseResponse<List<FileItem>> result = response.body();
@@ -526,6 +529,7 @@ public class ScenicEditActivity extends AppCompatActivity {
         call.enqueue(new retrofit2.Callback<BaseResponse<AdminAttraction>>() {
             @Override
             public void onResponse(Call<BaseResponse<AdminAttraction>> call, Response<BaseResponse<AdminAttraction>> response) {
+                if (isFinishing() || isDestroyed()) return;
                 if (response.isSuccessful() && response.body() != null) {
                     BaseResponse<AdminAttraction> result = response.body();
                     if (result.getCode() == 1 && result.getData() != null) {
@@ -536,7 +540,6 @@ public class ScenicEditActivity extends AppCompatActivity {
                             SpUtils.saveAttractionId(ScenicEditActivity.this,currentAttractionId);
                         }
                         Toast.makeText(ScenicEditActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
-                        fetchAttractionData(); // 重新回显
                         setResult(RESULT_OK);  // 设置成功结果
                         finish();
                     } else {
