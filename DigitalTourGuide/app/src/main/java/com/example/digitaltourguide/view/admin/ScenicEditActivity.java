@@ -89,7 +89,6 @@ public class ScenicEditActivity extends AppCompatActivity {
     int currentFileIndex=0;
     private List<File> fileList = new ArrayList<>();
     private String selectedCoverUrl; // 选中的图片本地路径/上传后的coverUrl
-    private FileUploadUtil fileUploadUtil;
     private static final String TAG="ScenicEditActivity";
     private static final int REQUEST_LOCATION_PERMISSION = 2001;
     private ActivityScenicEditBinding binding;
@@ -326,9 +325,6 @@ public class ScenicEditActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1001 && fileUploadUtil != null) {
-            fileUploadUtil.handleFileResult(requestCode, resultCode, data);
-        }
     }
 
     private void fetchAttractionData() {
@@ -637,19 +633,68 @@ public class ScenicEditActivity extends AppCompatActivity {
             }
     );
 
-    private File uriToFile(Uri uri,String mimeType) {
-        String extension="";
+    private File uriToUploadFile(Uri uri) {
+        String fileName = "file_" + System.currentTimeMillis();
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
+                if (nameIndex != -1) {
+                    fileName = cursor.getString(nameIndex);
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            File file = new File(getCacheDir(), fileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+            fos.close();
+            is.close();
+            return file;
+        } catch (Exception e) {
+            Log.e(TAG, "Uri转File失败: ", e);
+            return null;
+        }
+    }
+
+    private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                Uri uri = result.getData().getData();
+                if (uri == null) return;
+                String mimeType = getContentResolver().getType(uri);
+                if (!"application/msword".equals(mimeType)
+                        && !"application/vnd.openxmlformats-officedocument.wordprocessingml.document".equals(mimeType)
+                        && !"application/pdf".equals(mimeType)) {
+                    Toast.makeText(this, "仅支持.doc/.pdf/.docx格式", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                File file = uriToUploadFile(uri);
+                if (file == null) {
+                    Toast.makeText(this, "文件转换失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                uploadSingleFile(currentFileIndex, file);
+            });
+
+    // 封面图片Uri转File
+    private File uriToFile(Uri uri, String mimeType) {
+        String extension;
         if ("image/jpeg".equals(mimeType)) {
-            extension = ".jpg";   // 统一用 .jpg，后端能识别
+            extension = ".jpg";
         } else if ("image/png".equals(mimeType)) {
             extension = ".png";
         } else {
-            // 不支持的格式，返回 null
             return null;
         }
         try {
             InputStream is = getContentResolver().openInputStream(uri);
-            File file = new File(getCacheDir(), "cover_" + System.currentTimeMillis()+extension);
+            File file = new File(getCacheDir(), "cover_" + System.currentTimeMillis() + extension);
             FileOutputStream fos = new FileOutputStream(file);
             byte[] buffer = new byte[1024];
             int len;
@@ -829,24 +874,22 @@ public class ScenicEditActivity extends AppCompatActivity {
                 Toast.makeText(this, "请等待景点加载完成", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // 找到第一个空槽位（文件名显示“暂无文件”）
+            // 找到第一个空槽位（文件名显示”暂无文件”）
             int firstEmptySlot = findFirstEmptySlot();
             if (firstEmptySlot == -1) {
                 Toast.makeText(this, "最多上传4个文件", Toast.LENGTH_SHORT).show();
                 return;
             }
             currentFileIndex = firstEmptySlot;
-            fileUploadUtil = new FileUploadUtil(this, token, currentAttractionId, currentFileIndex) {
-                @Override
-                public void onUploadSuccess(String ossUrl, String taskId) {
-                    // 上传成功后由 FileUploadUtil 回调 onFileSelected
-                }
-                @Override
-                public void onUploadFailure(Exception e) {
-                    Log.e(TAG, "文件上传失败: " + e.getMessage());
-                }
-            };
-            fileUploadUtil.openFileChooser();
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/pdf"
+            });
+            filePickerLauncher.launch(intent);
         });
         // 为每个删除按钮设置监听
         setupDeleteButton(R.id.tv_delete_1, 1);
