@@ -391,7 +391,7 @@ public class HistoryActivity extends AppCompatActivity {
         token = SpUtils.getUserToken(this);
         Log.d("HistoryActivity", "此时用户token: " + token);
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, currentType, null, pageSize)
+        apiService.getTourHistory(currentKeyWord, currentType, null, null, pageSize)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
@@ -462,7 +462,7 @@ public class HistoryActivity extends AppCompatActivity {
         token = SpUtils.getUserToken(this);
         if (!hasMore || isLoading) return;
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, currentType, lastId, pageSize)
+        apiService.getTourHistory(currentKeyWord, currentType, null, lastId, pageSize)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {

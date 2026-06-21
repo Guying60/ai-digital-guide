@@ -122,7 +122,7 @@ public class AttractionPickerDialog extends DialogFragment {
 
         String token= SpUtils.getUserToken(getContext());
          RetrofitClient.getApiService()
-                .getAttractions(currentKeyword,lastId,PAGE_SIZE)
+                .getAttractions(null, null, null, currentKeyword, null, lastId, PAGE_SIZE)
                  .enqueue(new Callback<AttractionPage>() {
                      @Override
                      public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {

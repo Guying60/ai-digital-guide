@@ -12,11 +12,23 @@ public class ScenicSpot {
     private String coverUrl;
     @SerializedName("conversationId")
     private String conversationId;
+    @SerializedName("distance")
+    private Double distance;
+
+    @SerializedName("city")
+    private String city;
+
     @SerializedName("ScenicSpot")
     private boolean ended;
 
 
     public ScenicSpot() {}
+
+    public Double getDistance() { return distance; }
+    public void setDistance(Double distance) { this.distance = distance; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
 
     public boolean isEnded() {
         return ended;
