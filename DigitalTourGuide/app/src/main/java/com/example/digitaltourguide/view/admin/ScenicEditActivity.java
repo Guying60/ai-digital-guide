@@ -216,16 +216,15 @@ public class ScenicEditActivity extends AppCompatActivity {
         }
         // 获取对应槽位的控件
         TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
-        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivDelete = findViewById(getResources().getIdentifier("iv_delete_" + fileIndex, "id", getPackageName()));
         ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
 
         if (tvFileName != null) {
             tvFileName.setText(fileName);
             tvFileName.setTextColor(getColor(R.color.black)); // 正常颜色
         }
-        if (tvDelete != null) {
-            tvDelete.setVisibility(View.VISIBLE);
-            tvDelete.setText("移除");
+        if (ivDelete != null) {
+            ivDelete.setVisibility(View.VISIBLE);
         }
         if (ivFileIcon != null) {
             ivFileIcon.setVisibility(View.VISIBLE);
@@ -298,14 +297,14 @@ public class ScenicEditActivity extends AppCompatActivity {
 
         // 恢复 UI
         TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
-        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivDelete = findViewById(getResources().getIdentifier("iv_delete_" + fileIndex, "id", getPackageName()));
         ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
 
         if (tvFileName != null) {
             tvFileName.setText("暂无文件");
         }
-        if (tvDelete != null) {
-            tvDelete.setVisibility(View.GONE);
+        if (ivDelete != null) {
+            ivDelete.setVisibility(View.GONE);
         }
         if (ivFileIcon != null) {
             ivFileIcon.setVisibility(View.GONE);
@@ -892,10 +891,10 @@ public class ScenicEditActivity extends AppCompatActivity {
             filePickerLauncher.launch(intent);
         });
         // 为每个删除按钮设置监听
-        setupDeleteButton(R.id.tv_delete_1, 1);
-        setupDeleteButton(R.id.tv_delete_2, 2);
-        setupDeleteButton(R.id.tv_delete_3, 3);
-        setupDeleteButton(R.id.tv_delete_4, 4);
+        setupDeleteButton(R.id.iv_delete_1, 1);
+        setupDeleteButton(R.id.iv_delete_2, 2);
+        setupDeleteButton(R.id.iv_delete_3, 3);
+        setupDeleteButton(R.id.iv_delete_4, 4);
 
         etAttractionName.addTextChangedListener(new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -934,7 +933,7 @@ public class ScenicEditActivity extends AppCompatActivity {
         return -1;
     }
     private void setupDeleteButton(int btnId, final int slotIndex) {
-        TextView tvDelete = findViewById(btnId);
-        tvDelete.setOnClickListener(v -> resetFileUI(slotIndex));
+        ImageView ivDelete = findViewById(btnId);
+        ivDelete.setOnClickListener(v -> resetFileUI(slotIndex));
     }
 }
