@@ -148,10 +148,10 @@ public class ScenicEditActivity extends AppCompatActivity {
                         savedAdcode = data.getStringExtra("adcode");
                         String address = data.getStringExtra("address");
 
-                        tvLongitude.setText(String.format("%.6f", savedLongitude));
-                        tvLongitude.setTextColor(getColor(R.color.black));
-                        tvLatitude.setText(String.format("%.6f", savedLatitude));
-                        tvLatitude.setTextColor(getColor(R.color.black));
+                        if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", savedLongitude));
+                        if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                        if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", savedLatitude));
+                        if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
                         tvLocationAddress.setText(address != null && !address.isEmpty()
                                 ? address
                                 : (savedProvince + " " + savedCity + " " + savedDistrict));
@@ -422,10 +422,10 @@ public class ScenicEditActivity extends AppCompatActivity {
                                 savedDistrict = currentAttraction.getDistrict();
                                 savedAdcode = currentAttraction.getAdcode();
                                 if (savedLongitude != null && savedLatitude != null) {
-                                    tvLongitude.setText(String.format("%.6f", savedLongitude));
-                                    tvLongitude.setTextColor(getColor(R.color.black));
-                                    tvLatitude.setText(String.format("%.6f", savedLatitude));
-                                    tvLatitude.setTextColor(getColor(R.color.black));
+                                    if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", savedLongitude));
+                                    if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                                    if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", savedLatitude));
+                                    if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
                                     String addr = savedProvince != null ? savedProvince : "";
                                     addr += savedCity != null ? " " + savedCity : "";
                                     addr += savedDistrict != null ? " " + savedDistrict : "";
@@ -840,10 +840,10 @@ public class ScenicEditActivity extends AppCompatActivity {
                         savedDistrict = district;
                         savedAdcode = adcode;
 
-                        tvLongitude.setText(String.format("%.6f", longitude));
-                        tvLongitude.setTextColor(getColor(R.color.black));
-                        tvLatitude.setText(String.format("%.6f", latitude));
-                        tvLatitude.setTextColor(getColor(R.color.black));
+                        if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", longitude));
+                        if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                        if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", latitude));
+                        if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
                         tvLocationAddress.setText((address != null && !address.isEmpty())
                                 ? address : (province + " " + city + " " + district));
                         tvLocationAddress.setTextColor(getColor(R.color.black));
@@ -942,8 +942,7 @@ public class ScenicEditActivity extends AppCompatActivity {
         });
 
         // 位置信息
-        tvLongitude = findViewById(R.id.tv_longitude);
-        tvLatitude = findViewById(R.id.tv_latitude);
+        // tvLongitude / tvLatitude 已从布局移除，仅保留 tvLocationAddress
         tvLocationAddress = findViewById(R.id.tv_location_address);
         Button btnGetLocation = findViewById(R.id.btn_get_location);
         btnGetLocation.setOnClickListener(v -> fetchDeviceLocation());

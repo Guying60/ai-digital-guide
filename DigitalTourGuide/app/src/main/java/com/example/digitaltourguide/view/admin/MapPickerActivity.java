@@ -36,7 +36,7 @@ public class MapPickerActivity extends AppCompatActivity {
 
     private MapView mapView;
     private AMap aMap;
-    private TextView tvCoords, tvAddress;
+    private TextView tvAddress;
     private double selectedLat, selectedLng;
     private String selectedProvince, selectedCity, selectedDistrict, selectedAdcode, selectedAddress;
     private boolean confirming;
@@ -58,7 +58,6 @@ public class MapPickerActivity extends AppCompatActivity {
         mapView = findViewById(R.id.map_view);
         MapUtil.mapCreate(mapView, savedInstanceState);
 
-        tvCoords = findViewById(R.id.tv_selected_coords);
         tvAddress = findViewById(R.id.tv_selected_address);
 
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
@@ -87,7 +86,6 @@ public class MapPickerActivity extends AppCompatActivity {
             }
             aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(selectedLat, selectedLng), initLat != 0 ? 16f : 10f));
-            updateCoordsDisplay();
             handler.postDelayed(geocodeRunnable, 300);
 
             aMap.setOnCameraChangeListener(new AMap.OnCameraChangeListener() {
@@ -100,16 +98,11 @@ public class MapPickerActivity extends AppCompatActivity {
                 public void onCameraChangeFinish(com.amap.api.maps.model.CameraPosition p) {
                     selectedLat = p.target.latitude;
                     selectedLng = p.target.longitude;
-                    updateCoordsDisplay();
                     handler.removeCallbacks(geocodeRunnable);
                     handler.postDelayed(geocodeRunnable, GEO_DEBOUNCE_MS);
                 }
             });
         }
-    }
-
-    private void updateCoordsDisplay() {
-        tvCoords.setText(String.format("经度: %.6f  纬度: %.6f", selectedLng, selectedLat));
     }
 
     private void doReverseGeocode() {
