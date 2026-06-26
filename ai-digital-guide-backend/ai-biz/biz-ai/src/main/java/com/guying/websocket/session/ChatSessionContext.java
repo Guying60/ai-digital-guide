@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -20,6 +21,7 @@ public class ChatSessionContext {
     private final String sid;
     private final Long userId;
     private final Long attractionId;
+    private final String conversationId;
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
     private final PtsTracker ptsTracker = new PtsTracker();
@@ -41,11 +43,12 @@ public class ChatSessionContext {
         this.sid = session.getId();
         this.userId = (Long) session.getAttributes().get("userId");
         this.attractionId = (Long) session.getAttributes().get("attractionId");
+        this.conversationId = UUID.randomUUID().toString();
         this.lastActiveTime = System.currentTimeMillis();
     }
 
     public String conversationId() {
-        return attractionId + ":" + userId;
+        return conversationId;
     }
 
     public void touchActive() {

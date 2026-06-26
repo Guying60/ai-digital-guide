@@ -42,9 +42,7 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
     @Async
     @Transactional
     @Override
-    public void analyze(String userMessage, Long userId, Long attractionId) {
-
-        String conversationId = attractionId + ":" + userId;
+    public void analyze(String userMessage, Long userId, Long attractionId, String conversationId) {
         BeanOutputConverter<ExperienceAnalysisResult> converter =
                 new BeanOutputConverter<>(ExperienceAnalysisResult.class);
 

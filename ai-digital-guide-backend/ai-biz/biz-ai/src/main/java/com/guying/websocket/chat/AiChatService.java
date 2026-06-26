@@ -70,7 +70,7 @@ public class AiChatService {
         consumeStream(ctx, stream);
 
         // 异步用户体验/情感分析
-        experienceAnalysisService.analyze(userText, ctx.getUserId(), ctx.getAttractionId());
+        experienceAnalysisService.analyze(userText, ctx.getUserId(), ctx.getAttractionId(), conversationId);
     }
 
     private Flux<String> streamDs(String userText, String prompt, String conversationId) {
