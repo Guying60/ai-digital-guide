@@ -190,6 +190,15 @@ public class ProfileInfoActivity extends AppCompatActivity {
                                         .load(data.getAvatarUrl())
                                         .circleCrop()
                                         .into(ivAvatar);
+                            } else {
+                                // 服务端返回 null，用本地缓存的头像兜底
+                                String cached = SpUtils.getUserAvatar(ProfileInfoActivity.this);
+                                if (!cached.isEmpty()) {
+                                    Glide.with(ProfileInfoActivity.this)
+                                            .load(cached)
+                                            .circleCrop()
+                                            .into(ivAvatar);
+                                }
                             }
                         });
                     } else {
@@ -262,6 +271,8 @@ public class ProfileInfoActivity extends AppCompatActivity {
                             UpdateUserRequest updateReq = new UpdateUserRequest();
                             updateReq.setAvatarUrl(avatarUrl);
                             updateUserInfoWithOkHttp(updateReq, () -> {
+                                // 缓存到本地，防止服务端 GET 返回 null
+                                SpUtils.saveUserAvatar(ProfileInfoActivity.this, avatarUrl);
                                 // 成功回调：直接显示新头像
                                 runOnUiThread(() -> {
                                     Glide.with(ProfileInfoActivity.this)
