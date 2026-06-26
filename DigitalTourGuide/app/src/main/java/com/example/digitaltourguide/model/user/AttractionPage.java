@@ -5,6 +5,7 @@ import java.util.List;
 public class AttractionPage {
     private List<ScenicSpot> list;
     private String nextLastId;
+    private Double nextDistance;
     private boolean hasMore;
 
     public List<ScenicSpot> getList() {
@@ -21,6 +22,14 @@ public class AttractionPage {
 
     public void setNextLastId(String nextLastId) {
         this.nextLastId = nextLastId;
+    }
+
+    public Double getNextDistance() {
+        return nextDistance;
+    }
+
+    public void setNextDistance(Double nextDistance) {
+        this.nextDistance = nextDistance;
     }
 
     public boolean isHasMore() {

@@ -89,7 +89,6 @@ public class ScenicEditActivity extends AppCompatActivity {
     int currentFileIndex=0;
     private List<File> fileList = new ArrayList<>();
     private String selectedCoverUrl; // 选中的图片本地路径/上传后的coverUrl
-    private FileUploadUtil fileUploadUtil;
     private static final String TAG="ScenicEditActivity";
     private static final int REQUEST_LOCATION_PERMISSION = 2001;
     private ActivityScenicEditBinding binding;
@@ -217,16 +216,15 @@ public class ScenicEditActivity extends AppCompatActivity {
         }
         // 获取对应槽位的控件
         TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
-        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivDelete = findViewById(getResources().getIdentifier("iv_delete_" + fileIndex, "id", getPackageName()));
         ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
 
         if (tvFileName != null) {
             tvFileName.setText(fileName);
             tvFileName.setTextColor(getColor(R.color.black)); // 正常颜色
         }
-        if (tvDelete != null) {
-            tvDelete.setVisibility(View.VISIBLE);
-            tvDelete.setText("移除");
+        if (ivDelete != null) {
+            ivDelete.setVisibility(View.VISIBLE);
         }
         if (ivFileIcon != null) {
             ivFileIcon.setVisibility(View.VISIBLE);
@@ -299,14 +297,14 @@ public class ScenicEditActivity extends AppCompatActivity {
 
         // 恢复 UI
         TextView tvFileName = findViewById(getResources().getIdentifier("file_name_" + fileIndex, "id", getPackageName()));
-        TextView tvDelete = findViewById(getResources().getIdentifier("tv_delete_" + fileIndex, "id", getPackageName()));
+        ImageView ivDelete = findViewById(getResources().getIdentifier("iv_delete_" + fileIndex, "id", getPackageName()));
         ImageView ivFileIcon = findViewById(getResources().getIdentifier("iv_file_icon_" + fileIndex, "id", getPackageName()));
 
         if (tvFileName != null) {
             tvFileName.setText("暂无文件");
         }
-        if (tvDelete != null) {
-            tvDelete.setVisibility(View.GONE);
+        if (ivDelete != null) {
+            ivDelete.setVisibility(View.GONE);
         }
         if (ivFileIcon != null) {
             ivFileIcon.setVisibility(View.GONE);
@@ -352,6 +350,8 @@ public class ScenicEditActivity extends AppCompatActivity {
                     public void onResponse(retrofit2.Call<BaseResponse<AdminAttraction>> call,
                                            retrofit2.Response<BaseResponse<AdminAttraction>> response) {
 
+                        if (isFinishing() || isDestroyed()) return;
+
                         if (!response.isSuccessful()) {
                             Toast.makeText(ScenicEditActivity.this, "请求失败：" + response.code(), Toast.LENGTH_SHORT).show();
                             return;
@@ -378,7 +378,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                                 }
                                 etAttractionName.setText(currentAttraction.getAttractionName());
                                 // 填充UI
-                                Glide.with(ScenicEditActivity.this)
+                                Glide.with(getApplicationContext())
                                         .load(coverUrl)
                                         .placeholder(R.drawable.ic_add)
                                         .into(ivCover);
@@ -455,6 +455,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<BaseResponse<List<FileItem>>> call,
                                            Response<BaseResponse<List<FileItem>>> response) {
+                        if (isFinishing() || isDestroyed()) return;
                         Log.d(TAG, "文件回显 response.code() = " + response.code());
                         if (response.isSuccessful() && response.body() != null) {
                             BaseResponse<List<FileItem>> result = response.body();
@@ -528,6 +529,7 @@ public class ScenicEditActivity extends AppCompatActivity {
         call.enqueue(new retrofit2.Callback<BaseResponse<AdminAttraction>>() {
             @Override
             public void onResponse(Call<BaseResponse<AdminAttraction>> call, Response<BaseResponse<AdminAttraction>> response) {
+                if (isFinishing() || isDestroyed()) return;
                 if (response.isSuccessful() && response.body() != null) {
                     BaseResponse<AdminAttraction> result = response.body();
                     if (result.getCode() == 1 && result.getData() != null) {
@@ -538,7 +540,6 @@ public class ScenicEditActivity extends AppCompatActivity {
                             SpUtils.saveAttractionId(ScenicEditActivity.this,currentAttractionId);
                         }
                         Toast.makeText(ScenicEditActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
-                        fetchAttractionData(); // 重新回显
                         setResult(RESULT_OK);  // 设置成功结果
                         finish();
                     } else {
@@ -634,19 +635,68 @@ public class ScenicEditActivity extends AppCompatActivity {
             }
     );
 
-    private File uriToFile(Uri uri,String mimeType) {
-        String extension="";
+    private File uriToUploadFile(Uri uri) {
+        String fileName = "file_" + System.currentTimeMillis();
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
+                if (nameIndex != -1) {
+                    fileName = cursor.getString(nameIndex);
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            File file = new File(getCacheDir(), fileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+            fos.close();
+            is.close();
+            return file;
+        } catch (Exception e) {
+            Log.e(TAG, "Uri转File失败: ", e);
+            return null;
+        }
+    }
+
+    private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                Uri uri = result.getData().getData();
+                if (uri == null) return;
+                String mimeType = getContentResolver().getType(uri);
+                if (!"application/msword".equals(mimeType)
+                        && !"application/vnd.openxmlformats-officedocument.wordprocessingml.document".equals(mimeType)
+                        && !"application/pdf".equals(mimeType)) {
+                    Toast.makeText(this, "仅支持.doc/.pdf/.docx格式", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                File file = uriToUploadFile(uri);
+                if (file == null) {
+                    Toast.makeText(this, "文件转换失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                uploadSingleFile(currentFileIndex, file);
+            });
+
+    // 封面图片Uri转File
+    private File uriToFile(Uri uri, String mimeType) {
+        String extension;
         if ("image/jpeg".equals(mimeType)) {
-            extension = ".jpg";   // 统一用 .jpg，后端能识别
+            extension = ".jpg";
         } else if ("image/png".equals(mimeType)) {
             extension = ".png";
         } else {
-            // 不支持的格式，返回 null
             return null;
         }
         try {
             InputStream is = getContentResolver().openInputStream(uri);
-            File file = new File(getCacheDir(), "cover_" + System.currentTimeMillis()+extension);
+            File file = new File(getCacheDir(), "cover_" + System.currentTimeMillis() + extension);
             FileOutputStream fos = new FileOutputStream(file);
             byte[] buffer = new byte[1024];
             int len;
@@ -826,30 +876,28 @@ public class ScenicEditActivity extends AppCompatActivity {
                 Toast.makeText(this, "请等待景点加载完成", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // 找到第一个空槽位（文件名显示“暂无文件”）
+            // 找到第一个空槽位（文件名显示”暂无文件”）
             int firstEmptySlot = findFirstEmptySlot();
             if (firstEmptySlot == -1) {
                 Toast.makeText(this, "最多上传4个文件", Toast.LENGTH_SHORT).show();
                 return;
             }
             currentFileIndex = firstEmptySlot;
-            fileUploadUtil = new FileUploadUtil(this, token, currentAttractionId, currentFileIndex) {
-                @Override
-                public void onUploadSuccess(String ossUrl, String taskId) {
-                    // 上传成功后由 FileUploadUtil 回调 onFileSelected
-                }
-                @Override
-                public void onUploadFailure(Exception e) {
-                    Log.e(TAG, "文件上传失败: " + e.getMessage());
-                }
-            };
-            fileUploadUtil.openFileChooser();
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/pdf"
+            });
+            filePickerLauncher.launch(intent);
         });
         // 为每个删除按钮设置监听
-        setupDeleteButton(R.id.tv_delete_1, 1);
-        setupDeleteButton(R.id.tv_delete_2, 2);
-        setupDeleteButton(R.id.tv_delete_3, 3);
-        setupDeleteButton(R.id.tv_delete_4, 4);
+        setupDeleteButton(R.id.iv_delete_1, 1);
+        setupDeleteButton(R.id.iv_delete_2, 2);
+        setupDeleteButton(R.id.iv_delete_3, 3);
+        setupDeleteButton(R.id.iv_delete_4, 4);
 
         etAttractionName.addTextChangedListener(new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -888,7 +936,7 @@ public class ScenicEditActivity extends AppCompatActivity {
         return -1;
     }
     private void setupDeleteButton(int btnId, final int slotIndex) {
-        TextView tvDelete = findViewById(btnId);
-        tvDelete.setOnClickListener(v -> resetFileUI(slotIndex));
+        ImageView ivDelete = findViewById(btnId);
+        ivDelete.setOnClickListener(v -> resetFileUI(slotIndex));
     }
 }

@@ -74,15 +74,7 @@ public interface AdminApiService {
             @Header("Authorization") String token,
             @Path("attractionId") String attractionId
     );
-    //2.6
-    @GET("admins/attractions")
-    Call<BaseResponse<AttractionListData>> getAttractionList(
-            @Header("Authorization") String token,
-            @Query("keyWord") String keyWord,
-            @Query("type") Integer type,
-            @Query("lastId") String lastId,
-            @Query("pageSize") int pageSize
-    );
+
     //2.16上传封面
     @Multipart
     @POST("admins/file/cover")
@@ -98,12 +90,23 @@ public interface AdminApiService {
     );
 
     //2.7
+    @GET("admins/attractions")
+    Call<BaseResponse<AttractionListData>> getAttractionList(
+            @Header("Authorization") String token,
+            @Query("keyWord") String keyWord,
+            @Query("type") Integer type,
+            @Query("city") String city,
+            @Query("lastId") String lastId,
+            @Query("pageSize") int pageSize
+    );
+
+    //2.8
     @GET("admins/attractions/{attractionId}")
     Call<BaseResponse<AdminAttraction>> getAttractionDetail(
             @Header("Authorization") String token,
             @Path("attractionId") String attractionId
     );
-    //2.8
+    //2.9
     @Multipart
     @POST("admins/file/doc")
     Call<BaseResponse<FileUploadResponse>> uploadFileToOSS(
@@ -112,35 +115,35 @@ public interface AdminApiService {
             @Part MultipartBody.Part file,
             @Part("type") RequestBody type
     );
-    //2.9轮询
+    //2.10轮询
     @GET("admins/attractions/documents/{taskId}")
     Call<BaseResponse<String>> checkDocumentStatus(
             @Header("Authorization") String token,
             @Path("taskId") String taskId
     );
-    //2.10文件回显
+    //2.11文件回显
     @GET("admins/attractions/documents/{attractionId}")
     Call<BaseResponse<List<FileItem>>> getFileList(
             @Header("Authorization") String token,
             @Path("attractionId") String attractionId
     );
-    //2.11删除文件
+    //2.12删除文件
     @DELETE("admins/attractions/documents/{fileId}")
     Call<BaseResponse<Void>> deleteDocument(
             @Header("Authorization") String token,
             @Path("fileId") String fileId
     );
-    // 2.12 新增/修改
+    // 2.13 新增/修改
     @POST("admins/attractions/digital-human")
     Call<BaseResponse<DigitalHuman>>  upsertDigitalHuman(
             @Body DigitalHuman digitalHuman
     );
-    // 2.13 查询
+    // 2.14 查询
     @GET("admins/attractions/digital-human/{attractionId}")
     Call<BaseResponse<DigitalHuman>> queryDigitalHuman(
             @Path("attractionId") String attractionId
     );
-    // 2.14 删除
+    // 2.16 删除
     @DELETE("admins/attractions/digital-human/{id}")
     Call<BaseResponse<Void>> deleteDigitalHuman(
             @Path("id") String id
@@ -150,7 +153,8 @@ public interface AdminApiService {
     @GET("admins/attractions/digital-human/preload-status/{attractionId}")
     Call<BaseResponse<String>> getPreloadStatus(@Path("attractionId") String attractionId);
 
-    //2.16上传视频
+    //2.18
+    //上传视频
     @Multipart
     @POST("admins/file/video")
     Call<BaseResponse<String>> uploadDigitalHumanVideo(

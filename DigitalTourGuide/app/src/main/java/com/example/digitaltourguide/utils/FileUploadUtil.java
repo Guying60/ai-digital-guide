@@ -129,8 +129,8 @@ public abstract class FileUploadUtil {
                         if (response.isSuccessful() && response.body() != null) {
                             BaseResponse<FileUploadResponse> result = response.body();
                             if (result.getCode() == 1 && result.getData() != null) {
-                                String ossUrl = result.getData().getOssUrl();   // 从这里获取
-                                String taskId = result.getData().getTaskId();   // 如果需要可以保存
+                                String ossUrl = result.getData().getOssUrl();
+                                String taskId = result.getData().getTaskId();
                                 Toast.makeText(activity, "文件上传成功", Toast.LENGTH_SHORT).show();
                                 updateUIAfterSuccess(ossUrl, file.getName(), getFileType(file.getName()));
                                 onUploadSuccess(ossUrl,taskId);
@@ -158,7 +158,7 @@ public abstract class FileUploadUtil {
     //更新ui
     private void updateUIAfterSuccess(String ossUrl, String fileName, String fileType) {
         if (activity instanceof ScenicEditActivity) {
-            ((ScenicEditActivity) activity).updateFileUI(fileIndex, ossUrl, fileName, fileType,attractionId);
+            ((ScenicEditActivity) activity).updateFileUI(fileIndex, ossUrl, fileName, fileType, null);
         }
     }
 

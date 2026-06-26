@@ -370,7 +370,7 @@ public class PointManagerActivity extends AppCompatActivity {
 
         isLoading = true;
         RetrofitClient.getAdminApiService()
-                .getAttractionList("Bearer " + token, currentKeyword, currentType, nextLastId, 6)
+                .getAttractionList("Bearer " + token, currentKeyword, currentType, null, nextLastId, 6)
                 .enqueue(new Callback<BaseResponse<AttractionListData>>() {
                     @Override
                     public void onResponse(Call<BaseResponse<AttractionListData>> call, Response<BaseResponse<AttractionListData>> response) {
