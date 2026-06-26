@@ -395,6 +395,7 @@ public class HistoryActivity extends AppCompatActivity {
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
+
                         isLoading = false;
                         if (response.isSuccessful() && response.body() != null && response.body().code == 1) {
                             String bodyJson = new Gson().toJson(response.body());
@@ -435,16 +436,16 @@ public class HistoryActivity extends AppCompatActivity {
                         } else {
                             HistoryResponse body = response.body();
                             if (body == null) {
-                                Log.e("HistoryActivity", "景点请求失败: 响应体为 null");
+                                Log.e("HistoryActivity", "景点请求失败: 响应体为 null, HTTP状态码=" + response.code());
                                 Toast.makeText(HistoryActivity.this, "景点请求失败", Toast.LENGTH_SHORT).show();
                                 return;
                             }
 
-                            String bodyJson = new Gson().toJson(response.body());
-                            Log.e("HistoryActivity","景点请求失败:"+response.body().msg);
+                            String bodyJson = new Gson().toJson(body);
+                            Log.e("HistoryActivity","景点请求失败:" + body.msg);
                             Log.e("HistoryActivity", "响应体 JSON: " + bodyJson);
-                            Log.e("HistoryActivity", "业务 code: " + response.body().code);
-                            Log.e("HistoryActivity", "业务 msg: " + response.body().msg);
+                            Log.e("HistoryActivity", "业务 code: " + body.code);
+                            Log.e("HistoryActivity", "业务 msg: " + body.msg);
                             Toast.makeText(HistoryActivity.this,"景点请求失败",Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -494,12 +495,18 @@ public class HistoryActivity extends AppCompatActivity {
                             }
                         } else {
                             hasMore = false; // 请求失败不再继续
-                            String bodyJson = new Gson().toJson(response.body());
-                            Log.e("HistoryActivity", "景点请求失败:" + response.body().msg);
+                            HistoryResponse body = response.body();
+                            if (body == null) {
+                                Log.e("HistoryActivity", "景点请求失败: 响应体为 null, HTTP状态码=" + response.code());
+                                Toast.makeText(HistoryActivity.this, "景点请求失败", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            String bodyJson = new Gson().toJson(body);
+                            Log.e("HistoryActivity","景点请求失败:" + body.msg);
                             Log.e("HistoryActivity", "响应体 JSON: " + bodyJson);
-                            Log.e("HistoryActivity", "业务 code: " + response.body().code);
-                            Log.e("HistoryActivity", "业务 msg: " + response.body().msg);
-                            Toast.makeText(HistoryActivity.this, "景点请求失败", Toast.LENGTH_SHORT).show();
+                            Log.e("HistoryActivity", "业务 code: " + body.code);
+                            Log.e("HistoryActivity", "业务 msg: " + body.msg);
+                            Toast.makeText(HistoryActivity.this,"景点请求失败",Toast.LENGTH_SHORT).show();
                         }
                     }
 

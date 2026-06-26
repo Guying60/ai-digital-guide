@@ -71,7 +71,7 @@ public interface ApiService {
             @Query("pageSize") int pageSize);
 
     //1.6获取主页景点
-    @GET("tourHistory")
+    @GET("users/tourHistory")
     Call<HistoryResponse> getTourHistory(
             @Query("keyWord") String keyWord,
             @Query("type") Integer type,

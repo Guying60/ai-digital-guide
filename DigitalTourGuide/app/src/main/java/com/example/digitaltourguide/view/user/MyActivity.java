@@ -114,6 +114,15 @@ public class MyActivity extends AppCompatActivity {
                     .circleCrop()
                     .placeholder(R.drawable.ic_person_filled)
                     .into(ivAvatar);
+        } else {
+            // 服务端返回 null，用本地缓存的头像兜底
+            String cached = SpUtils.getUserAvatar(this);
+            if (!cached.isEmpty()) {
+                Glide.with(this)
+                        .load(cached)
+                        .circleCrop()
+                        .into(ivAvatar);
+            }
         }
 
         // 性别

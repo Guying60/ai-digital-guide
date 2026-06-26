@@ -176,6 +176,19 @@ public class SpUtils {
     // 清除 Token（退出登录用）
     // ----------------------
 
+    // ----------------------
+    // 用户头像 URL（本地缓存，服务端 PUT 兜底）
+    // ----------------------
+    public static void saveUserAvatar(Context context, String avatarUrl) {
+        init(context);
+        sp.edit().putString("user_avatar", avatarUrl).apply();
+    }
+
+    public static String getUserAvatar(Context context) {
+        init(context);
+        return sp.getString("user_avatar", "");
+    }
+
     public static String getWebSocketUrl(String userId) {
         // 这里直接写正确的基础地址
         String baseUrl = "wss://ai.guying.xyz/chat/";
