@@ -74,6 +74,11 @@ public class MyActivity extends AppCompatActivity {
             intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             startActivity(intent);
         });
+
+        // 景点地图
+        findViewById(R.id.btn_nearby_map).setOnClickListener(v ->
+                startActivity(new Intent(this, NearbyMapActivity.class))
+        );
     }
 
     /**

@@ -288,17 +288,37 @@
                                 android:layout_marginTop="2dp" />
                         </LinearLayout>
 
-                        <Button
-                            android:id="@+id/btn_get_location"
-                            android:layout_width="wrap_content"
-                            android:layout_height="40dp"
-                            android:text="获取定位"
-                            android:textSize="12sp"
-                            android:textColor="#FFFFFF"
-                            android:backgroundTint="#8B5CF6"
-                            android:paddingHorizontal="14dp"
-                            android:minWidth="0dp"
-                            android:minHeight="0dp" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="6dp">
+
+                            <Button
+                                android:id="@+id/btn_get_location"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:text="获取定位"
+                                android:textSize="12sp"
+                                android:textColor="#FFFFFF"
+                                android:backgroundTint="#8B5CF6"
+                                android:paddingHorizontal="14dp"
+                                android:minWidth="0dp"
+                                android:minHeight="0dp" />
+
+                            <Button
+                                android:id="@+id/btn_map_picker"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:text="地图选点"
+                                android:textSize="12sp"
+                                android:textColor="#FFFFFF"
+                                android:backgroundTint="#F59E0B"
+                                android:paddingHorizontal="14dp"
+                                android:minWidth="0dp"
+                                android:minHeight="0dp"
+                                android:layout_marginStart="12dp" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <TextView

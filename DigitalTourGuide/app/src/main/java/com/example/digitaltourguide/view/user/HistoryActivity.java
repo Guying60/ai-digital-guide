@@ -576,6 +576,9 @@ public class HistoryActivity extends AppCompatActivity {
         ivAdd.setOnClickListener(v->{
             new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
         });
+        findViewById(R.id.iv_nearby_map).setOnClickListener(v -> {
+            startActivity(new Intent(this, NearbyMapActivity.class));
+        });
     }
 
 
