@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -30,29 +29,31 @@ import okhttp3.Response;
 public class MapPickerActivity extends AppCompatActivity {
 
     private static final String TAG = "MapPickerActivity";
-    private static final String AMAP_KEY = "5c1b9fb736b8d2e3142b34ba06d1e0a1";
+    // Web服务 Key（与 Android SDK key 分开）
+    private static final String AMAP_KEY = "c578d1916e1b30af9d2c9f1b49564a00";
     private static final String GEO_URL = "https://restapi.amap.com/v3/geocode/regeo";
-    private static final int GEO_DEBOUNCE_MS = 800;
+    private static final int GEO_DEBOUNCE_MS = 600;
 
     private MapView mapView;
     private AMap aMap;
     private TextView tvCoords, tvAddress;
     private double selectedLat, selectedLng;
     private String selectedProvince, selectedCity, selectedDistrict, selectedAdcode, selectedAddress;
+    private boolean confirming;
+    private OkHttpClient httpClient;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable geocodeRunnable = new Runnable() {
-        @Override
-        public void run() {
-            updateCoordsDisplay();
-            reverseGeocode(selectedLng, selectedLat);
-        }
-    };
+    private final Runnable geocodeRunnable = this::doReverseGeocode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_picker);
+
+        httpClient = new OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .build();
 
         mapView = findViewById(R.id.map_view);
         MapUtil.mapCreate(mapView, savedInstanceState);
@@ -60,14 +61,16 @@ public class MapPickerActivity extends AppCompatActivity {
         tvCoords = findViewById(R.id.tv_selected_coords);
         tvAddress = findViewById(R.id.tv_selected_address);
 
-        // Toolbar
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // 确认按钮
-        findViewById(R.id.btn_confirm).setOnClickListener(v -> confirmSelection());
+        findViewById(R.id.btn_confirm).setOnClickListener(v -> {
+            confirming = true;
+            v.setEnabled(false);
+            tvAddress.setText("正在获取地址...");
+            doReverseGeocode();
+        });
 
-        // 读取初始坐标
         double initLat = getIntent().getDoubleExtra("latitude", 0);
         double initLng = getIntent().getDoubleExtra("longitude", 0);
 
@@ -85,26 +88,21 @@ public class MapPickerActivity extends AppCompatActivity {
             aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(selectedLat, selectedLng), initLat != 0 ? 16f : 10f));
             updateCoordsDisplay();
-            reverseGeocode(selectedLng, selectedLat);
+            handler.postDelayed(geocodeRunnable, 300);
 
-            // 地图移动时：更新坐标 + 防抖逆地理编码
             aMap.setOnCameraChangeListener(new AMap.OnCameraChangeListener() {
                 @Override
-                public void onCameraChange(com.amap.api.maps.model.CameraPosition cameraPosition) {
-                    selectedLat = cameraPosition.target.latitude;
-                    selectedLng = cameraPosition.target.longitude;
+                public void onCameraChange(com.amap.api.maps.model.CameraPosition p) {
                     handler.removeCallbacks(geocodeRunnable);
-                    handler.postDelayed(geocodeRunnable, GEO_DEBOUNCE_MS);
                 }
 
                 @Override
-                public void onCameraChangeFinish(com.amap.api.maps.model.CameraPosition cameraPosition) {
-                    // 停止后精准逆地理编码
-                    selectedLat = cameraPosition.target.latitude;
-                    selectedLng = cameraPosition.target.longitude;
-                    handler.removeCallbacks(geocodeRunnable);
+                public void onCameraChangeFinish(com.amap.api.maps.model.CameraPosition p) {
+                    selectedLat = p.target.latitude;
+                    selectedLng = p.target.longitude;
                     updateCoordsDisplay();
-                    reverseGeocode(selectedLng, selectedLat);
+                    handler.removeCallbacks(geocodeRunnable);
+                    handler.postDelayed(geocodeRunnable, GEO_DEBOUNCE_MS);
                 }
             });
         }
@@ -112,62 +110,59 @@ public class MapPickerActivity extends AppCompatActivity {
 
     private void updateCoordsDisplay() {
         tvCoords.setText(String.format("经度: %.6f  纬度: %.6f", selectedLng, selectedLat));
-        tvAddress.setVisibility(View.VISIBLE);
-        tvCoords.setVisibility(View.VISIBLE);
     }
 
-    private void reverseGeocode(double lng, double lat) {
-        tvAddress.setText(String.format("(%.6f, %.6f) 获取地址中...", lat, lng));
-
+    private void doReverseGeocode() {
+        if (!confirming) {
+            tvAddress.setText(String.format("(%.6f, %.6f) 获取地址中...", selectedLat, selectedLng));
+        }
         String url = GEO_URL + "?key=" + AMAP_KEY
-                + "&location=" + lng + "," + lat
-                + "&extensions=base";
-
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder().url(url).build();
-
-        client.newCall(request).enqueue(new Callback() {
+                + "&location=" + selectedLng + "," + selectedLat + "&extensions=base";
+        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                Log.e(TAG, "逆地理编码失败", e);
-                runOnUiThread(() -> tvAddress.setText(
-                        String.format("(%.6f, %.6f)", selectedLat, selectedLng)));
+                Log.e(TAG, "逆地理编码失败: " + e.getMessage());
+                handleResult();
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if (!response.isSuccessful() || response.body() == null) {
-                    runOnUiThread(() -> tvAddress.setText(
-                            String.format("(%.6f, %.6f)", selectedLat, selectedLng)));
-                    return;
-                }
                 try {
-                    String body = response.body().string();
-                    JSONObject json = new JSONObject(body);
-                    if (json.getInt("status") == 1) {
-                        JSONObject regeocode = json.getJSONObject("regeocode");
-                        String addr = regeocode.optString("formatted_address", "");
-                        JSONObject ac = regeocode.optJSONObject("addressComponent");
-                        if (ac != null) {
-                            selectedProvince = ac.optString("province", "");
-                            selectedCity = ac.optString("city", "");
-                            if (selectedCity == null || selectedCity.isEmpty()) {
-                                selectedCity = selectedProvince;
+                    if (response.isSuccessful() && response.body() != null) {
+                        JSONObject json = new JSONObject(response.body().string());
+                        if (json.getInt("status") == 1) {
+                            JSONObject rg = json.getJSONObject("regeocode");
+                            selectedAddress = rg.optString("formatted_address", "");
+                            JSONObject ac = rg.optJSONObject("addressComponent");
+                            if (ac != null) {
+                                selectedProvince = ac.optString("province", "");
+                                selectedCity = ac.optString("city", "");
+                                if (selectedCity == null || selectedCity.isEmpty())
+                                    selectedCity = selectedProvince;
+                                selectedDistrict = ac.optString("district", "");
+                                selectedAdcode = ac.optString("adcode", "");
                             }
-                            selectedDistrict = ac.optString("district", "");
-                            selectedAdcode = ac.optString("adcode", "");
                         }
-                        selectedAddress = addr;
-                        runOnUiThread(() -> tvAddress.setText(addr));
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "解析逆地理编码失败", e);
+                    Log.e(TAG, "解析失败", e);
                 }
+                handleResult();
             }
         });
     }
 
-    private void confirmSelection() {
+    private void handleResult() {
+        if (confirming) {
+            runOnUiThread(this::finishWithResult);
+        } else {
+            runOnUiThread(() -> tvAddress.setText(
+                    selectedAddress != null ? selectedAddress
+                            : String.format("(%.6f, %.6f)", selectedLat, selectedLng)));
+        }
+    }
+
+    private void finishWithResult() {
         android.content.Intent result = new android.content.Intent();
         result.putExtra("latitude", selectedLat);
         result.putExtra("longitude", selectedLng);
@@ -179,8 +174,6 @@ public class MapPickerActivity extends AppCompatActivity {
         setResult(RESULT_OK, result);
         finish();
     }
-
-    // ── 生命周期 ──
 
     @Override
     protected void onResume() {
