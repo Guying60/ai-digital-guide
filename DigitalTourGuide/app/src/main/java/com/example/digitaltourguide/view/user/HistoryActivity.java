@@ -569,7 +569,9 @@ public class HistoryActivity extends AppCompatActivity {
            Toast.makeText(this,"当前已是旅游历史页面",Toast.LENGTH_SHORT).show();
         });
         tvMine.setOnClickListener(v -> {
-            startActivity(new Intent(this, MyActivity.class));
+            Intent intent = new Intent(this, MyActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
         });
         ivAdd.setOnClickListener(v->{
             new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");

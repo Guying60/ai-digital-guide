@@ -862,14 +862,7 @@ public class ScenicEditActivity extends AppCompatActivity {
 
         // 左上角返回箭头：回到点位管理页
         ivBack = findViewById(R.id.btn_back);
-        ivBack.setOnClickListener(v -> {
-            Intent intent = new Intent(ScenicEditActivity.this, PointManagerActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(intent);
-            finish();
-            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
-        });
-
+        ivBack.setOnClickListener(v -> goToPointManager());
 
         llUpload.setOnClickListener(v -> {
             if (currentAttractionId == null || currentAttractionId.isEmpty()) {
@@ -938,5 +931,18 @@ public class ScenicEditActivity extends AppCompatActivity {
     private void setupDeleteButton(int btnId, final int slotIndex) {
         ImageView ivDelete = findViewById(btnId);
         ivDelete.setOnClickListener(v -> resetFileUI(slotIndex));
+    }
+
+    private void goToPointManager() {
+        Intent intent = new Intent(ScenicEditActivity.this, PointManagerActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
+        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+    }
+
+    @Override
+    public void onBackPressed() {
+        goToPointManager();
     }
 }
