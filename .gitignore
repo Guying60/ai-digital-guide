@@ -61,6 +61,7 @@ docker-compose.yml
 
 # === 临时日志文件 ===
 cosyvoice日志.md
+日志/
 
 # === Temp files ===
 *~
