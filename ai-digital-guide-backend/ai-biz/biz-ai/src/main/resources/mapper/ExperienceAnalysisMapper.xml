@@ -52,21 +52,19 @@
     </select>
 
     <!--
-        负面样本：analyze() 每条消息按 focus 多标签各插一行且未存消息文本，
-        只能靠 conversation_id 反查 chat memory。JOIN 会产生 (分析行 × 会话内USER消息) 笛卡尔积，
-        这里用 GROUP BY a.focus, m.content 去重，避免同一句话被重复放大。
-        彻底方案：在 tb_ai_experience_analysis 冗余存储被分析的消息文本/messageId 后即可去掉本 JOIN。
+        负面样本：直接取冗余存储的 message（被分析的那句原话），focus 与 message 天然一一对应，
+        不再 JOIN SPRING_AI_CHAT_MEMORY，彻底消除笛卡尔积与张冠李戴，也不受记忆窗口裁剪影响。
+        注意：列改造（新增 message 列）之前的历史数据 message 为 NULL，已用 message IS NOT NULL 过滤。
     -->
     <select id="getNegativeSample" resultType="com.guying.pojo.dto.NegativeSampleDTO">
-        SELECT a.focus, m.content
-        FROM tb_ai_experience_analysis a
-                 JOIN SPRING_AI_CHAT_MEMORY m ON m.conversation_id = a.conversation_id
-        WHERE a.attraction_id = #{attractionId}
-          AND a.emotion = 2
-          AND m.type = 'USER'
-          AND a.create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
-        GROUP BY a.focus, m.content
-        ORDER BY a.focus, RAND()
+        SELECT focus, message AS content
+        FROM tb_ai_experience_analysis
+        WHERE attraction_id = #{attractionId}
+          AND emotion = 2
+          AND message IS NOT NULL
+          AND message != ''
+          AND create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        ORDER BY focus, RAND()
         LIMIT 500
     </select>
 </mapper>

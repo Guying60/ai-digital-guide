@@ -70,6 +70,10 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
                         result.getEmotion(), emotion.getDesc(), conversationId);
             }
 
+            // 冗余存储被分析的原话，供负面样本直接取用（截断到列宽以内，防止插入失败）
+            String safeMessage = userMessage == null ? null
+                    : (userMessage.length() > 1000 ? userMessage.substring(0, 1000) : userMessage);
+
             for (String focusDesc : result.getFocus()) {
                 FocusEnum focus = FocusEnum.fromDesc(focusDesc);
                 if (!focus.getDesc().equals(focusDesc)) {
@@ -82,6 +86,7 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
                 record.setAttractionId(attractionId);
                 record.setEmotion(emotion.getCode());
                 record.setFocus(focus.getCode());
+                record.setMessage(safeMessage);
                 analysisMapper.insert(record);
             }
         } catch (Exception e) {
