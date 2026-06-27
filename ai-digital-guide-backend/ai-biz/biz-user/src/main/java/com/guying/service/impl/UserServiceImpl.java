@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.extension.repository.AbstractRepository;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import com.guying.common.constants.RedisConstants;
-import com.guying.common.enums.GenderEnum;
 import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
 import com.guying.converter.UserConverter;
@@ -104,33 +103,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public UserInfoVO getUserInfo() {
-        Long userId = UserContext.getUserId();
-        String key = USER_INFO_KEY + userId;
-        if (stringRedisTemplate.hasKey(key)){
-            Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
-            UserInfoVO userInfoVO = new UserInfoVO();
-            userInfoVO.setNickname((String) entries.get("nickname"));
-            userInfoVO.setGender(Integer.parseInt((String) entries.get("gender")));
-            userInfoVO.setAge(Integer.valueOf((String) entries.get("age")));
-            return userInfoVO;
-        }else{
-            User user = userMapper.selectById(userId);
-            if (user == null) {
-                throw new ServiceException("用户不存在");
-            }
-            GenderEnum genderEnum = user.getGender() == null
-                    ? GenderEnum.UNKNOWN
-                    : GenderEnum.fromCode(user.getGender());
-
-            Map<String, String> userMap = new HashMap<>();
-            userMap.put("gender", String.valueOf(genderEnum.getCode()));
-            userMap.put("age", user.getAge() == null ? "0" : user.getAge().toString());
-            userMap.put("nickname", user.getNickname() == null ? "未知" : user.getNickname());
-
-            stringRedisTemplate.opsForHash().putAll(key, userMap);
-            stringRedisTemplate.expire(key, USER_INFO_EXPIRE_TIME, TimeUnit.HOURS);
-            return userConverter.toUserInfoVO(user);
+        // 主键查询本就很快，无需缓存；个人信息缓存由 AI 提示词流程(UserInternalServiceImpl)单独维护
+        User user = userMapper.selectById(UserContext.getUserId());
+        if (user == null) {
+            throw new ServiceException("用户不存在");
         }
+        return userConverter.toUserInfoVO(user);
     }
 
     @Override
