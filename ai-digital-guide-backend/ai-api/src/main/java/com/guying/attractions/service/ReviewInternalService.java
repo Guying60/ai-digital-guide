@@ -1,5 +1,6 @@
 package com.guying.attractions.service;
 
+import com.guying.attractions.dto.FeedbackItemDTO;
 import com.guying.user.dto.UserSatisfactionTrendDTO;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public interface ReviewInternalService {
     UserSatisfactionTrendDTO getSatisfactionTrend(Long attractionId, Integer days);
 
     /**
-     * 获取景点反馈文本列表（用于AI分析）
+     * 获取景点反馈列表（含评分，用于AI分析，按评分由低到高排序）
      */
-    List<String> getFeedbackText(Long attractionId, Integer days);
+    List<FeedbackItemDTO> getFeedbackText(Long attractionId, Integer days);
 }

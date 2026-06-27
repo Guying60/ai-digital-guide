@@ -2,6 +2,7 @@ package com.guying.service.impl;
 
 import com.guying.attractions.service.ReviewInternalService;
 import com.guying.service.UserReviewService;
+import com.guying.attractions.dto.FeedbackItemDTO;
 import com.guying.user.dto.UserSatisfactionTrendDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ public class ReviewInternalServiceImpl implements ReviewInternalService {
     }
 
     @Override
-    public List<String> getFeedbackText(Long attractionId, Integer days) {
+    public List<FeedbackItemDTO> getFeedbackText(Long attractionId, Integer days) {
         return userReviewService.getFeedbackText(attractionId, days);
     }
 }

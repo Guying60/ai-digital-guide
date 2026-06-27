@@ -28,17 +28,19 @@
           AND create_time >= DATE_SUB(CURDATE(), INTERVAL (#{days} - 1) DAY)
     </select>
 
-    <select id="selectFeedbackText" resultType="java.lang.String">
-        SELECT content
+    <!-- 反馈样本：带评分返回，按评分由低到高排序，让低分差评优先进入 AI 建议分析 -->
+    <select id="selectFeedbackText" resultType="com.guying.attractions.dto.FeedbackItemDTO">
+        SELECT rating, content
         FROM tb_user_review
         WHERE attraction_id = #{attractionId}
           AND status = 1
+          AND rating IS NOT NULL
           AND content IS NOT NULL
           AND content != ''
           AND is_deleted = 0
           AND create_time BETWEEN #{startTime} AND #{endTime}
           AND CHAR_LENGTH(content) BETWEEN 5 AND 500
-        ORDER BY create_time DESC
+        ORDER BY rating ASC, create_time DESC
         LIMIT 100
     </select>
 
