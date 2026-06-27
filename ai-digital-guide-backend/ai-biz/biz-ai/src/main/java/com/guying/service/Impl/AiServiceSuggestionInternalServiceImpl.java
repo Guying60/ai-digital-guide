@@ -23,9 +23,13 @@ public class AiServiceSuggestionInternalServiceImpl implements AiServiceSuggesti
     @Override
     public SuggestionDTO getSuggestion(Long attractionId, Integer type) {
         SuggestionDTO suggestionDTO = new SuggestionDTO();
+        // 每周/每月都会 insert 新建议，同一 (attractionId,type) 会有多行；
+        // 必须按时间倒序取最新一条并 LIMIT 1，否则 selectOne 命中多行会抛 TooManyResultsException。
         LambdaQueryWrapper<AiServiceSuggestion> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AiServiceSuggestion::getAttractionId, attractionId)
-                    .eq(AiServiceSuggestion::getType, type);
+                    .eq(AiServiceSuggestion::getType, type)
+                    .orderByDesc(AiServiceSuggestion::getCreateTime)
+                    .last("LIMIT 1");
         AiServiceSuggestion aiServiceSuggestion = aiServiceSuggestionMapper.selectOne(queryWrapper);
         if (aiServiceSuggestion != null) {
             suggestionDTO.setSummary(aiServiceSuggestion.getSummary());

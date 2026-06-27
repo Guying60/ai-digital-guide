@@ -15,6 +15,9 @@ public class AiServiceSuggestionServiceImpl implements AiServiceSuggestionServic
 
     @Override
     public void addSuggestion(Suggestion suggestion, Long attractionId, SuggestionTypeEnum suggestionTypeEnum) {
+        if (suggestion == null) {
+            return;
+        }
         AiServiceSuggestion aiServiceSuggestion = new AiServiceSuggestion();
         aiServiceSuggestion.setAttractionId(attractionId);
         aiServiceSuggestion.setType(suggestionTypeEnum.getCode());

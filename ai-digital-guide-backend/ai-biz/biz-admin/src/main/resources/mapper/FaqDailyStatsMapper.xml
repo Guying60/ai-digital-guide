@@ -13,7 +13,7 @@
             tb_attraction_faq f ON s.faq_id = f.id
         WHERE
             s.attraction_id = #{attractionId}
-          AND s.create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND s.`date` >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
         GROUP BY
             s.faq_id,
             f.question

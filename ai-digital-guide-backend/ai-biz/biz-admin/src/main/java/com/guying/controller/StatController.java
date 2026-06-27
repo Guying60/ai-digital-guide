@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -28,21 +29,24 @@ public class StatController {
 
     @Operation(summary = "获取聊天趋势")
     @GetMapping("/chat-trend/{attractionId}")
-    public Result<ChatTrendVO> chatTrend(@PathVariable Long attractionId,Integer days){
+    public Result<ChatTrendVO> chatTrend(@PathVariable Long attractionId,
+                                         @RequestParam(defaultValue = "7") Integer days){
         ChatTrendVO chatTrend = statService.getChatTrend(attractionId, days);
         return Result.success(chatTrend);
     }
 
     @Operation(summary = "获取FAQ")
     @GetMapping("/faq/{attractionId}")
-    public Result<List<HotFaqChartVO>> getFaq(@PathVariable Long attractionId, Integer days){
+    public Result<List<HotFaqChartVO>> getFaq(@PathVariable Long attractionId,
+                                              @RequestParam(defaultValue = "7") Integer days){
         List<HotFaqChartVO> hotFaqChartVO = statService.getFaq(attractionId, days);
         return Result.success(hotFaqChartVO);
     }
 
     @Operation(summary = "获取用户满意度趋势")
     @GetMapping("/satisfaction-trend/{attractionId}")
-    public Result<SatisfactionTrendVO> satisfactionTrend(@PathVariable Long attractionId, Integer days){
+    public Result<SatisfactionTrendVO> satisfactionTrend(@PathVariable Long attractionId,
+                                                         @RequestParam(defaultValue = "7") Integer days){
         SatisfactionTrendVO satisfactionTrendVO = statService.getSatisfactionTrend(attractionId, days);
         return Result.success(satisfactionTrendVO);
     }
