@@ -60,7 +60,10 @@ public class AnalysisServiceImpl implements AnalysisService {
         List<Double>  neutralRate   = new ArrayList<>();
         List<Double>  negativeRate  = new ArrayList<>();
 
-        for (Map<Integer, Integer> emotionMap : byDate.values()) {
+        // 严格按 dates(权威横轴) 遍历，保证各 count/rate 数组长度与 dates 完全对齐，
+        // 不受 SQL 边界多返回一天的影响
+        for (String date : dates) {
+            Map<Integer, Integer> emotionMap = byDate.getOrDefault(date, Collections.emptyMap());
             int pos   = emotionMap.getOrDefault(EmotionEnum.POSITIVE.getCode(), 0);
             int neu   = emotionMap.getOrDefault(EmotionEnum.NEUTRAL.getCode(),  0);
             int neg   = emotionMap.getOrDefault(EmotionEnum.NEGATIVE.getCode(), 0);

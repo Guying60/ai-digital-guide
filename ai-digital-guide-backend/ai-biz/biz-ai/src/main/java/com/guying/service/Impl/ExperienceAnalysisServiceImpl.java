@@ -51,25 +51,42 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
                 + "关注点从以下选，可多选：餐饮、票务、导览、交通、停车、住宿、景点体验、投诉建议、其他\n"
                 + "游客消息：" + userMessage + "\n"
                 + converter.getFormat(); // 自动附加 JSON 格式要求
-        String json = expertChatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
-        ExperienceAnalysisResult result = converter.convert(json);
-        EmotionEnum emotion = EmotionEnum.fromDesc(result.getEmotion());
-        for (String focusDesc : result.getFocus()) {
-            AiExperienceAnalysis record = new AiExperienceAnalysis();
-            record.setConversationId(conversationId);
-            record.setUserId(userId);
-            record.setAttractionId(attractionId);
-            record.setEmotion(emotion.getCode());
-            record.setFocus(FocusEnum.fromDesc(focusDesc).getCode());
-            analysisMapper.insert(record);
+        try {
+            String json = expertChatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            ExperienceAnalysisResult result = converter.convert(json);
+            if (result == null || result.getEmotion() == null
+                    || result.getFocus() == null || result.getFocus().isEmpty()) {
+                log.warn("体验分析结果为空或不完整, conversationId={}, json={}", conversationId, json);
+                return;
+            }
+
+            EmotionEnum emotion = EmotionEnum.fromDesc(result.getEmotion());
+            // 兜底告警：LLM 返回了枚举外的情感描述（会被静默兜底为中性，污染统计）
+            if (!emotion.getDesc().equals(result.getEmotion())) {
+                log.warn("情感描述[{}]未匹配枚举，已兜底为[{}], conversationId={}",
+                        result.getEmotion(), emotion.getDesc(), conversationId);
+            }
+
+            for (String focusDesc : result.getFocus()) {
+                FocusEnum focus = FocusEnum.fromDesc(focusDesc);
+                if (!focus.getDesc().equals(focusDesc)) {
+                    log.warn("关注点描述[{}]未匹配枚举，已兜底为[{}], conversationId={}",
+                            focusDesc, focus.getDesc(), conversationId);
+                }
+                AiExperienceAnalysis record = new AiExperienceAnalysis();
+                record.setConversationId(conversationId);
+                record.setUserId(userId);
+                record.setAttractionId(attractionId);
+                record.setEmotion(emotion.getCode());
+                record.setFocus(focus.getCode());
+                analysisMapper.insert(record);
+            }
+        } catch (Exception e) {
+            log.error("体验分析异常, userId={}, conversationId={}", userId, conversationId, e);
         }
-
-
-
-
     }
 
     @Override
@@ -83,13 +100,19 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
             return new Suggestion("暂无数据","暂无数据");
         }
 
-        // 计算情感占比
+        // 计算情感占比（直接用真实计数，避免反推导致量纲混乱/负数）
         int total = emotionStat.getTotal() == null ? 0 : emotionStat.getTotal();
-        if (total == 0) return null;
+        if (total == 0) {
+            log.warn("该景点近{}天无情感分析数据:{}", days, attractionId);
+            return new Suggestion("暂无数据", "暂无数据");
+        }
+        int posCnt = emotionStat.getPositiveCount() == null ? 0 : emotionStat.getPositiveCount();
+        int neuCnt = emotionStat.getNeutralCount()  == null ? 0 : emotionStat.getNeutralCount();
+        int negCnt = emotionStat.getNegativeCount() == null ? 0 : emotionStat.getNegativeCount();
 
-        double positiveRate = Math.round(emotionStat.getPositiveCount() * 1000.0 / total) / 10.0;
-        double negativeRate = Math.round(100 - positiveRate - (total - emotionStat.getPositiveCount()) * 1000.0 / total) / 10.0;
-        double neutralRate  = Math.round(100 - positiveRate - negativeRate * 10) / 10.0;
+        double positiveRate = Math.round(posCnt * 1000.0 / total) / 10.0;
+        double neutralRate  = Math.round(neuCnt * 1000.0 / total) / 10.0;
+        double negativeRate = Math.round(negCnt * 1000.0 / total) / 10.0;
 
 
         // 拼接负面情感关注点分布

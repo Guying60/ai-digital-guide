@@ -18,9 +18,10 @@ public class UserTourHistoryInternalServiceImpl implements UserTourHistoryIntern
 
     @Override
     public UserChatTrendDTO getUserChatTrend(Long attractionId, Integer days) {
+        // 口径与情感趋势/满意度趋势统一：近 N 天「含今天」
         LocalDate today = LocalDate.now();
-        LocalDateTime startTime = today.minusDays(days).atStartOfDay();
-        LocalDateTime endTime = today.minusDays(1).atTime(LocalTime.MAX);
+        LocalDateTime startTime = today.minusDays(days - 1L).atStartOfDay();
+        LocalDateTime endTime = today.atTime(LocalTime.MAX);
 
         Long total = userTourHistoryMapper.selectCountByAttractionAndDateRange(attractionId, startTime, endTime);
         List<UserChatTrendDTO.DailyItem> dailyList = userTourHistoryMapper.selectChatTrend(attractionId, startTime, endTime, days == 1);

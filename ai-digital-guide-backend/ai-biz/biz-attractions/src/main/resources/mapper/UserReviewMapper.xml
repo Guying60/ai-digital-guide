@@ -13,7 +13,7 @@
           AND status = 1
           AND rating IS NOT NULL
           AND is_deleted = 0
-          AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL (#{days} - 1) DAY)
         GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d')
         ORDER BY date ASC
     </select>
@@ -25,7 +25,7 @@
           AND status = 1
           AND rating IS NOT NULL
           AND is_deleted = 0
-          AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL (#{days} - 1) DAY)
     </select>
 
     <select id="selectFeedbackText" resultType="java.lang.String">
