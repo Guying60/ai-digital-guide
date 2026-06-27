@@ -10,6 +10,7 @@ import com.guying.pojo.dto.NegativeSampleDTO;
 import com.guying.pojo.dto.Suggestion;
 import com.guying.pojo.entity.AiExperienceAnalysis;
 import com.guying.service.ExperienceAnalysisService;
+import com.guying.attractions.dto.FeedbackItemDTO;
 import com.guying.attractions.service.ReviewInternalService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -99,7 +100,7 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
         EmotionStatDTO emotionStat          = analysisMapper.getEmotionStat(attractionId, days, days * 2);
         List<FocusStatDTO> worstFocusList   = analysisMapper.getWorstFocus(attractionId, days);
         List<NegativeSampleDTO> sampleList = analysisMapper.getNegativeSample(attractionId, days);
-        List<String> feedbackText = reviewInternalService.getFeedbackText(attractionId, days);
+        List<FeedbackItemDTO> feedbackItems = reviewInternalService.getFeedbackText(attractionId, days);
         if (worstFocusList.isEmpty() || emotionStat == null) {
             log.warn("该景点没有数据:{}", attractionId);
             return new Suggestion("暂无数据","暂无数据");
@@ -146,10 +147,11 @@ public class ExperienceAnalysisServiceImpl implements ExperienceAnalysisService 
             contents.forEach(c -> sampleDesc.append("- ").append(c).append("\n"));
         });
 
-        // 拼接游客反馈内容
-        String feedbackDesc = feedbackText.stream()
+        // 拼接游客反馈内容（带上评分，让 AI 能区分差评/好评，聚焦低分痛点）
+        String feedbackDesc = feedbackItems.stream()
                 .limit(20)
-                .collect(Collectors.joining("\n- ", "- ", ""));
+                .map(f -> "- (" + f.getRating() + "分) " + f.getContent())
+                .collect(Collectors.joining("\n"));
 
         //准备生成建议
         BeanOutputConverter<Suggestion> converter =

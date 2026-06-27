@@ -13,6 +13,7 @@ import com.guying.pojo.entity.Attraction;
 import com.guying.pojo.entity.UserReview;
 import com.guying.pojo.vo.UserReviewVO;
 import com.guying.service.UserReviewService;
+import com.guying.attractions.dto.FeedbackItemDTO;
 import com.guying.user.dto.UserSatisfactionTrendDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -175,12 +176,12 @@ public class UserReviewServiceImpl extends ServiceImpl<UserReviewMapper, UserRev
     }
 
     @Override
-    public List<String> getFeedbackText(Long attractionId, Integer days) {
+    public List<FeedbackItemDTO> getFeedbackText(Long attractionId, Integer days) {
         LocalDate today = LocalDate.now();
         LocalDateTime startTime = today.minusDays(days).atStartOfDay();
         LocalDateTime endTime = today.minusDays(1).atTime(LocalTime.MAX);
 
-        List<String> result = baseMapper.selectFeedbackText(attractionId, startTime, endTime);
+        List<FeedbackItemDTO> result = baseMapper.selectFeedbackText(attractionId, startTime, endTime);
         return result != null ? result : List.of();
     }
 }
