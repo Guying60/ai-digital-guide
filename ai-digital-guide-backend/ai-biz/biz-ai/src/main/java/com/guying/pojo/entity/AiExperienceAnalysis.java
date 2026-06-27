@@ -57,5 +57,10 @@ public class AiExperienceAnalysis implements Serializable {
      */
     private Long attractionId;
 
+    /**
+     * 被分析的游客原话（冗余存储，供负面样本直接取用，避免反查 chat memory 产生笛卡尔积）
+     */
+    private String message;
+
 
 }
