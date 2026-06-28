@@ -57,7 +57,10 @@ public class HistoryActivity extends AppCompatActivity {
     private final int pageSize = 10;
     // 筛选参数
     private String currentKeyWord = null;   // 没输入时为 null
-    private Integer currentType = null;     // 没选择时为 null
+    private String currentCity = null;      // 没选择时为 null
+    // 城市标签（复用原来的类型标签 View）
+    private final TextView[] cityTagViews = new TextView[8];
+    private String[] cityNames = new String[0];
     private ApiService apiService;
     private String token;
     private int currentClickPosition = -1;
@@ -360,24 +363,6 @@ public class HistoryActivity extends AppCompatActivity {
                 currentKeyWord= TextUtils.isEmpty(keyword) ? null:keyword;
                 resetAndLoad();
             });
-
-        //全部的标签
-        TextView tagAll=findViewById(R.id.tag_all);
-        tagAll.setOnClickListener(v->{
-            // 清除所有其他标签的选中状态
-            int[] tagIds = {R.id.tag_theme_park, R.id.tag_museum, R.id.tag_nature_park,
-                    R.id.tag_scenic, R.id.tag_history, R.id.tag_ally,
-                    R.id.tag_zoo, R.id.tag_morden};
-            for (int id : tagIds) {
-                findViewById(id).setSelected(false);
-            }
-            // 设置全部标签为选中
-            v.setSelected(true);
-            // 清除类型筛选条件
-            currentType = null;
-            // 重新加载第一页（显示所有景点）
-            loadFirstPage();
-        });
     }
 
     private void resetAndLoad() {
@@ -391,7 +376,7 @@ public class HistoryActivity extends AppCompatActivity {
         token = SpUtils.getUserToken(this);
         Log.d("HistoryActivity", "此时用户token: " + token);
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, currentType, null, null, pageSize)
+        apiService.getTourHistory(currentKeyWord, null, currentCity, null, pageSize)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
@@ -426,6 +411,7 @@ public class HistoryActivity extends AppCompatActivity {
                                     adapter.addData(uniqueList);
                                     lastId = data.nextLastId;
                                     hasMore = data.hasMore;
+                                    updateCityTags();
                                 } else {
                                     // 搜索结果为空
                                     Toast.makeText(HistoryActivity.this, "未找到相关景点", Toast.LENGTH_SHORT).show();
@@ -463,7 +449,7 @@ public class HistoryActivity extends AppCompatActivity {
         token = SpUtils.getUserToken(this);
         if (!hasMore || isLoading) return;
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, currentType, null, lastId, pageSize)
+        apiService.getTourHistory(currentKeyWord, null, currentCity, lastId, pageSize)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
@@ -487,6 +473,7 @@ public class HistoryActivity extends AppCompatActivity {
                                     adapter.addData(newList);
                                     lastId = data.nextLastId;
                                     hasMore = data.hasMore;
+                                    updateCityTags();
                                 } else {
                                     // 没有更多数据
                                     Toast.makeText(HistoryActivity.this, "没有更多了", Toast.LENGTH_SHORT).show();
@@ -518,42 +505,71 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void setupTags() {
-        // 主题乐园 -> type 0
-        findViewById(R.id.tag_theme_park).setOnClickListener(v -> {
-            currentType = 0;
+        // 初始化城市标签 View 数组（复用原有类型标签 View）
+        cityTagViews[0] = findViewById(R.id.tag_theme_park);
+        cityTagViews[1] = findViewById(R.id.tag_museum);
+        cityTagViews[2] = findViewById(R.id.tag_nature_park);
+        cityTagViews[3] = findViewById(R.id.tag_scenic);
+        cityTagViews[4] = findViewById(R.id.tag_history);
+        cityTagViews[5] = findViewById(R.id.tag_ally);
+        cityTagViews[6] = findViewById(R.id.tag_zoo);
+        cityTagViews[7] = findViewById(R.id.tag_morden);
+
+        for (TextView tv : cityTagViews) {
+            tv.setVisibility(View.GONE);
+        }
+
+        // 为每个城市标签设置点击事件
+        for (int i = 0; i < cityTagViews.length; i++) {
+            final int index = i;
+            cityTagViews[i].setOnClickListener(v -> {
+                if (index < cityNames.length) {
+                    currentCity = cityNames[index];
+                    // 清除其他标签选中状态
+                    findViewById(R.id.tag_all).setSelected(false);
+                    for (TextView tv : cityTagViews) tv.setSelected(false);
+                    v.setSelected(true);
+                    resetAndLoad();
+                }
+            });
+        }
+
+        // "全部"标签——清除城市筛选
+        TextView tagAll = findViewById(R.id.tag_all);
+        tagAll.setOnClickListener(v -> {
+            currentCity = null;
+            tagAll.setSelected(true);
+            for (TextView tv : cityTagViews) tv.setSelected(false);
             resetAndLoad();
         });
-        // 自然公园 -> type 2 (注意：0主题乐园,1博物馆,2自然公园)
-        findViewById(R.id.tag_museum).setOnClickListener(v -> {
-            currentType = 2;
-            resetAndLoad();
-        });
-        // 历史文化 -> type 4
-        findViewById(R.id.tag_nature_park).setOnClickListener(v -> {
-            currentType = 4;
-            resetAndLoad();
-        });
-        // 网红打卡、美食探店 这两个类型后端枚举中没有，暂时传 null 或者未来扩展
-        findViewById(R.id.tag_scenic).setOnClickListener(v -> {
-            currentType = null; // 暂不筛选
-            resetAndLoad();
-        });
-        findViewById(R.id.tag_history).setOnClickListener(v -> {
-            currentType = null;
-            resetAndLoad();
-        });
-        findViewById(R.id.tag_ally).setOnClickListener(v -> {
-            currentType = null;
-            resetAndLoad();
-        });
-        findViewById(R.id.tag_zoo).setOnClickListener(v -> {
-            currentType = null;
-            resetAndLoad();
-        });
-        findViewById(R.id.tag_morden).setOnClickListener(v -> {
-            currentType = null;
-            resetAndLoad();
-        });
+        tagAll.setSelected(true);
+    }
+
+    /** 从已加载数据中提取城市名，更新标签（仅在无城市筛选时更新，保留完整城市列表） */
+    private void updateCityTags() {
+        if (currentCity != null) return; // 有筛选时不更新标签列表
+
+        // 收集唯一城市名
+        java.util.Set<String> citySet = new java.util.LinkedHashSet<>();
+        for (ScenicSpot spot : dataList) {
+            String c = spot.getCity();
+            if (c != null && !c.isEmpty()) {
+                citySet.add(c);
+            }
+        }
+        if (citySet.isEmpty()) return;
+
+        cityNames = citySet.toArray(new String[0]);
+
+        // 更新标签文字和可见性
+        for (int i = 0; i < cityTagViews.length; i++) {
+            if (i < cityNames.length) {
+                cityTagViews[i].setText(cityNames[i]);
+                cityTagViews[i].setVisibility(View.VISIBLE);
+            } else {
+                cityTagViews[i].setVisibility(View.GONE);
+            }
+        }
     }
 
     private void initView() {
