@@ -141,6 +141,13 @@
             android:exported="true">
         </activity>
 
+        <activity
+            android:name=".view.user.NearbyMapActivity"
+            android:exported="false" />
+        <activity
+            android:name=".view.admin.MapPickerActivity"
+            android:exported="false" />
+
 
         <provider
             android:name="androidx.core.content.FileProvider"

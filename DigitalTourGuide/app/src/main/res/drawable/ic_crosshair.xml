@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- 外圈 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF4444"
+        android:strokeWidth="2"
+        android:pathData="M20,20m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+    <!-- 十字竖线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF4444"
+        android:strokeWidth="2.5"
+        android:pathData="M20,8 L20,32" />
+    <!-- 十字横线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF4444"
+        android:strokeWidth="2.5"
+        android:pathData="M8,20 L32,20" />
+    <!-- 中心点 -->
+    <path
+        android:fillColor="#FF4444"
+        android:pathData="M20,20m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+</vector>

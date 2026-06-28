@@ -12,6 +12,7 @@ android {
         buildConfig = true
     }
 
+
     defaultConfig {
         applicationId = "com.example.digitaltourguide"
         minSdk = 24

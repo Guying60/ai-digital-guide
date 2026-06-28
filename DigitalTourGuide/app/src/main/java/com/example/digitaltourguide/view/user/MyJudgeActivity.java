@@ -83,7 +83,9 @@ public class MyJudgeActivity extends AppCompatActivity {
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
         if (toolbar != null) {
             toolbar.setNavigationOnClickListener(v -> {
-                startActivity(new Intent(MyJudgeActivity.this, MyActivity.class));
+                Intent intent = new Intent(MyJudgeActivity.this, MyActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(intent);
                 finish();
             });
         }
