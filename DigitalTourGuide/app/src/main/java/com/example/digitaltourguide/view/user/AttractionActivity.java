@@ -22,7 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.AttractionAdapter;
-import com.example.digitaltourguide.model.BaseResponse;
+
 import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
@@ -236,32 +236,26 @@ public class AttractionActivity extends AppCompatActivity {
         if (isLoading) return;
         isLoading = true;
 
+        // keyword 为空时传 null，避免空字符串被当作无效参数
+        String kw = (currentKeyword != null && !currentKeyword.isEmpty()) ? currentKeyword : null;
         String token = SpUtils.getUserToken(this);
         RetrofitClient.getApiService()
-                .getAttractions(userCity, userLng, userLat, currentKeyword, null, lastId, PAGE_SIZE)
-                .enqueue(new Callback<BaseResponse<AttractionPage>>() {
+                .getAttractions(userCity, userLng, userLat, kw, null, lastId, PAGE_SIZE)
+                .enqueue(new Callback<AttractionPage>() {
                     @Override
-                    public void onResponse(Call<BaseResponse<AttractionPage>> call, Response<BaseResponse<AttractionPage>> response) {
+                    public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
                         isLoading = false;
                         if (!response.isSuccessful()) {
                             Toast.makeText(AttractionActivity.this,
                                     "网络错误: HTTP " + response.code(), Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        BaseResponse<AttractionPage> body = response.body();
-                        if (body == null) {
+                        AttractionPage page = response.body();
+                        if (page == null) {
                             Toast.makeText(AttractionActivity.this,
                                     "服务器返回空数据", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        Log.d("AttractionActivity", "业务code=" + body.getCode() + ", msg=" + body.getMsg());
-                        if (body.getCode() != 1 || body.getData() == null) {
-                            String serverMsg = body.getMsg() != null && !body.getMsg().isEmpty()
-                                    ? body.getMsg() : "暂无景点数据";
-                            Toast.makeText(AttractionActivity.this, serverMsg, Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        AttractionPage page = body.getData();
                         List<ScenicSpot> newSpots = page.getList();
                         if (newSpots == null) newSpots = new ArrayList<>();
 
@@ -277,7 +271,7 @@ public class AttractionActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onFailure(Call<BaseResponse<AttractionPage>> call, Throwable t) {
+                    public void onFailure(Call<AttractionPage> call, Throwable t) {
                         isLoading = false;
                         Toast.makeText(AttractionActivity.this,
                                 "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();

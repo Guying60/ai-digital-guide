@@ -25,7 +25,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.AttractionPickerAdapter;
-import com.example.digitaltourguide.model.BaseResponse;
 import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
@@ -206,37 +205,25 @@ public class AttractionPickerDialog extends DialogFragment {
         isLoading=true;
 
         Log.d("AttractionPicker", "请求参数: city=" + userCity + ", lng=" + userLng + ", lat=" + userLat + ", keyword=" + currentKeyword + ", lastId=" + lastId);
+        // keyword 为空时传 null，避免空字符串被当作无效参数
+        String kw = (currentKeyword != null && !currentKeyword.isEmpty()) ? currentKeyword : null;
         String token= SpUtils.getUserToken(getContext());
          RetrofitClient.getApiService()
-                .getAttractions(userCity, userLng, userLat, currentKeyword, null, lastId, PAGE_SIZE)
-                 .enqueue(new Callback<BaseResponse<AttractionPage>>() {
+                .getAttractions(userCity, userLng, userLat, kw, null, lastId, PAGE_SIZE)
+                 .enqueue(new Callback<AttractionPage>() {
                      @Override
-                     public void onResponse(Call<BaseResponse<AttractionPage>> call, Response<BaseResponse<AttractionPage>> response) {
+                     public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
                          isLoading=false;
                          Log.d("AttractionPicker", "HTTP code: " + response.code());
                          if(!response.isSuccessful()){
-                             String errorBody = "";
-                             try {
-                                 if (response.errorBody() != null) {
-                                     errorBody = response.errorBody().string();
-                                 }
-                             } catch (Exception e) { e.printStackTrace(); }
                              Toast.makeText(getContext(), "网络错误: HTTP " + response.code(), Toast.LENGTH_LONG).show();
                              return;
                          }
-                         BaseResponse<AttractionPage> body = response.body();
-                         if(body == null){
+                         AttractionPage page = response.body();
+                         if(page == null){
                              Toast.makeText(getContext(), "服务器返回空数据", Toast.LENGTH_LONG).show();
                              return;
                          }
-                         // 检查业务 code
-                         Log.d("AttractionPicker", "业务code=" + body.getCode() + ", msg=" + body.getMsg());
-                         if(body.getCode() != 1 || body.getData() == null){
-                             String serverMsg = body.getMsg() != null && !body.getMsg().isEmpty() ? body.getMsg() : "暂无景点数据";
-                             Toast.makeText(getContext(), serverMsg, Toast.LENGTH_LONG).show();
-                             return;
-                         }
-                         AttractionPage page = body.getData();
                          List<ScenicSpot> newSpots=page.getList();
                          if(newSpots==null) newSpots=new ArrayList<>();
 
@@ -251,7 +238,7 @@ public class AttractionPickerDialog extends DialogFragment {
                          hasMore=page.isHasMore();
                      }
                      @Override
-                     public void onFailure(Call<BaseResponse<AttractionPage>> call, Throwable t) {
+                     public void onFailure(Call<AttractionPage> call, Throwable t) {
                             isLoading=false;
                             Toast.makeText(getContext(),"网络错误："+t.getMessage(),Toast.LENGTH_SHORT).show();
                      }
