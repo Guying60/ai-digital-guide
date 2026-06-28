@@ -358,18 +358,20 @@ public class ScenicEditActivity extends AppCompatActivity {
 
     private void fetchAttractionData() {
         if (TextUtils.isEmpty(currentAttractionId)) {
-            // 新增模式：清空表单，按钮文字改为“添加景点”
+            // 新增模式：清空表单，按钮文字改为"添加景点"
             etAttractionName.setText("");
             spinnerType.setSelection(0);
             isCoverChanged = false;
             isFileChanged = false;
             isNameChanged = false;
             isTypeChanged = false;
-                                isLocationChanged = false;
+            isLocationChanged = false;
             updateSaveButtonState();
             btnSave.setText("添加景点");
             // 如果封面没有上传，按钮可能不可用，但这里让按钮可用（后续保存时会校验封面）
             btnSave.setEnabled(true);
+            // 新增模式自动获取定位，填入城市和坐标
+            fetchDeviceLocation();
             return;
         }
         // 2. 用Retrofit发起请求（严格使用Retrofit的Callback，不是OkHttp的）
@@ -530,6 +532,12 @@ public class ScenicEditActivity extends AppCompatActivity {
         }
         if (attractionName.isEmpty()) {
             Toast.makeText(this, "请输入景点名称", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 新增景点必须填写城市（接口 2.3 city 必填）
+        if ((currentAttractionId == null || currentAttractionId.isEmpty())
+                && (savedCity == null || savedCity.isEmpty())) {
+            Toast.makeText(this, "请先点击获取定位或地图选点获取位置信息", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -899,7 +907,7 @@ public class ScenicEditActivity extends AppCompatActivity {
                 Toast.makeText(this, "请等待景点加载完成", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // 找到第一个空槽位（文件名显示”暂无文件”）
+            // 找到第一个空槽位（文件名显示"暂无文件"）
             int firstEmptySlot = findFirstEmptySlot();
             if (firstEmptySlot == -1) {
                 Toast.makeText(this, "最多上传4个文件", Toast.LENGTH_SHORT).show();

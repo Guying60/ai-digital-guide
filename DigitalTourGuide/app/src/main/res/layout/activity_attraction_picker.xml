@@ -62,6 +62,31 @@
             android:textSize="14sp" />
     </FrameLayout>
 
+    <!-- ===================== Loading / Location Status ===================== -->
+    <LinearLayout
+        android:id="@+id/ll_loading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="64dp"
+        android:visibility="visible">
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="正在获取位置..."
+            android:textColor="@color/profile_outline"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <!-- ===================== Attractions List ===================== -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_attractions"
@@ -71,6 +96,7 @@
         android:overScrollMode="never"
         android:paddingHorizontal="20dp"
         android:paddingTop="8dp"
-        android:paddingBottom="80dp" />
+        android:paddingBottom="80dp"
+        android:visibility="gone" />
 
 </LinearLayout>
