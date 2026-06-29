@@ -45,6 +45,12 @@ import androidx.core.content.ContextCompat;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.BaseResponse;
+import com.example.digitaltourguide.model.admin.DigitalHuman;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.user.RoutePlanVO;
 import com.example.digitaltourguide.model.user.RouteStopVO;
@@ -113,6 +119,16 @@ public class ChatActivity extends AppCompatActivity {
     // 数字人视频播放相关（AVSyncPlayer 统一管理音画同步）
     private TextureView tvDigitalHuman;
     private AVSyncPlayer avSyncPlayer;
+    // 数字人待机视频（管理员原始视频静音循环，AI 未说话时盖住空白/冻结帧）
+    private PlayerView idleVideoView;
+    private ExoPlayer idlePlayer;
+    private String idleVideoUrl;
+    private volatile boolean aiRoundTextDone = false;      // 本轮 LLM 文本是否已结束（responseDone）
+    private volatile boolean idleCurrentlyVisible = false; // 当前待机视频是否可见（去重 hide/show）
+    private Handler idleShowHandler;                        // 帧流停止后延时显示待机视频
+    private Runnable idleShowRunnable;
+    private static final long CROSSFADE_MS = 150;          // 待机↔数字人 淡入淡出时长
+    private static final long IDLE_SHOW_DELAY_MS = 500;    // 末帧后多久判定"已停说话"显示待机
     // 路线数轴
     private RouteTimelineView routeTimeline;
     // GPS 到达判定
@@ -616,6 +632,8 @@ public class ChatActivity extends AppCompatActivity {
                     startHeartbeat();
                     // 1.16.1 恢复当前激活路线
                     loadCurrentRoute();
+                    // 1.17 拉取数字人原始视频并开始待机循环播放
+                    loadIdleVideo();
                 });
             }
 
@@ -707,6 +725,8 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "✅ AI要说话：" + aiSpeakText);
                     } else if ("responseDone".equals(type)) {
                         Log.d("MYTEST", "✅ 本轮对话结束");
+                        // 标记本轮文本已结束：当数字人帧流停止后即可恢复待机视频
+                        aiRoundTextDone = true;
                         runOnUiThread(() -> {
                             aiIsReplying = false;
                         });
@@ -790,6 +810,8 @@ public class ChatActivity extends AppCompatActivity {
                 } else {
                     Log.w("BINARY", "未知 typeFlag: 0x" + Integer.toHexString(typeFlag));
                 }
+                // 每收到一帧就重置"显示待机"定时器：帧流持续=正在说话；停流后延时恢复待机
+                scheduleIdleShowAfterDrain();
             }
 
             @Override
@@ -975,6 +997,10 @@ public class ChatActivity extends AppCompatActivity {
         if (currentRoute != null && currentRoute.hasStops()) {
             startArrivalMonitoring(currentRoute);
         }
+        // 恢复待机视频播放（仅当其可见时）
+        if (idlePlayer != null && idleVideoView != null && idleVideoView.getVisibility() == View.VISIBLE) {
+            idlePlayer.setPlayWhenReady(true);
+        }
     }
 
     @Override
@@ -982,6 +1008,7 @@ public class ChatActivity extends AppCompatActivity {
         super.onPause();
         stopAutoFrameSend();
         stopArrivalMonitoring();
+        if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
     }
 
     //页面销毁时释放资源
@@ -1005,6 +1032,11 @@ public class ChatActivity extends AppCompatActivity {
             avSyncPlayer.release();
             avSyncPlayer = null;
         }
+        cancelIdleShowTimer();
+        if (idlePlayer != null) {
+            idlePlayer.release();
+            idlePlayer = null;
+        }
     }
     private void initView() {
         ivMic = findViewById(R.id.btn_mic);
@@ -1024,6 +1056,29 @@ public class ChatActivity extends AppCompatActivity {
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {
             // 字幕更新回调（如需要）
+        });
+
+        // 待机视频：帧流停止后延时显示（避免句间短暂空档误判）
+        idleVideoView = findViewById(R.id.idle_video);
+        idleShowHandler = new Handler(Looper.getMainLooper());
+        idleShowRunnable = () -> {
+            // 仅当本轮文本已结束（responseDone）且帧流已停才显示待机，避免说话中途误显
+            if (aiRoundTextDone) showIdleVideo();
+        };
+        // 数字人开口 → 隐藏待机；数字人停止/被打断 → 显示待机
+        avSyncPlayer.setRenderStateListener(new AVSyncPlayer.RenderStateListener() {
+            @Override
+            public void onFrameRendered() {
+                runOnUiThread(() -> {
+                    aiRoundTextDone = false;
+                    cancelIdleShowTimer();
+                    if (idleCurrentlyVisible) hideIdleVideo();  // 去重：只在可见时才隐藏
+                });
+            }
+            @Override
+            public void onRenderStop() {
+                runOnUiThread(() -> showIdleVideo());
+            }
         });
 
         // 路线数轴
@@ -1124,6 +1179,98 @@ public class ChatActivity extends AppCompatActivity {
                 Log.e(TAG, "路线恢复请求失败: " + t.getMessage());
             }
         });
+    }
+
+    // ====================== 数字人待机视频 ======================
+
+    /**
+     * 1.17 拉取管理员上传的原始视频地址，开始静音循环待机播放（WS 连接成功后调用）。
+     * 无数字人 / 拉取失败时静默跳过，不影响主流程。
+     */
+    private void loadIdleVideo() {
+        if (attractionId == null || attractionId.isEmpty()) return;
+        ApiService.getInstance().getDigitalHuman(attractionId).enqueue(new retrofit2.Callback<BaseResponse<DigitalHuman>>() {
+            @Override
+            public void onResponse(retrofit2.Call<BaseResponse<DigitalHuman>> call,
+                                   retrofit2.Response<BaseResponse<DigitalHuman>> response) {
+                BaseResponse<DigitalHuman> body = response.body();
+                if (body != null && body.getCode() == 1 && body.getData() != null
+                        && body.getData().getOssUrl() != null && !body.getData().getOssUrl().isEmpty()) {
+                    idleVideoUrl = body.getData().getOssUrl();
+                    runOnUiThread(() -> startIdlePlayer(idleVideoUrl));
+                    Log.d(TAG, "待机视频地址: " + idleVideoUrl);
+                } else {
+                    Log.d(TAG, "无数字人原始视频，跳过待机视频");
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<BaseResponse<DigitalHuman>> call, Throwable t) {
+                Log.e(TAG, "待机视频地址获取失败: " + t.getMessage());
+            }
+        });
+    }
+
+    /** 懒创建 ExoPlayer（静音循环），加载原始视频并显示待机画面。 */
+    private void startIdlePlayer(String url) {
+        if (idleVideoView == null || url == null || url.isEmpty()) return;
+        if (idlePlayer == null) {
+            idlePlayer = new ExoPlayer.Builder(this).build();
+            idleVideoView.setPlayer(idlePlayer);
+            idlePlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
+            idlePlayer.setVolume(0f);  // 待机静音，避免与 AI 语音串音
+            idlePlayer.addListener(new Player.Listener() {
+                @Override
+                public void onPlayerError(@NonNull PlaybackException error) {
+                    Log.e(TAG, "待机视频播放错误: " + error.getMessage());
+                    runOnUiThread(() -> hideIdleVideo());
+                }
+            });
+        }
+        idlePlayer.setMediaItem(MediaItem.fromUri(url));
+        idlePlayer.prepare();
+        idlePlayer.setPlayWhenReady(true);
+        showIdleVideo();
+    }
+
+    /** 淡入显示待机视频（盖住数字人区域的空白/冻结帧）。 */
+    private void showIdleVideo() {
+        if (idleVideoView == null || idlePlayer == null) return;
+        if (idleCurrentlyVisible) return;  // 去重
+        idleVideoView.animate().cancel();
+        if (idleVideoView.getVisibility() != View.VISIBLE) {
+            idleVideoView.setAlpha(0f);
+            idleVideoView.setVisibility(View.VISIBLE);
+        }
+        idlePlayer.setPlayWhenReady(true);
+        idleVideoView.animate().alpha(1f).setDuration(CROSSFADE_MS).start();
+        idleCurrentlyVisible = true;
+    }
+
+    /** 淡出隐藏待机视频（露出下层正在说话的数字人）。 */
+    private void hideIdleVideo() {
+        if (idleVideoView == null) return;
+        if (!idleCurrentlyVisible) return;  // 去重
+        if (idleVideoView.getVisibility() != View.VISIBLE) return;
+        idleVideoView.animate().cancel();
+        idleVideoView.animate().alpha(0f).setDuration(CROSSFADE_MS).withEndAction(() -> {
+            idleVideoView.setVisibility(View.GONE);
+            if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
+        }).start();
+        idleCurrentlyVisible = false;
+    }
+
+    /** 重置"帧流停止后显示待机"定时器（每收到一帧调用一次）。 */
+    private void scheduleIdleShowAfterDrain() {
+        if (idleShowHandler == null || idleShowRunnable == null) return;
+        idleShowHandler.removeCallbacks(idleShowRunnable);
+        idleShowHandler.postDelayed(idleShowRunnable, IDLE_SHOW_DELAY_MS);
+    }
+
+    private void cancelIdleShowTimer() {
+        if (idleShowHandler != null && idleShowRunnable != null) {
+            idleShowHandler.removeCallbacks(idleShowRunnable);
+        }
     }
 
     /**

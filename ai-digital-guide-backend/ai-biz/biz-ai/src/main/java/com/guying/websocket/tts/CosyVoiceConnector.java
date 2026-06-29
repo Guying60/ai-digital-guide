@@ -44,6 +44,13 @@ public class CosyVoiceConnector {
 
     private static final int AUDIO_HEADER_LEN = 7;
 
+    // ★ 句末补静音收口：每轮最后一句末尾追加一小段静音，让 MuseTalk 把嘴收回闭合，
+    //   同时给客户端补同样时长的静音音频帧（推进音频播放头，避免闭嘴尾帧被慢放）。
+    private static final int FRAME_MS = 40;                                   // 25fps → 40ms/帧
+    private static final int SILENCE_TAIL_MS = 240;                           // 收口静音时长
+    private static final int SILENCE_FRAME_BYTES = 16000 * 2 * FRAME_MS / 1000; // 1280B @16kHz/16bit/mono
+    private static final int SILENCE_FRAMES = SILENCE_TAIL_MS / FRAME_MS;     // 6 帧
+
     public void connect(ChatSessionContext ctx) {
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         container.setDefaultMaxBinaryMessageBufferSize(5000 * 1024);
@@ -111,6 +118,8 @@ public class CosyVoiceConnector {
         private final ByteArrayOutputStream pcmBuffer = new ByteArrayOutputStream();
         // 当前句子的 ID，由二进制音频帧头部提取，供 chunk_end → MuseTalk 使用
         private volatile int currentSentenceId = 0;
+        // 当前句子最后一帧的本地 PTS（ms），供句末补静音帧续接 PTS 使用
+        private volatile int lastLocalPtsMs = 0;
         // ★ 句级诊断：追踪每句音频的总字节数、帧数、耗时
         private int audioCurSentenceId = -1;
         private long audioSentenceBytes = 0;
@@ -151,7 +160,11 @@ public class CosyVoiceConnector {
                     log.info("[CosyVoice] chunk_end 消息sentenceId={}, 音频帧sentenceId={} audioFrames={} audioBytes={} audioWall={}ms",
                             node.has("sentence_id") ? node.get("sentence_id").asInt() : "null",
                             currentSentenceId, audioSentenceFrameCount, audioSentenceBytes, chunkWallMs);
-                    forwardSentenceToMuseTalk(currentSentenceId);
+                    // 判定是否为本轮最后一句：若是，则句末补静音收口（让数字人嘴闭合）
+                    int doneCount = ctx.getRoundChunkEndCount().incrementAndGet();
+                    int total = ctx.getRoundSentenceTotal().get();
+                    boolean isLast = total > 0 && doneCount >= total;
+                    forwardSentenceToMuseTalk(currentSentenceId, isLast);
                 }
                 case "error" -> log.error("[CosyVoice WS] 报错：{}", node.has("message") ? node.get("message").asText() : "unknown");
                 default -> log.warn("[CosyVoice WS] 收到未知类型消息: {}", type);
@@ -187,6 +200,7 @@ public class CosyVoiceConnector {
             // 解析本地 PTS，转换为全局 PTS
             int localPtsMs = ((payload[3] & 0xFF) << 24) | ((payload[4] & 0xFF) << 16)
                     | ((payload[5] & 0xFF) << 8) | (payload[6] & 0xFF);
+            lastLocalPtsMs = localPtsMs;  // 记录本句最后一帧 PTS，供句末补静音续接
             int globalPtsMs = ctx.getPtsTracker().toGlobal(localPtsMs);
 
             // 1) 即时流式发送音频帧给前端（不做批量缓冲）
@@ -215,7 +229,7 @@ public class CosyVoiceConnector {
             }
         }
 
-        private void forwardSentenceToMuseTalk(int sentenceId) {
+        private void forwardSentenceToMuseTalk(int sentenceId, boolean isLast) {
             byte[] sentencePcm;
             synchronized (pcmBuffer) {
                 sentencePcm = pcmBuffer.toByteArray();
@@ -224,6 +238,29 @@ public class CosyVoiceConnector {
             ChatSessionContext live = registry.get(ctx.getSid());
             WebSocketSession museTalkSession = live != null ? live.getMuseTalkSession() : null;
             if (museTalkSession == null || !museTalkSession.isOpen()) return;
+
+            // 本轮最后一句：句末补静音收口。
+            // 1) 给客户端补 SILENCE_FRAMES 帧静音音频（续接本句 PTS），推进音频播放头；
+            // 2) 给 MuseTalk 的 PCM 末尾追加同样时长的静音，使其生成闭嘴尾帧（无需改 Python）。
+            if (isLast && sentencePcm.length > 0) {
+                for (int k = 1; k <= SILENCE_FRAMES; k++) {
+                    int globalPts = ctx.getPtsTracker().toGlobal(lastLocalPtsMs + FRAME_MS * k);
+                    byte[] frame = new byte[AUDIO_HEADER_LEN + SILENCE_FRAME_BYTES]; // 头部+PCM 默认全 0（静音）
+                    frame[0] = 0x01;
+                    frame[1] = (byte) (sentenceId >> 8);
+                    frame[2] = (byte) sentenceId;
+                    frame[3] = (byte) (globalPts >> 24);
+                    frame[4] = (byte) (globalPts >> 16);
+                    frame[5] = (byte) (globalPts >> 8);
+                    frame[6] = (byte) globalPts;
+                    sender.send(ctx, new BinaryMessage(frame));
+                }
+                byte[] padded = new byte[sentencePcm.length + SILENCE_FRAMES * SILENCE_FRAME_BYTES];
+                System.arraycopy(sentencePcm, 0, padded, 0, sentencePcm.length);
+                // 其余字节默认 0 = 静音
+                sentencePcm = padded;
+                log.info("[CosyVoice] 句末补静音收口 sid={} +{}ms 静音", sentenceId, SILENCE_TAIL_MS);
+            }
 
             try {
                 if (sentencePcm.length > 0) {

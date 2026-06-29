@@ -52,6 +52,13 @@ public class AVSyncPlayer {
     private final TextureView textureView;
     private Consumer<String> subtitleCallback;
 
+    /** 数字人渲染状态回调：用于在真人数字人开口/收口时切换待机视频。 */
+    public interface RenderStateListener {
+        void onFrameRendered();  // 渲染了一帧（开始/正在说话）；调用方需内部去重
+        void onRenderStop();     // 数字人播放被清空/打断（停止说话）
+    }
+    private volatile RenderStateListener renderStateListener;
+
     private final AudioTrack audioTrack;
     private final Object surfaceLock = new Object();  // guards surface field + wait/notify
     private volatile Surface surface;
@@ -132,6 +139,10 @@ public class AVSyncPlayer {
 
     public void setSubtitleCallback(Consumer<String> callback) {
         this.subtitleCallback = callback;
+    }
+
+    public void setRenderStateListener(RenderStateListener listener) {
+        this.renderStateListener = listener;
     }
 
     public void onSurfaceReady(Surface surface) {
@@ -316,6 +327,9 @@ public class AVSyncPlayer {
      */
     public void onConversationEnd() {
         if (LOG) Log.i(TAG, "onConversationEnd: clearing queues");
+        // 数字人停止 → 通知显示待机视频（盖住可能冻结的尾帧）
+        RenderStateListener rsl = renderStateListener;
+        if (rsl != null) rsl.onRenderStop();
         generation++;  // ★ 通知运行中的音视频线程立即退出
         audioQueue.clear();
         videoQueue.clear();
@@ -376,6 +390,9 @@ public class AVSyncPlayer {
 
     public void interrupt() {
         if (LOG) Log.i(TAG, "interrupt");
+        // 被打断 → 通知显示待机视频
+        RenderStateListener rsl = renderStateListener;
+        if (rsl != null) rsl.onRenderStop();
         generation++;  // ★ 通知运行中的音视频线程立即退出
         audioQueue.clear();
         videoQueue.clear();
@@ -835,6 +852,9 @@ public class AVSyncPlayer {
                         long renderCost = System.currentTimeMillis() - tRenderStart;
                         if (LOG) loopTotalRenderMs += renderCost;
                         firstFrameRendered = true;
+                        // 每渲染一帧通知一次（ChatActivity 据此在数字人开口时隐藏待机视频，内部去重）
+                        RenderStateListener rsl = renderStateListener;
+                        if (rsl != null) rsl.onFrameRendered();
                         lastRenderTime = System.currentTimeMillis();  // 仅墙钟回退分支会用到
                         videoRenderCount++;
                         diagVideoRenderPtsMs = framePtsMs;

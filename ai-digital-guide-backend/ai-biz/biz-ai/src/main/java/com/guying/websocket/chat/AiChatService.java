@@ -19,6 +19,7 @@ import reactor.core.publisher.Flux;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AI 讲解员调用入口：
@@ -59,6 +60,8 @@ public class AiChatService {
             sender.sendError(ctx, "请求太频繁，请稍后再试");
             return;
         }
+        // 复位本轮句末补静音的计数（新一轮对话开始）
+        ctx.resetRound();
         String conversationId = ctx.conversationId();
         String prompt = dynamicPromptService.build(userText, ctx.getUserId(), ctx.getAttractionId());
         String pendingImage = ctx.consumePendingImage();
@@ -97,11 +100,17 @@ public class AiChatService {
 
     private void consumeStream(ChatSessionContext ctx, Flux<String> stream) {
         StreamingSentenceSplitter splitter = new StreamingSentenceSplitter();
+        // 统计本轮实际入队 TTS 的句子数（与 CosyVoice 的 chunk_end 一一对应），
+        // 供 CosyVoiceConnector 判定"最后一句"补静音收口。仅计入非空白句（与 synthesize 的空白守卫一致）。
+        AtomicInteger sentenceCount = new AtomicInteger(0);
         stream.subscribe(
                 delta -> {
                     List<String> sentences = splitter.consume(delta);
                     log.debug("收到 delta，切出 {} 个句子", sentences.size());
                     for (String sentence : sentences) {
+                        if (sentence != null && !sentence.isBlank()) {
+                            sentenceCount.incrementAndGet();
+                        }
                         emitSentence(ctx, sentence);
                     }
                 },
@@ -114,8 +123,13 @@ public class AiChatService {
                     String tail = splitter.drain();
                     if (tail != null) {
                         // 尾部文本也要走 emitSentence 触发 TTS，不能只 sendJson
+                        if (!tail.isBlank()) {
+                            sentenceCount.incrementAndGet();
+                        }
                         emitSentence(ctx, tail);
                     }
+                    // 标记本轮句子总数，供 CosyVoiceConnector 对最后一句补静音收口
+                    ctx.getRoundSentenceTotal().set(sentenceCount.get());
                     sender.sendJson(ctx, "responseDone", null);
                 }
         );

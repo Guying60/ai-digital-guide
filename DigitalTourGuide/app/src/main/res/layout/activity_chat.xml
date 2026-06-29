@@ -57,6 +57,19 @@
             android:layout_height="match_parent"
             />
 
+        <!-- 数字人待机视频：管理员上传的原始视频静音循环，仅在 AI 未说话时显示，
+             盖住数字人 TextureView 的空白/冻结张嘴尾帧。位于数字人之上、相机浮层之下。 -->
+        <com.google.android.exoplayer2.ui.PlayerView
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/idle_video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:background="#333333"
+            app:surface_type="texture_view"
+            app:use_controller="false"
+            app:resize_mode="zoom" />
+
         <!-- 拍摄画面预览（右上角浮层） -->
         <androidx.camera.view.PreviewView
             android:id="@+id/preview_view_camera"

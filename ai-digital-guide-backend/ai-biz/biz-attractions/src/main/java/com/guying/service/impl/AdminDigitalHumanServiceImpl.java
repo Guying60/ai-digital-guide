@@ -88,6 +88,21 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
     }
 
     /**
+     * 游客侧查询：仅按 attractionId 查询数字人（不带 adminId），查不到返回 null。
+     * @param attractionId
+     * @return DigitalHumanVO（含 ossUrl），无数字人时返回 null
+     */
+    @Override
+    public DigitalHumanVO getByAttractionId(Long attractionId) {
+        LambdaQueryWrapper<DigitalHuman> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(DigitalHuman::getAttractionId, attractionId)
+                .orderByDesc(DigitalHuman::getUpdateTime)
+                .last("LIMIT 1");
+        DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
+        return entity == null ? null : digitalHumanConverter.toVO(entity);
+    }
+
+    /**
      * 查询数字人预加载状态
      * @param attractionId
      * @return PROCESSING | SUCCESS | FAILED
