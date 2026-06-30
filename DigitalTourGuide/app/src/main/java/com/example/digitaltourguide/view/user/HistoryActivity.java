@@ -1,7 +1,9 @@
 package com.example.digitaltourguide.view.user;
 
+import android.Manifest;
 import android.app.Dialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -22,6 +24,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -46,6 +50,7 @@ import retrofit2.Response;
 
 public class HistoryActivity extends AppCompatActivity {
     private static final String TAG="HistoryActivity";
+    private static final int REQ_LOCATION = 5001;
     private EditText etSearch;
     private RecyclerView rvScenic;
     private UserScenicAdapter adapter;
@@ -572,6 +577,26 @@ public class HistoryActivity extends AppCompatActivity {
         }
     }
 
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
+            } else {
+                Toast.makeText(this, "需要定位权限才能获取附近景点", Toast.LENGTH_SHORT).show();
+                // 即使拒绝也打开对话框（会用北京兜底）
+                new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
+            }
+        }
+    }
+
     private void initView() {
         ivAdd=findViewById(R.id.iv_add_chat);
         tvHistory=findViewById(R.id.tv_history);
@@ -590,7 +615,12 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(intent);
         });
         ivAdd.setOnClickListener(v->{
-            new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
+            if (hasLocationPermission()) {
+                new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
+            }
         });
         findViewById(R.id.iv_nearby_map).setOnClickListener(v -> {
             startActivity(new Intent(this, NearbyMapActivity.class));

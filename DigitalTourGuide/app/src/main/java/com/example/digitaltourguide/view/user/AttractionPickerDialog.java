@@ -191,13 +191,13 @@ public class AttractionPickerDialog extends DialogFragment {
                 public void onLocationError(String error) {
                     Log.e("AttractionPicker", "定位失败: " + error);
                     new Handler(Looper.getMainLooper()).post(() -> {
-                        // 定位失败用北京市兜底，并提示用户
+                        // 定位失败用北京市兜底，并显示具体错误
                         userCity = "北京市";
                         userLng = 116.4074;
                         userLat = 39.9042;
                         locationReady = true;
 
-                        tvStatus.setText("定位失败，显示默认城市（北京市）\n请检查定位权限是否已开启");
+                        tvStatus.setText("定位失败，显示默认城市（北京市）\n错误: " + error);
                         progressBar.setVisibility(View.GONE);
 
                         // 2秒后自动加载
@@ -215,9 +215,13 @@ public class AttractionPickerDialog extends DialogFragment {
             userLng = 116.4074;
             userLat = 39.9042;
             locationReady = true;
-            llLoading.setVisibility(View.GONE);
-            rvAttractions.setVisibility(View.VISIBLE);
-            loadFirstPage();
+            tvStatus.setText("定位失败，显示默认城市（北京市）\n异常: " + e.getMessage());
+            progressBar.setVisibility(View.GONE);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                llLoading.setVisibility(View.GONE);
+                rvAttractions.setVisibility(View.VISIBLE);
+                loadFirstPage();
+            }, 2000);
         }
     }
 
