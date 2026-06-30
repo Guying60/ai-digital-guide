@@ -11,6 +11,15 @@ android {
         viewBinding = true
     }
 
+    // 共享 debug keystore，所有成员共用同一个 SHA1，避免高德地图 key 鉴权失败
+    signingConfigs {
+        create("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.digitaltourguide"
@@ -23,6 +32,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

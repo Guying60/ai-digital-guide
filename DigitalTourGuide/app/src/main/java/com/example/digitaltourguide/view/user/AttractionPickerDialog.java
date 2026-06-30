@@ -1,6 +1,8 @@
 package com.example.digitaltourguide.view.user;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,6 +20,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -39,6 +43,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class AttractionPickerDialog extends DialogFragment {
+    private static final int REQ_LOCATION = 5001;
+
     private EditText etSearch;
     private RecyclerView rvAttractions;
     private AttractionPickerAdapter adapter;
@@ -111,9 +117,45 @@ public class AttractionPickerDialog extends DialogFragment {
             }
         });
 
-        // 先定位，再加载数据
-        startLocationAndLoad();
+        // 检查定位权限，再加载数据
+        if (hasLocationPermission()) {
+            startLocationAndLoad();
+        } else {
+            requestPermissions(
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
+        }
         return view;
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startLocationAndLoad();
+            } else {
+                // 用户拒绝权限，用默认城市兜底
+                userCity = "北京市";
+                userLng = 116.4074;
+                userLat = 39.9042;
+                locationReady = true;
+
+                tvStatus.setText("未授予定位权限，显示默认城市（北京市）");
+                progressBar.setVisibility(View.GONE);
+
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    llLoading.setVisibility(View.GONE);
+                    rvAttractions.setVisibility(View.VISIBLE);
+                    loadFirstPage();
+                }, 1500);
+            }
+        }
     }
 
     // 获取用户定位
