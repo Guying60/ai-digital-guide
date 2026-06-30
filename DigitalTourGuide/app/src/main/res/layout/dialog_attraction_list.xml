@@ -14,11 +14,37 @@
         android:padding="12dp"
         android:background="@android:drawable/editbox_background" />
 
+    <!-- 加载中 / 定位状态 -->
+    <LinearLayout
+        android:id="@+id/ll_loading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="visible">
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="正在获取位置..."
+            android:textColor="@android:color/darker_gray"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <!-- 景点列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_attractions"
         android:layout_width="match_parent"
         android:layout_height="400dp"
-        android:layout_marginTop="12dp" />
+        android:layout_marginTop="12dp"
+        android:visibility="gone" />
 
 </LinearLayout>

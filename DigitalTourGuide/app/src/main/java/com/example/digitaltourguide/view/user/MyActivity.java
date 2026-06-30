@@ -69,8 +69,15 @@ public class MyActivity extends AppCompatActivity {
                 startActivity(new Intent(this, MyPerActivity.class))
         );
 
-        tvHistory.setOnClickListener(v->
-            startActivity(new Intent(this, HistoryActivity.class))
+        tvHistory.setOnClickListener(v -> {
+            Intent intent = new Intent(this, HistoryActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
+        });
+
+        // 景点地图
+        findViewById(R.id.btn_nearby_map).setOnClickListener(v ->
+                startActivity(new Intent(this, NearbyMapActivity.class))
         );
     }
 

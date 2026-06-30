@@ -92,6 +92,7 @@ public class ScenicEditActivity extends AppCompatActivity {
     private static final String TAG="ScenicEditActivity";
     private static final int REQUEST_LOCATION_PERMISSION = 2001;
     private ActivityScenicEditBinding binding;
+    private ActivityResultLauncher<Intent> mapPickerLauncher;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -132,6 +133,35 @@ public class ScenicEditActivity extends AppCompatActivity {
             startActivity(intent);
             overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
         });
+
+        // 地图选点结果回调
+        mapPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        Intent data = result.getData();
+                        savedLatitude = data.getDoubleExtra("latitude", 0);
+                        savedLongitude = data.getDoubleExtra("longitude", 0);
+                        savedProvince = data.getStringExtra("province");
+                        savedCity = data.getStringExtra("city");
+                        savedDistrict = data.getStringExtra("district");
+                        savedAdcode = data.getStringExtra("adcode");
+                        String address = data.getStringExtra("address");
+
+                        if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", savedLongitude));
+                        if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                        if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", savedLatitude));
+                        if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
+                        tvLocationAddress.setText(address != null && !address.isEmpty()
+                                ? address
+                                : (savedProvince + " " + savedCity + " " + savedDistrict));
+                        tvLocationAddress.setTextColor(getColor(R.color.black));
+
+                        isLocationChanged = true;
+                        updateSaveButtonState();
+                        Toast.makeText(ScenicEditActivity.this, "位置已选择", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void uploadSingleFile(int fileIndex,File file){
@@ -328,18 +358,20 @@ public class ScenicEditActivity extends AppCompatActivity {
 
     private void fetchAttractionData() {
         if (TextUtils.isEmpty(currentAttractionId)) {
-            // 新增模式：清空表单，按钮文字改为“添加景点”
+            // 新增模式：清空表单，按钮文字改为"添加景点"
             etAttractionName.setText("");
             spinnerType.setSelection(0);
             isCoverChanged = false;
             isFileChanged = false;
             isNameChanged = false;
             isTypeChanged = false;
-                                isLocationChanged = false;
+            isLocationChanged = false;
             updateSaveButtonState();
             btnSave.setText("添加景点");
             // 如果封面没有上传，按钮可能不可用，但这里让按钮可用（后续保存时会校验封面）
             btnSave.setEnabled(true);
+            // 新增模式自动获取定位，填入城市和坐标
+            fetchDeviceLocation();
             return;
         }
         // 2. 用Retrofit发起请求（严格使用Retrofit的Callback，不是OkHttp的）
@@ -392,10 +424,10 @@ public class ScenicEditActivity extends AppCompatActivity {
                                 savedDistrict = currentAttraction.getDistrict();
                                 savedAdcode = currentAttraction.getAdcode();
                                 if (savedLongitude != null && savedLatitude != null) {
-                                    tvLongitude.setText(String.format("%.6f", savedLongitude));
-                                    tvLongitude.setTextColor(getColor(R.color.black));
-                                    tvLatitude.setText(String.format("%.6f", savedLatitude));
-                                    tvLatitude.setTextColor(getColor(R.color.black));
+                                    if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", savedLongitude));
+                                    if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                                    if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", savedLatitude));
+                                    if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
                                     String addr = savedProvince != null ? savedProvince : "";
                                     addr += savedCity != null ? " " + savedCity : "";
                                     addr += savedDistrict != null ? " " + savedDistrict : "";
@@ -500,6 +532,12 @@ public class ScenicEditActivity extends AppCompatActivity {
         }
         if (attractionName.isEmpty()) {
             Toast.makeText(this, "请输入景点名称", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 新增景点必须填写城市（接口 2.3 city 必填）
+        if ((currentAttractionId == null || currentAttractionId.isEmpty())
+                && (savedCity == null || savedCity.isEmpty())) {
+            Toast.makeText(this, "请先点击获取定位或地图选点获取位置信息", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -810,10 +848,10 @@ public class ScenicEditActivity extends AppCompatActivity {
                         savedDistrict = district;
                         savedAdcode = adcode;
 
-                        tvLongitude.setText(String.format("%.6f", longitude));
-                        tvLongitude.setTextColor(getColor(R.color.black));
-                        tvLatitude.setText(String.format("%.6f", latitude));
-                        tvLatitude.setTextColor(getColor(R.color.black));
+                        if (tvLongitude != null) tvLongitude.setText(String.format("%.6f", longitude));
+                        if (tvLongitude != null) tvLongitude.setTextColor(getColor(R.color.black));
+                        if (tvLatitude != null) tvLatitude.setText(String.format("%.6f", latitude));
+                        if (tvLatitude != null) tvLatitude.setTextColor(getColor(R.color.black));
                         tvLocationAddress.setText((address != null && !address.isEmpty())
                                 ? address : (province + " " + city + " " + district));
                         tvLocationAddress.setTextColor(getColor(R.color.black));
@@ -862,21 +900,14 @@ public class ScenicEditActivity extends AppCompatActivity {
 
         // 左上角返回箭头：回到点位管理页
         ivBack = findViewById(R.id.btn_back);
-        ivBack.setOnClickListener(v -> {
-            Intent intent = new Intent(ScenicEditActivity.this, PointManagerActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(intent);
-            finish();
-            overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
-        });
-
+        ivBack.setOnClickListener(v -> goToPointManager());
 
         llUpload.setOnClickListener(v -> {
             if (currentAttractionId == null || currentAttractionId.isEmpty()) {
                 Toast.makeText(this, "请等待景点加载完成", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // 找到第一个空槽位（文件名显示”暂无文件”）
+            // 找到第一个空槽位（文件名显示"暂无文件"）
             int firstEmptySlot = findFirstEmptySlot();
             if (firstEmptySlot == -1) {
                 Toast.makeText(this, "最多上传4个文件", Toast.LENGTH_SHORT).show();
@@ -919,11 +950,19 @@ public class ScenicEditActivity extends AppCompatActivity {
         });
 
         // 位置信息
-        tvLongitude = findViewById(R.id.tv_longitude);
-        tvLatitude = findViewById(R.id.tv_latitude);
+        // tvLongitude / tvLatitude 已从布局移除，仅保留 tvLocationAddress
         tvLocationAddress = findViewById(R.id.tv_location_address);
         Button btnGetLocation = findViewById(R.id.btn_get_location);
         btnGetLocation.setOnClickListener(v -> fetchDeviceLocation());
+        Button btnMapPicker = findViewById(R.id.btn_map_picker);
+        btnMapPicker.setOnClickListener(v -> {
+            Intent intent = new Intent(ScenicEditActivity.this, MapPickerActivity.class);
+            if (savedLatitude != null && savedLongitude != null) {
+                intent.putExtra("latitude", savedLatitude);
+                intent.putExtra("longitude", savedLongitude);
+            }
+            mapPickerLauncher.launch(intent);
+        });
     }
 
     private int findFirstEmptySlot() {
@@ -938,5 +977,18 @@ public class ScenicEditActivity extends AppCompatActivity {
     private void setupDeleteButton(int btnId, final int slotIndex) {
         ImageView ivDelete = findViewById(btnId);
         ivDelete.setOnClickListener(v -> resetFileUI(slotIndex));
+    }
+
+    private void goToPointManager() {
+        Intent intent = new Intent(ScenicEditActivity.this, PointManagerActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
+        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+    }
+
+    @Override
+    public void onBackPressed() {
+        goToPointManager();
     }
 }

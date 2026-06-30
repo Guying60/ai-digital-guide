@@ -582,4 +582,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         tvScenicEdit = findViewById(R.id.tab_scenic);
     }
 
+    @Override
+    public void onBackPressed() {
+        Intent intent = new Intent(ManageAIHumanActivity.this, PointManagerActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
+    }
+
 }

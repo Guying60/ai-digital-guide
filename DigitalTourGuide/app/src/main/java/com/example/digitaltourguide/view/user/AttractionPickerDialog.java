@@ -2,6 +2,8 @@ package com.example.digitaltourguide.view.user;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -9,6 +11,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -20,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.AttractionPickerAdapter;
+import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.network.RetrofitClient;
@@ -43,12 +49,24 @@ public class AttractionPickerDialog extends DialogFragment {
     private static final int PAGE_SIZE = 10;
     private List<ScenicSpot> spotList=new ArrayList<>();
 
+    // 定位相关
+    private LocationManager locationManager;
+    private String userCity;
+    private double userLng, userLat;
+    private boolean locationReady = false;
+    private ProgressBar progressBar;
+    private TextView tvStatus;
+    private LinearLayout llLoading;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.dialog_attraction_list, container, false);
         etSearch = view.findViewById(R.id.et_search);
         rvAttractions = view.findViewById(R.id.rv_attractions);
+        progressBar = view.findViewById(R.id.progress_bar);
+        tvStatus = view.findViewById(R.id.tv_status);
+        llLoading = view.findViewById(R.id.ll_loading);
 
         rvAttractions.setLayoutManager(new GridLayoutManager(getContext(),2));
         adapter = new AttractionPickerAdapter(getContext(),spotList);
@@ -73,7 +91,9 @@ public class AttractionPickerDialog extends DialogFragment {
             @Override
             public void afterTextChanged(Editable s) {
                 currentKeyword = s.toString();
-                resetAndLoad();
+                if (locationReady) {
+                    resetAndLoad();
+                }
             }
         });
         //滚动到底部加载更多
@@ -91,8 +111,72 @@ public class AttractionPickerDialog extends DialogFragment {
             }
         });
 
-        loadFirstPage();
+        // 先定位，再加载数据
+        startLocationAndLoad();
         return view;
+    }
+
+    // 获取用户定位
+    private void startLocationAndLoad() {
+        llLoading.setVisibility(View.VISIBLE);
+        progressBar.setVisibility(View.VISIBLE);
+        tvStatus.setText("正在获取位置...");
+        rvAttractions.setVisibility(View.GONE);
+
+        locationManager = new LocationManager();
+        try {
+            locationManager.startDetailLocation(getContext(), new LocationManager.OnDetailLocationListener() {
+                @Override
+                public void onLocationSuccess(double latitude, double longitude,
+                                              String province, String city, String district,
+                                              String adcode, String address) {
+                    // 城市名为空时兜底
+                    userCity = (city != null && !city.isEmpty()) ? city : "北京市";
+                    userLng = longitude;
+                    userLat = latitude;
+                    locationReady = true;
+
+                    Log.d("AttractionPicker", "定位成功: city=" + userCity + " (原始=" + city + "), lng=" + longitude + ", lat=" + latitude);
+
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        llLoading.setVisibility(View.GONE);
+                        rvAttractions.setVisibility(View.VISIBLE);
+                        loadFirstPage();
+                    });
+                }
+
+                @Override
+                public void onLocationError(String error) {
+                    Log.e("AttractionPicker", "定位失败: " + error);
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        // 定位失败用北京市兜底，并提示用户
+                        userCity = "北京市";
+                        userLng = 116.4074;
+                        userLat = 39.9042;
+                        locationReady = true;
+
+                        tvStatus.setText("定位失败，显示默认城市（北京市）\n请检查定位权限是否已开启");
+                        progressBar.setVisibility(View.GONE);
+
+                        // 2秒后自动加载
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            llLoading.setVisibility(View.GONE);
+                            rvAttractions.setVisibility(View.VISIBLE);
+                            loadFirstPage();
+                        }, 2000);
+                    });
+                }
+            });
+        } catch (Exception e) {
+            Log.e("AttractionPicker", "定位启动异常: " + e.getMessage());
+            userCity = "北京市";
+            userLng = 116.4074;
+            userLat = 39.9042;
+            locationReady = true;
+            llLoading.setVisibility(View.GONE);
+            rvAttractions.setVisibility(View.VISIBLE);
+            loadFirstPage();
+        }
     }
 
     //重置分页状态并重新加载第一页数据
@@ -110,7 +194,7 @@ public class AttractionPickerDialog extends DialogFragment {
     }
 
     private void loadMore(){
-        if(nextLastId!=null && isLoading){
+        if(nextLastId!=null && !isLoading){
             loadData(nextLastId);
         }
     }
@@ -120,46 +204,38 @@ public class AttractionPickerDialog extends DialogFragment {
         if(isLoading) return;
         isLoading=true;
 
+        Log.d("AttractionPicker", "请求参数: city=" + userCity + ", lng=" + userLng + ", lat=" + userLat + ", keyword=" + currentKeyword + ", lastId=" + lastId);
+        // keyword 为空时传 null，避免空字符串被当作无效参数
+        String kw = (currentKeyword != null && !currentKeyword.isEmpty()) ? currentKeyword : null;
         String token= SpUtils.getUserToken(getContext());
          RetrofitClient.getApiService()
-                .getAttractions(null, null, null, currentKeyword, null, lastId, PAGE_SIZE)
+                .getAttractions(userCity, userLng, userLat, kw, null, lastId, PAGE_SIZE)
                  .enqueue(new Callback<AttractionPage>() {
                      @Override
                      public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
                          isLoading=false;
-                         // 打印 HTTP 状态码
                          Log.d("AttractionPicker", "HTTP code: " + response.code());
-                         if(response.isSuccessful() && response.body()!=null){
-                             AttractionPage page= response.body();
-                             List<ScenicSpot> newSpots=page.getList();
-                             if(newSpots==null) newSpots=new ArrayList<>();
-
-                             if(lastId==null){
-                                 //第一页加载，清空旧数据先
-                                 spotList.clear();
-                                 spotList.addAll(newSpots);
-                             }else{
-                                 //下一页加载，直接把新数据加在旧数据后面
-                                 spotList.addAll(newSpots);
-                             }
-                             adapter.notifyDataSetChanged();
-                             nextLastId= page.getNextLastId();//拿到下一页的游标id
-                             hasMore=page.isHasMore();
-                         }else{
-                             // 获取错误体内容
-                             String errorBody = "";
-                             try {
-                                 if (response.errorBody() != null) {
-                                     errorBody = response.errorBody().string();
-                                     Log.e("AttractionPicker", "Error body: " + errorBody);
-                                 }
-                             } catch (Exception e) {
-                                 e.printStackTrace();
-                             }
-                             String errorMsg = "加载失败: HTTP " + response.code() + (errorBody.isEmpty() ? "" : " - " + errorBody);
-                             Toast.makeText(getContext(), errorMsg, Toast.LENGTH_LONG).show();
+                         if(!response.isSuccessful()){
+                             Toast.makeText(getContext(), "网络错误: HTTP " + response.code(), Toast.LENGTH_LONG).show();
                              return;
                          }
+                         AttractionPage page = response.body();
+                         if(page == null){
+                             Toast.makeText(getContext(), "服务器返回空数据", Toast.LENGTH_LONG).show();
+                             return;
+                         }
+                         List<ScenicSpot> newSpots=page.getList();
+                         if(newSpots==null) newSpots=new ArrayList<>();
+
+                         if(lastId==null){
+                             spotList.clear();
+                             spotList.addAll(newSpots);
+                         }else{
+                             spotList.addAll(newSpots);
+                         }
+                         adapter.notifyDataSetChanged();
+                         nextLastId= page.getNextLastId();
+                         hasMore=page.isHasMore();
                      }
                      @Override
                      public void onFailure(Call<AttractionPage> call, Throwable t) {

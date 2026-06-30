@@ -42,6 +42,23 @@ public class RetrofitClient {
                 .readTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .addInterceptor(new AuthInterceptor())
+                .addInterceptor(logging)
+                .addInterceptor(new Interceptor() {
+                    @Override
+                    public Response intercept(Chain chain) throws IOException {
+                        Request request = chain.request();
+                        // 只对景点接口打日志
+                        if (request.url().toString().contains("/attractions")) {
+                            Log.d("API_LOG", "--> " + request.method() + " " + request.url());
+                        }
+                        Response response = chain.proceed(request);
+                        if (request.url().toString().contains("/attractions")) {
+                            String body = response.peekBody(Long.MAX_VALUE).string();
+                            Log.d("API_LOG", "<-- " + response.code() + " " + body);
+                        }
+                        return response;
+                    }
+                })
                /* .addInterceptor(new Interceptor() {                        // 2. 清理多余 Header
                     @Override
                     public Response intercept(Chain chain) throws IOException {
