@@ -14,7 +14,7 @@ android {
 
     // 共享 debug keystore，所有成员共用同一个 SHA1，避免高德地图 key 鉴权失败
     signingConfigs {
-        create("debug") {
+        getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
