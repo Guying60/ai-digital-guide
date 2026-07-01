@@ -729,6 +729,8 @@ public class ChatActivity extends AppCompatActivity {
                         aiRoundTextDone = true;
                         runOnUiThread(() -> {
                             aiIsReplying = false;
+                            // 输出完成后停留在最后一行
+                            tvSubtitle.post(() -> scrollSubtitleToBottom());
                         });
                     } else if ("pong".equals(type)) {
                         Log.d("MYTEST", "✅ 心跳回复正常");
@@ -884,7 +886,8 @@ public class ChatActivity extends AppCompatActivity {
                         subtitleBuilder.append(displayedText);
                     }
                     tvSubtitle.setText(subtitleBuilder.toString());
-                    tvSubtitle.scrollTo(0, tvSubtitle.getLineHeight() * tvSubtitle.getLineCount());
+                    // 流式输出时：最新行始终显示在字幕区中间，方便阅读
+                    scrollSubtitleToCenter();
                     // 如果还没显示完，继续下一个字符
                     if (displayedLength < fullAiText.length()) {
                         typeWriterHandler.postDelayed(this, 150); // 可调整速度，单位毫秒
@@ -966,10 +969,35 @@ public class ChatActivity extends AppCompatActivity {
         runOnUiThread(()->{
             subtitleBuilder.append(LINE_SEPARATOR).append("我：").append(text);
             tvSubtitle.setText(subtitleBuilder.toString());
-            //自动滚到底部
-            tvSubtitle.scrollTo(0,tvSubtitle.getLineHeight()*tvSubtitle.getLineCount());
+            // 用户消息：滚动到底部
+            tvSubtitle.post(() -> scrollSubtitleToBottom());
         });
     }
+    /**
+     * 滚动字幕到中间：最新一行显示在字幕区的垂直中间位置
+     */
+    private void scrollSubtitleToCenter() {
+        android.text.Layout layout = tvSubtitle.getLayout();
+        if (layout == null || layout.getLineCount() == 0) return;
+        int lastLine = layout.getLineCount() - 1;
+        int lastLineTop = layout.getLineTop(lastLine);
+        int viewHeight = tvSubtitle.getHeight();
+        int scrollY = Math.max(0, lastLineTop - viewHeight / 2);
+        tvSubtitle.scrollTo(0, scrollY);
+    }
+
+    /**
+     * 滚动字幕到底部：最后一行显示在字幕区最下方
+     */
+    private void scrollSubtitleToBottom() {
+        android.text.Layout layout = tvSubtitle.getLayout();
+        if (layout == null || layout.getLineCount() == 0) return;
+        int totalHeight = layout.getLineTop(layout.getLineCount());
+        int viewHeight = tvSubtitle.getHeight();
+        int scrollY = Math.max(0, totalHeight - viewHeight);
+        tvSubtitle.scrollTo(0, scrollY);
+    }
+
     private void stopHeartbeat(){
         if(heartbeatExecutor!=null){
             heartbeatExecutor.shutdownNow();
