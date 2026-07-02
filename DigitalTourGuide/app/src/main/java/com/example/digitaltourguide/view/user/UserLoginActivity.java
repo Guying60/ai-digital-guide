@@ -121,9 +121,12 @@ public class UserLoginActivity extends AppCompatActivity {
                         containerPadding = (int) (4 * getResources().getDisplayMetrics().density);
                         indicatorWidth = (containerWidth - containerPadding * 2) / 2;
 
-                        // Set initial position for user mode (left side)
+                        // Set indicator width
                         toggleIndicator.getLayoutParams().width = indicatorWidth;
-                        toggleIndicator.setTranslationX(0);
+
+                        // Position based on current mode (respect prior switchToAdminMode call)
+                        float targetX = isAdminMode ? indicatorWidth : 0f;
+                        toggleIndicator.setTranslationX(targetX);
                         toggleIndicator.requestLayout();
                     }
                 });

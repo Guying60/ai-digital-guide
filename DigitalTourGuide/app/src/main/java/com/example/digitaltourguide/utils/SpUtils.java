@@ -136,10 +136,27 @@ public class SpUtils {
         return sp.getString("attraction_id", "");
     }
 
-    // 清空登录信息（退出登录用）
+    // 清空管理员登录信息（退出登录用）
     public static void clearAdminInfo(Context context) {
         init(context);
-        sp.edit().clear().apply();
+        sp.edit()
+                .remove("admin_token")
+                .remove(KEY_ADMIN_TOKEN_EXPIRE)
+                .remove("admin_id")
+                .remove("admin_username")
+                .remove("last_login_type")
+                .apply();
+    }
+
+    // 清空用户登录信息（退出登录用）
+    public static void clearUserInfo(Context context) {
+        init(context);
+        sp.edit()
+                .remove("token")
+                .remove(KEY_USER_TOKEN_EXPIRE)
+                .remove("user_id")
+                .remove("last_login_type")
+                .apply();
     }
 
     // ----------------------

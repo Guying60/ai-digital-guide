@@ -93,7 +93,12 @@ public class ProfileInfoActivity extends AppCompatActivity {
 
         // 退出登录
         btnOutLogin.setOnClickListener(v -> {
-            startActivity(new Intent(this, UserLoginActivity.class));
+            // 清除用户登录信息
+            SpUtils.clearUserInfo(ProfileInfoActivity.this);
+            Intent intent = new Intent(this, UserLoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finishAffinity();
         });
 
         // 性别
