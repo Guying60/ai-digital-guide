@@ -95,11 +95,11 @@ public class DataAnalysisActivity extends AppCompatActivity {
             intent.putExtra("attraction_id", currentAttractionId);
             startActivity(intent);
             overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+            finish();
         });
 
         tvBack.setOnClickListener(v->{
-            Intent intent=new Intent(DataAnalysisActivity.this,PointManagerActivity.class);
-            startActivity(intent);
+            finish();
         });
     }
 
