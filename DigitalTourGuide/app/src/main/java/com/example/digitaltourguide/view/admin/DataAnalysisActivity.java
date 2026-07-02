@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,7 +46,6 @@ import retrofit2.Response;
 public class DataAnalysisActivity extends AppCompatActivity {
     private static final String TAG="DataAnalysisActivity";
     private Spinner spinnerQa,spinnerPeople;
-    private ProgressBar progressBar;
     private LineChart lineChart,lineChartSatisfaction;;
     private int currentDays = 1; // 默认昨日 (1天)
     private LinearLayout tabTouristAnalysis;
@@ -79,7 +77,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
         }
 
         setupSpinner();
-        loadChatTrendData(currentDays);
 
         spinnerQa.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
             @Override
@@ -125,14 +122,12 @@ public class DataAnalysisActivity extends AppCompatActivity {
     }
 
     private void loadSatisfactionTrendData(int days) {
-        progressBar.setVisibility(View.VISIBLE);
         RetrofitClient.getAdminApiService()
                 .getSatisfactionTrend("Bearer +"+token,currentAttractionId,days)
                 .enqueue(new Callback<BaseResponse<SatisfactionTrendVO>>() {
                     @Override
                     public void onResponse(Call<BaseResponse<SatisfactionTrendVO>> call, Response<BaseResponse<SatisfactionTrendVO>> response) {
-                        progressBar.setVisibility(View.GONE);
-                        Log.d(TAG, "satisfaction response code: " + response.code());
+Log.d(TAG, "satisfaction response code: " + response.code());
                         if (response.body() != null) {
                             Log.d(TAG, "satisfaction body: " + new Gson().toJson(response.body()));
                         } else if (response.errorBody() != null) {
@@ -151,8 +146,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
                     @Override
                     public void onFailure(Call<BaseResponse<SatisfactionTrendVO>> call, Throwable t) {
-                        progressBar.setVisibility(View.GONE);
-                        showSatisfactionEmptyState("网络错误："+t.getMessage());
+showSatisfactionEmptyState("网络错误："+t.getMessage());
                     }
                 });
     }
@@ -222,8 +216,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
     //折线图
     private void loadChatTrendData(int days) {
-        progressBar.setVisibility(View.VISIBLE);
-
         RetrofitClient.getAdminApiService()
                 .getChatTrend("Bearer "+token,currentAttractionId,days)
                 .enqueue(new Callback<BaseResponse<ChatTrendData>>() {
@@ -242,8 +234,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
                                 }
                             }
                         }
-                        progressBar.setVisibility(View.VISIBLE);
-                        if(response.isSuccessful()&& response.body()!=null){
+if(response.isSuccessful()&& response.body()!=null){
                             BaseResponse<ChatTrendData> result=response.body();
                             if(result.getCode()==1 && result.getData()!=null){
                                 ChatTrendData data=result.getData();
@@ -260,8 +251,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
                     @Override
                     public void onFailure(Call<BaseResponse<ChatTrendData>> call, Throwable t) {
-                        progressBar.setVisibility(View.GONE);
-                        Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -323,7 +313,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
     }
 
     private void loadHotFaqData(int days){
-        progressBar.setVisibility(View.VISIBLE);
         hotFaqBarChart.setVisibility(View.GONE);
         tvEmpty.setVisibility(View.GONE);
 
@@ -333,7 +322,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
        call.enqueue(new Callback<HotFaqResponse>() {
            @Override
            public void onResponse(Call<HotFaqResponse> call, Response<HotFaqResponse> response) {
-               progressBar.setVisibility(View.GONE);
                Log.d(TAG, "response code: " + response.code());
                Log.d(TAG, "response body: " + new Gson().toJson(response.body()));
                if (response.isSuccessful() && response.body() != null) {
@@ -355,7 +343,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
            }
            @Override
            public void onFailure(Call<HotFaqResponse> call, Throwable t) {
-               progressBar.setVisibility(View.GONE);
                showEmptyState("网络错误：" + t.getMessage());
            }
        });
@@ -371,7 +358,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
    //展示柱状图
     private void showBarChart(List<HotFaqItem> dataList){
-        progressBar.setVisibility(View.GONE);
         hotFaqBarChart.setVisibility(View.VISIBLE);
         tvEmpty.setVisibility(View.GONE);
         hotFaqBarChart.setData(dataList);
@@ -379,7 +365,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
     private void initView() {
         spinnerQa = findViewById(R.id.spinner_qa);
-        progressBar = findViewById(R.id.progress_qa);
         tvEmpty = findViewById(R.id.tv_empty_qa);
         hotFaqBarChart = findViewById(R.id.hot_faq_bar_chart);
         tabTouristAnalysis = findViewById(R.id.tab_tourist_analysis);

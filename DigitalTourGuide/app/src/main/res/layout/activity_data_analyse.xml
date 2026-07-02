@@ -167,14 +167,6 @@
                             android:paddingHorizontal="12dp" />
                     </RelativeLayout>
 
-                    <ProgressBar
-                        android:id="@+id/progress_qa"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:layout_marginTop="16dp"
-                        android:visibility="gone" />
-
                     <!-- 柱状图自定义 View -->
                     <com.example.digitaltourguide.utils.HotFaqBarChart
                         android:id="@+id/hot_faq_bar_chart"
