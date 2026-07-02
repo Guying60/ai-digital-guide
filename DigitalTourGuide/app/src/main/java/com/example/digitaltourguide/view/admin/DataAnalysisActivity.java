@@ -289,8 +289,14 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         XAxis xAxis=lineChart.getXAxis();//创建x轴对象
         xAxis.setValueFormatter(new IndexAxisValueFormatter(xLabels));//标签格式化
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);//x轴放到底部
-        xAxis.setGranularity(1f);//最小刻度间隔为1
-        xAxis.setLabelCount(xLabels.size());//标签的数量
+        if (xLabels.size() > 15) {
+            // 近30天模式：每隔5天显示一个标签，避免拥挤
+            xAxis.setGranularity(5f);
+            xAxis.setLabelCount(6);
+        } else {
+            xAxis.setGranularity(1f);//最小刻度间隔为1
+            xAxis.setLabelCount(xLabels.size());//标签的数量
+        }
         if (xLabels.size() > 6) {
             xAxis.setLabelRotationAngle(45f);
         }// 如果标签数量超过 6 个，就让标签文字旋转 45°，避免文字挤在一起重叠
