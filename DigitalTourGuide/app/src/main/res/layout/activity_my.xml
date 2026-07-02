@@ -31,6 +31,8 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
+            android:outlineAmbientShadowColor="#40000000"
+            android:outlineSpotShadowColor="@android:color/transparent"
             app:cardBackgroundColor="@color/profile_surface"
             app:cardCornerRadius="20dp"
             app:cardElevation="4dp"
@@ -162,9 +164,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:outlineAmbientShadowColor="#40000000"
+            android:outlineSpotShadowColor="@android:color/transparent"
             app:cardBackgroundColor="@color/profile_surface"
             app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
+            app:cardElevation="4dp"
             app:contentPadding="16dp"
             app:strokeWidth="0dp">
 
@@ -290,9 +294,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:outlineAmbientShadowColor="#40000000"
+            android:outlineSpotShadowColor="@android:color/transparent"
             app:cardBackgroundColor="@color/profile_surface"
             app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
+            app:cardElevation="4dp"
             app:contentPadding="8dp"
             app:strokeWidth="0dp">
 
@@ -678,7 +684,9 @@
         android:paddingEnd="12dp"
         android:paddingTop="16dp"
         android:paddingBottom="20dp"
-        android:elevation="6dp">
+        android:outlineAmbientShadowColor="#40000000"
+        android:outlineSpotShadowColor="@android:color/transparent"
+        android:elevation="4dp">
 
         <!-- 出游记录 Tab (Active) -->
         <LinearLayout
