@@ -198,13 +198,13 @@ public interface AdminApiService {
             @Path("attractionId") String attractionId,
             @Query("days") int days
     );
-    //4.2卡片
+    //4.2第一栏卡片
     @GET("admins/analysis/emotion-focus-card/{attractionId}")
     Call<BaseResponse<FocusCardData>> getEmotionFocusCard(
             @Path("attractionId") String attractionId,
             @Query("days") int days
     );
-    //4.3
+    //4.3 ai建议
     @GET("admins/analysis/ai-service-suggestion/{attractionId}")
     Call<BaseResponse<SuggestionData>> getAiServiceSuggestion(
             @Path("attractionId") String attractionId,

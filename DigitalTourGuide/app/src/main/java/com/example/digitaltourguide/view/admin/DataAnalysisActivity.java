@@ -5,7 +5,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -51,9 +50,9 @@ public class DataAnalysisActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private LineChart lineChart,lineChartSatisfaction;;
     private int currentDays = 1; // 默认昨日 (1天)
-    private View tooltipView; // 当前显示的卡片视图
     private LinearLayout tabTouristAnalysis;
-    private TextView tvEmpty,tvTotalPeople,tooltipDate, tooltipCount,tvTouristText,tvDataText,tvBack;
+    private TextView tvEmpty,tvTotalPeople,tvTouristText,tvDataText,tvBack;
+    private DataTooltipMarkerView markerTrend, markerSatisfaction;
     private ImageView ivTouristIcon,ivDataIcon;
     private HotFaqBarChart hotFaqBarChart;
     private String currentAttractionId;
@@ -211,67 +210,14 @@ public class DataAnalysisActivity extends AppCompatActivity {
         lineChartSatisfaction.animateX(500);
         lineChartSatisfaction.invalidate();
 
-        // 可选：添加点击卡片显示评价数
-        lineChartSatisfaction.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
-            @Override
-            public void onValueSelected(Entry e, Highlight h) {
-                int index = (int) e.getX();
-                if (index >= 0 && index < dates.size()) {
-                    String date = dates.get(index);
-                    double score = e.getY();
-                    int count = data.getCounts().get(index);
-                    showSatisfactionTooltip(h, date, score, count);
-                }
-            }
-            @Override
-            public void onNothingSelected() { hideTooltip(); }
-        });
-    }
-
-    private void showSatisfactionTooltip(Highlight h, String date, double score, int count) {
-        hideTooltip();
-        if (tooltipView == null) {
-            tooltipView = getLayoutInflater().inflate(R.layout.tooltip_card, null);
-            tooltipDate = tooltipView.findViewById(R.id.tv_date);
-            tooltipCount = tooltipView.findViewById(R.id.tv_count);
-        }
-        tooltipDate.setText(date);
-        tooltipCount.setText(String.format("满意度: %.1f 分 (评价数: %d)", score, count));
-        // 获取根布局（整个 Activity 的顶层视图）
-        ViewGroup root = findViewById(android.R.id.content);
-        if (root == null) return;
-
-        //计算数据点在屏幕上的绝对坐标
-        float[] point = new float[]{h.getXPx(), h.getYPx()};
-        int[] chartLocation = new int[2];
-        lineChart.getLocationOnScreen(chartLocation);
-        float rootX = chartLocation[0] + point[0];
-        float rootY = chartLocation[1] + point[1];
-
-        //测量卡片尺寸
-        tooltipView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int cardWidth = tooltipView.getMeasuredWidth();
-        int cardHeight = tooltipView.getMeasuredHeight();
-
-        // 设置偏移量（让卡片出现在点的右上方）
-        int offsetX = 40;
-        int offsetY = -80;
-        float finalX = rootX + offsetX;
-        float finalY = rootY + offsetY;
-
-        // 边界检查：防止超出屏幕右侧
-        if (finalX + cardWidth > root.getWidth()) {
-            finalX = rootX - cardWidth - 10;
-        }
-        // 边界检查：防止超出顶部
-        if (finalY < 0) {
-            finalY = rootY + 20;
-        }
-
-        // 设置卡片位置并添加到根布局
-        tooltipView.setX(finalX);
-        tooltipView.setY(finalY);
-        root.addView(tooltipView);
+        // MarkerView
+        markerSatisfaction = new DataTooltipMarkerView(this,
+                dates.toArray(new String[0]), "满意度: ");
+        List<Integer> countList = data.getCounts();
+        int[] counts = new int[countList.size()];
+        for (int i = 0; i < countList.size(); i++) counts[i] = countList.get(i);
+        markerSatisfaction.setCounts(counts);
+        lineChartSatisfaction.setMarker(markerSatisfaction);
     }
 
     //折线图
@@ -369,102 +315,11 @@ public class DataAnalysisActivity extends AppCompatActivity {
         lineChart.setDragEnabled(true);// 开启图表的拖拽/平移功能（手指滑动可以查看超出屏幕的部分）
         lineChart.animateX(500);//从左到右展开图表，时间5毫秒
 
+        // MarkerView 替代浮层
+        markerTrend = new DataTooltipMarkerView(this,
+                xLabels.toArray(new String[0]), "人次：");
+        lineChart.setMarker(markerTrend);
         lineChart.invalidate();
-
-        //设置点击出现卡片
-        lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
-            @Override
-            public void onValueSelected(Entry e, Highlight h) {
-                int index=(int)e.getX();
-                if(index>=0 && index<xLabels.size()){
-                    String date=xLabels.get(index);
-                    int count=(int) e.getY();
-                    showTooltip(h,date,count);
-                }
-            }
-            @Override
-            public void onNothingSelected() {
-                hideTooltip();
-            }
-        });
-        lineChart.invalidate();
-    }
-
-    //三个卡片
-    private void showTooltip(Highlight h, String date, int count) {
-        //先移除旧的卡片
-        hideTooltip();
-        //创建卡片视图
-        if(tooltipView==null){
-            tooltipView=getLayoutInflater().inflate(R.layout.tooltip_card,null);
-            tooltipDate=tooltipView.findViewById(R.id.tv_date);
-            tooltipCount = tooltipView.findViewById(R.id.tv_count);
-        }
-        if (tooltipDate == null) {
-            Log.e(TAG, "tooltipDate is null! Check id 'tv_date' in tooltip_card.xml");
-            return;
-        }
-        if (tooltipCount == null) {
-            Log.e(TAG, "tooltipCount is null! Check id 'tv_count' in tooltip_card.xml");
-            return;
-        }
-
-        // 🔥 关键修改：如果 date 是 "HH:00" 格式（包含冒号），则显示“昨日”或具体的年月日
-        String displayDate = date;
-        if (date != null && date.contains(":")) {
-            // 获取昨天的日期（因为“昨日”数据通常指前一天）
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault());
-            java.util.Calendar calendar = java.util.Calendar.getInstance();
-            calendar.add(java.util.Calendar.DAY_OF_YEAR, -1);
-            displayDate = sdf.format(calendar.getTime());  // 显示如 "04-28"
-            // 如果你想显示完整的年-月-日，可以改为 "yyyy-MM-dd"
-        }
-
-        //填充数据
-        tooltipDate.setText(date);
-        tooltipCount.setText("人次：" + count);
-
-        // 获取根布局（整个 Activity 的顶层视图）
-        ViewGroup root = findViewById(android.R.id.content);
-        if (root == null) return;
-
-        //计算数据点在屏幕上的绝对坐标
-        float[] point = new float[]{h.getXPx(), h.getYPx()};
-        int[] chartLocation = new int[2];
-        lineChart.getLocationOnScreen(chartLocation);
-        float rootX = chartLocation[0] + point[0];
-        float rootY = chartLocation[1] + point[1];
-
-        //测量卡片尺寸
-        tooltipView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int cardWidth = tooltipView.getMeasuredWidth();
-        int cardHeight = tooltipView.getMeasuredHeight();
-
-        // 设置偏移量（让卡片出现在点的右上方）
-        int offsetX = 40;
-        int offsetY = -80;
-        float finalX = rootX + offsetX;
-        float finalY = rootY + offsetY;
-
-        // 边界检查：防止超出屏幕右侧
-        if (finalX + cardWidth > root.getWidth()) {
-            finalX = rootX - cardWidth - 10;
-        }
-        // 边界检查：防止超出顶部
-        if (finalY < 0) {
-            finalY = rootY + 20;
-        }
-
-        // 设置卡片位置并添加到根布局
-        tooltipView.setX(finalX);
-        tooltipView.setY(finalY);
-        root.addView(tooltipView);
-    }
-
-    private void hideTooltip() {
-        if(tooltipView !=null && tooltipView.getParent()!=null){
-            ((ViewGroup) tooltipView.getParent()).removeView(tooltipView);
-        }
     }
 
     private void loadHotFaqData(int days){
@@ -531,8 +386,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
         spinnerPeople=findViewById(R.id.spinner_people);
         tvTotalPeople = findViewById(R.id.tv_total_people);
         lineChart = findViewById(R.id.line_chart_people);
-        tooltipDate=findViewById(R.id.tv_date);
-        tooltipCount=findViewById(R.id.tv_count);
         ivTouristIcon=findViewById(R.id.iv_icon_tourist);
         tvTouristText=findViewById(R.id.tv_text_analysis);
         ivDataIcon=findViewById(R.id.iv_icon_data);
