@@ -96,7 +96,12 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        rvScenic.setLayoutManager(new GridLayoutManager(this, 1));
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 1);
+        rvScenic.setLayoutManager(layoutManager);
+        rvScenic.setHasFixedSize(true);
+        rvScenic.setItemViewCacheSize(10);
+        rvScenic.setDrawingCacheEnabled(true);
+        rvScenic.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         adapter = new UserScenicAdapter(this, dataList);
 
         adapter.setOnItemClickListener(new UserScenicAdapter.OnItemClickListener() {
