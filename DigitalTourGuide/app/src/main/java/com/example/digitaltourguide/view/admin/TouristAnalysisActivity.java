@@ -27,7 +27,9 @@ import com.example.digitaltourguide.network.AdminApiService;
 import com.example.digitaltourguide.network.RetrofitClient;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.charts.PieChart;
+import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -35,10 +37,10 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
-import com.github.mikephil.charting.utils.ColorTemplate;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,6 +56,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
     private Spinner spinnerTimeRange, spinnerTimeCard;
     private LineChart lineChart;
     private PieChart pieChart;
+    private EmotionMarkerView emotionMarkerView;
     private String currentAttractionId;
     private int currentDays = 7; // 默认近7天
     private TextView tvPositiveRateMain;   // 显示 86% 的位置
@@ -287,9 +290,13 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         if (dates == null || dates.isEmpty()) {
             lineChart.clear();
             lineChart.setNoDataText("暂无数据");
+            lineChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
             lineChart.invalidate();
             return;
         }
+
+        // 更新 MarkerView 数据
+        emotionMarkerView.setData(dates, positivesRates, neutralRates, negativeRates);
 
         List<Entry> positiveEntries = new ArrayList<>();
         List<Entry> neutralEntries = new ArrayList<>();
@@ -301,29 +308,20 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             negativeEntries.add(new Entry(i, negativeRates.get(i).floatValue()));
         }
 
+        // ---- 正面情感（绿色） ----
+        int positiveColor = Color.parseColor("#10B981");
         LineDataSet positiveSet = new LineDataSet(positiveEntries, "正面");
-        positiveSet.setColor(getResources().getColor(android.R.color.holo_green_dark));
-        positiveSet.setCircleColor(getResources().getColor(android.R.color.holo_green_dark));
-        positiveSet.setLineWidth(2f);
-        positiveSet.setCircleRadius(4f);
-        positiveSet.setValueTextSize(10f);
-        positiveSet.setDrawValues(true);
+        styleDataSet(positiveSet, positiveColor);
 
+        // ---- 中性情感（蓝色） ----
+        int neutralColor = Color.parseColor("#3B82F6");
         LineDataSet neutralSet = new LineDataSet(neutralEntries, "中性");
-        neutralSet.setColor(getResources().getColor(android.R.color.darker_gray));
-        neutralSet.setCircleColor(getResources().getColor(android.R.color.darker_gray));
-        neutralSet.setLineWidth(2f);
-        neutralSet.setCircleRadius(4f);
-        neutralSet.setValueTextSize(10f);
-        neutralSet.setDrawValues(true);
+        styleDataSet(neutralSet, neutralColor);
 
+        // ---- 负面情感（红色） ----
+        int negativeColor = Color.parseColor("#EF4444");
         LineDataSet negativeSet = new LineDataSet(negativeEntries, "负面");
-        negativeSet.setColor(getResources().getColor(android.R.color.holo_red_dark));
-        negativeSet.setCircleColor(getResources().getColor(android.R.color.holo_red_dark));
-        negativeSet.setLineWidth(2f);
-        negativeSet.setCircleRadius(4f);
-        negativeSet.setValueTextSize(10f);
-        negativeSet.setDrawValues(true);
+        styleDataSet(negativeSet, negativeColor);
 
         List<ILineDataSet> dataSets = new ArrayList<>();
         dataSets.add(positiveSet);
@@ -331,31 +329,40 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         dataSets.add(negativeSet);
 
         LineData lineData = new LineData(dataSets);
+        lineData.setDrawValues(false);  // 不在数据点旁显示数值，保持简洁
         lineChart.setData(lineData);
+
         // 设置X轴标签为日期
         lineChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(dates));
-        lineChart.getXAxis().setLabelCount(dates.size());
-        // 点击折线图显示详情（弹出Toast，显示对应日期的positive/neutral/negative count）
-        lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
-            @Override
-            public void onValueSelected(Entry e, Highlight h) {
-                int index = (int) e.getX();
-                if (index >= 0 && index < dates.size()) {
-                    int posCount = data.getPositiveCount().get(index);
-                    int neuCount = data.getNeutralCount().get(index);
-                    int negCount = data.getNegativeCount().get(index);
-                    String msg = String.format(Locale.CHINA, "%s\n正面:%d 中性:%d 负面:%d",
-                            dates.get(index), posCount, neuCount, negCount);
-                    Toast.makeText(TouristAnalysisActivity.this, msg, Toast.LENGTH_SHORT).show();
-                }
-            }
+        lineChart.getXAxis().setLabelCount(Math.min(dates.size(), 7), true);
 
-            @Override
-            public void onNothingSelected() {
-            }
-        });
-
+        lineChart.animateX(800);
         lineChart.invalidate();
+    }
+
+    /**
+     * 统一设置折线样式：CUBIC_BEZIER 平滑曲线、圆点标记、半透明填充。
+     */
+    private void styleDataSet(LineDataSet set, int color) {
+        set.setColor(color);
+        set.setCircleColor(color);
+        set.setCircleHoleColor(Color.WHITE);
+        set.setCircleRadius(5f);
+        set.setCircleHoleRadius(3f);
+        set.setLineWidth(2.5f);
+        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        set.setCubicIntensity(0.2f);
+        set.setDrawValues(false);
+        set.setDrawCircleHole(true);
+        set.setHighlightEnabled(true);
+        set.setHighLightColor(Color.parseColor("#1F2937"));
+        set.setHighlightLineWidth(1.5f);
+        set.enableDashedHighlightLine(8f, 4f, 0f);
+
+        // 半透明填充（渐变效果）
+        set.setDrawFilled(true);
+        set.setFillColor(color);
+        set.setFillAlpha(30);
     }
 
     private void updatePieChart(EmotionTrendData data) {
@@ -394,27 +401,87 @@ public class TouristAnalysisActivity extends AppCompatActivity {
     }
 
     private void setupChartStyles() {
-        // 折线图样式
+        // ==================== 折线图样式（现代简洁风格） ====================
         lineChart.getDescription().setEnabled(false);
         lineChart.setTouchEnabled(true);
         lineChart.setDragEnabled(true);
         lineChart.setScaleEnabled(true);
         lineChart.setPinchZoom(true);
+        lineChart.setDoubleTapToZoomEnabled(false);
         lineChart.setDrawGridBackground(false);
-        lineChart.getLegend().setEnabled(true);
-        lineChart.getLegend().setTextSize(12f);
+        lineChart.setBackgroundColor(Color.WHITE);
+        lineChart.setViewPortOffsets(40f, 20f, 40f, 30f);
+        lineChart.animateX(800);
 
+        // 图例 — 顶部水平排列
+        Legend legend = lineChart.getLegend();
+        legend.setEnabled(true);
+        legend.setTextSize(12f);
+        legend.setTextColor(Color.parseColor("#6B7280"));
+        legend.setForm(Legend.LegendForm.CIRCLE);
+        legend.setFormSize(8f);
+        legend.setFormToTextSpace(6f);
+        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
+        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
+        legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
+        legend.setDrawInside(false);
+        legend.setXEntrySpace(20f);
+        legend.setYOffset(4f);
+
+        // X轴 — 日期标签
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setGranularity(1f);
-        xAxis.setLabelRotationAngle(-45f);
+        xAxis.setLabelRotationAngle(0f);
         xAxis.setTextSize(11f);
+        xAxis.setTextColor(Color.parseColor("#9CA3AF"));
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setAxisLineColor(Color.parseColor("#E5E7EB"));
+        xAxis.setAxisLineWidth(1f);
+        xAxis.setYOffset(8f);
 
-        lineChart.getAxisLeft().setAxisMinimum(0f);
-        lineChart.getAxisLeft().setAxisMaximum(100f);
-        lineChart.getAxisRight().setEnabled(false);
+        // 左Y轴 — 0~100，带刻度线和网格
+        YAxis leftAxis = lineChart.getAxisLeft();
+        leftAxis.setAxisMinimum(0f);
+        leftAxis.setAxisMaximum(100f);
+        leftAxis.setLabelCount(6, true);
+        leftAxis.setTextSize(11f);
+        leftAxis.setTextColor(Color.parseColor("#9CA3AF"));
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setGridColor(Color.parseColor("#F3F4F6"));
+        leftAxis.setGridLineWidth(1f);
+        leftAxis.enableGridDashedLine(8f, 4f, 0f);
+        leftAxis.setDrawAxisLine(false);
+        leftAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return ((int) value) + "%";
+            }
+        });
 
-        // 饼图样式
+        // 右Y轴 — 隐藏
+        YAxis rightAxis = lineChart.getAxisRight();
+        rightAxis.setEnabled(false);
+
+        // 自定义 MarkerView
+        emotionMarkerView = new EmotionMarkerView(this, R.layout.marker_emotion);
+        emotionMarkerView.setChartView(lineChart);
+        lineChart.setMarker(emotionMarkerView);
+
+        // 点击监听（保留 Toast 作为备用反馈，MarkerView 为主要展示方式）
+        lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+                // MarkerView 已处理显示，这里不额外弹 Toast
+            }
+
+            @Override
+            public void onNothingSelected() {
+            }
+        });
+
+        // ==================== 饼图样式（保持不变） ====================
         pieChart.getDescription().setEnabled(false);
         pieChart.setUsePercentValues(true);
         pieChart.setExtraOffsets(5, 10, 5, 5);

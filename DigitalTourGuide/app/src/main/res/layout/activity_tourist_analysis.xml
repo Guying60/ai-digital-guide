@@ -84,7 +84,7 @@
                         android:layout_marginTop="8dp"
                         android:text="86%"
                         android:textColor="#1F2937"
-                        android:textSize="28sp"
+                        android:textSize="22sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -131,7 +131,7 @@
                         android:layout_marginTop="8dp"
                         android:text="餐饮"
                         android:textColor="#1F2937"
-                        android:textSize="24sp"
+                        android:textSize="22sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -178,7 +178,7 @@
                         android:layout_marginTop="8dp"
                         android:text="停车"
                         android:textColor="#1F2937"
-                        android:textSize="24sp"
+                        android:textSize="22sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -218,13 +218,17 @@
                     app:tint="#7C3AED" />
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginStart="10dp"
                     android:text="AI建议已生成，点击跳转"
                     android:textColor="#6D28D9"
                     android:textSize="15sp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"/>
 
                 <Button
                     android:id="@+id/btn_scroll_to_suggestion"
