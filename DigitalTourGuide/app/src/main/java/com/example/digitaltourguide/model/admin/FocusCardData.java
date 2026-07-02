@@ -5,7 +5,7 @@ public class FocusCardData {
     private double positiveRateChange;
     private String changeLabel;
     private String topFocus;
-    private double topFocusRate;
+    private Double topFocusRate;
     private String worstFocus;
 
     public double getPositiveRate() { return positiveRate; }
@@ -16,8 +16,8 @@ public class FocusCardData {
     public void setChangeLabel(String changeLabel) { this.changeLabel = changeLabel; }
     public String getTopFocus() { return topFocus; }
     public void setTopFocus(String topFocus) { this.topFocus = topFocus; }
-    public double getTopFocusRate() { return topFocusRate; }
-    public void setTopFocusRate(double topFocusRate) { this.topFocusRate = topFocusRate; }
+    public Double getTopFocusRate() { return topFocusRate; }
+    public void setTopFocusRate(Double topFocusRate) { this.topFocusRate = topFocusRate; }
     public String getWorstFocus() { return worstFocus; }
     public void setWorstFocus(String worstFocus) { this.worstFocus = worstFocus; }
 }

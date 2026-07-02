@@ -3,11 +3,11 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="3dp"
-    android:background="#DD000000">
+    android:padding="4dp"
+    android:background="@drawable/marker_bg">
 
     <TextView
-        android:id="@+id/tv_date"
+        android:id="@+id/tv_marker_label1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="#FFFFFF"
@@ -17,10 +17,10 @@
         android:includeFontPadding="false" />
 
     <TextView
-        android:id="@+id/tv_count"
+        android:id="@+id/tv_marker_label2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#CCCCCC"
+        android:textColor="#E0E0E0"
         android:textSize="10sp"
         android:maxLines="1"
         android:includeFontPadding="false" />

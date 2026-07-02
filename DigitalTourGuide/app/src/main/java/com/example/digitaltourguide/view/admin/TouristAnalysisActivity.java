@@ -223,13 +223,32 @@ public class TouristAnalysisActivity extends AppCompatActivity {
 
 
     private void updateFocusCards(FocusCardData data) {
-        //1.正面情感占比
+        String topFocus = data.getTopFocus();
+        String worstFocus = data.getWorstFocus();
         double positiveRate = data.getPositiveRate();
+
+        // 判断是否无数据：topFocus/worstFocus为"暂无数据"或null，且positiveRate为0
+        boolean isEmpty = (topFocus == null || "暂无数据".equals(topFocus))
+                && positiveRate == 0.0;
+
+        if (isEmpty) {
+            tvPositiveRateMain.setText("--%");
+            tvPositiveRateMain.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvPositiveChange.setText("暂无数据");
+            tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvTopFocus.setText("暂无数据");
+            tvTopFocusRate.setText("");
+            tvWorstFocus.setText("暂无数据");
+            return;
+        }
+
+        // 1. 正面情感占比
         tvPositiveRateMain.setText(String.format(Locale.CHINA, "%.1f%%", positiveRate));
+        tvPositiveRateMain.setTextColor(getResources().getColor(android.R.color.black));
 
         double change = data.getPositiveRateChange();
         String changeLabel = data.getChangeLabel() != null ? data.getChangeLabel() : "";
-        String changeText = "";
+        String changeText;
         if (change > 0) {
             changeText = String.format(Locale.CHINA, "↑ %.1f%% %s", change, changeLabel);
             tvPositiveChange.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
@@ -237,19 +256,21 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             changeText = String.format(Locale.CHINA, "↓ %.1f%% %s", Math.abs(change), changeLabel);
             tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
         } else {
-            changeText = String.format(Locale.CHINA, "→ 0%% %s", changeLabel);
+            changeText = String.format(Locale.CHINA, "→ %.1f%% %s", change, changeLabel);
             tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
         }
         tvPositiveChange.setText(changeText);
 
-        //2.高频关注点
-        String topFocus = data.getTopFocus();
-        double topFocusRate = data.getTopFocusRate();
+        // 2. 高频关注点
         tvTopFocus.setText(topFocus != null ? topFocus : "暂无数据");
-        tvTopFocusRate.setText(String.format(Locale.CHINA, "占所有问询 %.1f%%", topFocusRate));
+        Double topFocusRate = data.getTopFocusRate();
+        if (topFocusRate != null) {
+            tvTopFocusRate.setText(String.format(Locale.CHINA, "占所有问询 %.1f%%", topFocusRate));
+        } else {
+            tvTopFocusRate.setText("");
+        }
 
         // 3. 待改善
-        String worstFocus = data.getWorstFocus();
         tvWorstFocus.setText(worstFocus != null ? worstFocus : "暂无数据");
     }
 
@@ -267,7 +288,15 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                         updateLineChart(data);
                         updatePieChart(data);
                     } else {
-                        Toast.makeText(TouristAnalysisActivity.this, baseResp.getMsg(), Toast.LENGTH_SHORT).show();
+                        // data 为 null 时，图表显示空状态提示
+                        lineChart.clear();
+                        lineChart.setNoDataText("暂无情感趋势数据");
+                        lineChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+                        lineChart.invalidate();
+                        pieChart.clear();
+                        pieChart.setNoDataText("暂无情感数据");
+                        pieChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+                        pieChart.invalidate();
                     }
                 } else {
                     Toast.makeText(TouristAnalysisActivity.this, "请求失败: " + response.code(), Toast.LENGTH_SHORT).show();
@@ -287,9 +316,11 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         List<Double> neutralRates = data.getNeutralRate();
         List<Double> negativeRates = data.getNegativeRate();
 
-        if (dates == null || dates.isEmpty()) {
+        if (dates == null || dates.isEmpty()
+                || positivesRates == null || neutralRates == null || negativeRates == null
+                || positivesRates.isEmpty() || neutralRates.isEmpty() || negativeRates.isEmpty()) {
             lineChart.clear();
-            lineChart.setNoDataText("暂无数据");
+            lineChart.setNoDataText("暂无情感趋势数据");
             lineChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
             lineChart.invalidate();
             return;
@@ -374,6 +405,15 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         if (totalPositive > 0) entries.add(new PieEntry((float) totalPositive, "正面"));
         if (totalNeutral > 0) entries.add(new PieEntry((float) totalNeutral, "中性"));
         if (totalNegative > 0) entries.add(new PieEntry((float) totalNegative, "负面"));
+
+        // 无数据时显示提示
+        if (entries.isEmpty()) {
+            pieChart.clear();
+            pieChart.setNoDataText("暂无情感数据");
+            pieChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+            pieChart.invalidate();
+            return;
+        }
 
         PieDataSet dataSet = new PieDataSet(entries, "");
         // 自定义紫色系配色
