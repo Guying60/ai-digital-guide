@@ -45,9 +45,10 @@ import retrofit2.Response;
 
 public class DataAnalysisActivity extends AppCompatActivity {
     private static final String TAG="DataAnalysisActivity";
-    private Spinner spinnerQa,spinnerPeople;
+    private Spinner spinnerQa,spinnerPeople,spinnerScore;
     private LineChart lineChart,lineChartSatisfaction;;
     private int currentDays = 1; // 默认昨日 (1天)
+    private int satisfactionDays = 1; // 满意度趋势独立时间范围
     private LinearLayout tabTouristAnalysis;
     private TextView tvEmpty,tvTotalPeople,tvTouristText,tvDataText,tvBack;
     private DataTooltipMarkerView markerTrend, markerSatisfaction;
@@ -80,6 +81,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
         spinnerQa.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
             @Override
+
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 int days=(position==0) ?7:30;
                 loadHotFaqData(days);
@@ -113,7 +115,21 @@ public class DataAnalysisActivity extends AppCompatActivity {
                     case 2: currentDays=30;break;
                 }
                 loadChatTrendData(currentDays);
-                loadSatisfactionTrendData(currentDays);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {}
+        });
+
+        spinnerScore.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
+                switch(position){
+                    case 0: satisfactionDays=1;break;
+                    case 1: satisfactionDays=7;break;
+                    case 2: satisfactionDays=30;break;
+                }
+                loadSatisfactionTrendData(satisfactionDays);
             }
 
             @Override
@@ -383,6 +399,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         tvDataText=findViewById(R.id.tv_text_data);
         tvBack=findViewById(R.id.tv_back);
         lineChartSatisfaction = findViewById(R.id.line_chart_satisfaction);
+        spinnerScore = findViewById(R.id.spinner_score);
 
     }
 }
