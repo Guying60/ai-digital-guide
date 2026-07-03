@@ -2026,6 +2026,114 @@ Authorization: Bearer <admin_token>
 
 ---
 
+## 4.5 情感概览（文本+面部合并）
+
+**请求 URL：** `GET /admin/analysis/emotion-overview/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 必填 | 说明                     |
+| ------------ | ------- | ---- | ------------------------ |
+| attractionId | String  | 是   | 景区 ID，路径参数        |
+| days         | Integer | 是   | 时间范围，可传 7 或 30   |
+
+**响应参数说明（EmotionOverviewVO）：**
+
+响应分三大块：文本情感、面部表情、关注点。各 `*Count`/`*Rate` 数组下标与 `dates` 一一对齐；无数据日期 count 为 0、rate 为 0.0，日期序列不断档。
+
+| 字段名                     | 类型            | 归属   | 说明                          |
+| -------------------------- | --------------- | ------ | ----------------------------- |
+| dates                      | List\<String\>  | 通用   | 日期序列，格式 MM-dd           |
+| textPositiveCount          | List\<Integer\> | 文本   | 每日正面情感数量              |
+| textNeutralCount           | List\<Integer\> | 文本   | 每日中性情感数量              |
+| textNegativeCount          | List\<Integer\> | 文本   | 每日负面情感数量              |
+| textPositiveRate           | List\<Double\>  | 文本   | 每日正面情感占比，如 68.4     |
+| textNeutralRate            | List\<Double\>  | 文本   | 每日中性情感占比              |
+| textNegativeRate           | List\<Double\>  | 文本   | 每日负面情感占比              |
+| textTotalPositiveRate      | Double          | 文本   | 期内正面情感整体占比          |
+| textTotalNeutralRate       | Double          | 文本   | 期内中性情感整体占比          |
+| textTotalNegativeRate      | Double          | 文本   | 期内负面情感整体占比          |
+| textRecordCount            | Integer         | 文本   | 期内文本分析记录总数          |
+| faceJoyCount               | List\<Integer\> | 面部   | 每日喜悦表情数量              |
+| faceSurpriseCount          | List\<Integer\> | 面部   | 每日惊讶表情数量              |
+| faceNeutralCount           | List\<Integer\> | 面部   | 每日中性表情数量              |
+| faceConfusionCount         | List\<Integer\> | 面部   | 每日困惑表情数量              |
+| faceDisgustCount           | List\<Integer\> | 面部   | 每日厌恶表情数量              |
+| faceAngerCount             | List\<Integer\> | 面部   | 每日愤怒表情数量              |
+| faceSadnessCount           | List\<Integer\> | 面部   | 每日悲伤表情数量              |
+| faceJoyRate                | List\<Double\>  | 面部   | 每日喜悦表情占比              |
+| faceSurpriseRate           | List\<Double\>  | 面部   | 每日惊讶表情占比              |
+| faceNeutralRate            | List\<Double\>  | 面部   | 每日中性表情占比              |
+| faceConfusionRate          | List\<Double\>  | 面部   | 每日困惑表情占比              |
+| faceDisgustRate            | List\<Double\>  | 面部   | 每日厌恶表情占比              |
+| faceAngerRate              | List\<Double\>  | 面部   | 每日愤怒表情占比              |
+| faceSadnessRate            | List\<Double\>  | 面部   | 每日悲伤表情占比              |
+| faceTotalJoyRate           | Double          | 面部   | 期内喜悦表情整体占比          |
+| faceTotalSurpriseRate      | Double          | 面部   | 期内惊讶表情整体占比          |
+| faceTotalNeutralRate       | Double          | 面部   | 期内中性表情整体占比          |
+| faceTotalConfusionRate     | Double          | 面部   | 期内困惑表情整体占比          |
+| faceTotalDisgustRate       | Double          | 面部   | 期内厌恶表情整体占比          |
+| faceTotalAngerRate         | Double          | 面部   | 期内愤怒表情整体占比          |
+| faceTotalSadnessRate       | Double          | 面部   | 期内悲伤表情整体占比          |
+| faceRecordCount            | Integer         | 面部   | 期内面部表情记录总数          |
+| topFocus                   | String          | 关注点 | 高频关注点（文本来源）        |
+| worstFocus                 | String          | 关注点 | 待改善项（文本来源）          |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "dates": ["06-26", "06-27", "06-28"],
+    "textPositiveCount": [65, 70, 68],
+    "textNeutralCount": [20, 18, 22],
+    "textNegativeCount": [10, 8, 12],
+    "textPositiveRate": [68.4, 72.9, 66.7],
+    "textNeutralRate": [21.1, 18.8, 21.6],
+    "textNegativeRate": [10.5, 8.3, 11.8],
+    "textTotalPositiveRate": 69.3,
+    "textTotalNeutralRate": 20.5,
+    "textTotalNegativeRate": 10.2,
+    "textRecordCount": 291,
+    "faceJoyCount": [15, 20, 18],
+    "faceSurpriseCount": [3, 5, 2],
+    "faceNeutralCount": [60, 55, 62],
+    "faceConfusionCount": [8, 6, 7],
+    "faceDisgustCount": [1, 0, 2],
+    "faceAngerCount": [2, 3, 1],
+    "faceSadnessCount": [5, 4, 6],
+    "faceJoyRate": [15.8, 21.5, 18.4],
+    "faceSurpriseRate": [3.2, 5.4, 2.0],
+    "faceNeutralRate": [63.2, 59.1, 63.3],
+    "faceConfusionRate": [8.4, 6.5, 7.1],
+    "faceDisgustRate": [1.1, 0.0, 2.0],
+    "faceAngerRate": [2.1, 3.2, 1.0],
+    "faceSadnessRate": [5.3, 4.3, 6.1],
+    "faceTotalJoyRate": 18.5,
+    "faceTotalSurpriseRate": 3.5,
+    "faceTotalNeutralRate": 61.9,
+    "faceTotalConfusionRate": 7.3,
+    "faceTotalDisgustRate": 1.0,
+    "faceTotalAngerRate": 2.1,
+    "faceTotalSadnessRate": 5.3,
+    "faceRecordCount": 102,
+    "topFocus": "餐饮/票务",
+    "worstFocus": "停车"
+  },
+  "msg": "success"
+}
+```
+
+**前端使用说明：**
+
+- 建议在概览页左侧放文本情感折线（正/中/负 3 条线），右侧放面部表情分布（7 类可选 top-N 渲染），底部放关注点卡片
+- 面部暂无数据时所有 `face*` 字段为 0/0.0，前端按"暂无面部表情数据"兜底即可，不影响文本维度正常展示
+- 单独下钻时可复用 4.1（文本情感趋势）和 4.3（面部表情趋势）独立接口
+- **整个周期完全无数据时：** 所有 count 为 `0`、rate 为 `0.0`，`dates` 照常返回完整序列
+
+---
+
 # 附录：通用响应结构
 
 所有接口统一返回以下结构：
