@@ -2,6 +2,7 @@ package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -25,12 +26,14 @@ import com.example.digitaltourguide.network.RetrofitClient;
 import com.example.digitaltourguide.utils.HotFaqBarChart;
 import com.example.digitaltourguide.utils.SpUtils;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.google.gson.Gson;
@@ -38,6 +41,7 @@ import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -187,38 +191,15 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
             entries.add(new Entry(i, avgScores.get(i).floatValue()));
         }
 
+        // 满意度均分折线——主色采用暖橙 #FF9800（与绿色服务人次图区分）
         LineDataSet dataSet = new LineDataSet(entries, "满意度均分");
-        dataSet.setColor(Color.parseColor("#FF9800"));
-        dataSet.setCircleColor(Color.parseColor("#FF9800"));
-        dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(4f);
-        dataSet.setDrawValues(true);
-        dataSet.setValueTextSize(10f);
+        styleTrendDataSet(dataSet, Color.parseColor("#FF9800"));
 
         LineData lineData = new LineData(dataSet);
         lineChartSatisfaction.setData(lineData);
 
-        // X轴配置
-        XAxis xAxis = lineChartSatisfaction.getXAxis();
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(dates));
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setGranularity(1f);
-        if (dates.size() > 6) {
-            xAxis.setLabelRotationAngle(45f);
-        }
-
-        // Y轴：满意度范围0-5，可设置axisMaximum
-        YAxis leftAxis = lineChartSatisfaction.getAxisLeft();
-        leftAxis.setGranularity(1f);
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setAxisMaximum(5f);
-
-        lineChartSatisfaction.getDescription().setEnabled(false);
-        lineChartSatisfaction.getAxisRight().setEnabled(false);
-        lineChartSatisfaction.setTouchEnabled(true);
-        lineChartSatisfaction.setDragEnabled(true);
-        lineChartSatisfaction.animateX(500);
-        lineChartSatisfaction.invalidate();
+        // 满意度范围为 0~5 分，第六个参数 isScore=true 切换 Y 轴刻度到 0~5
+        applyChartStyle(lineChartSatisfaction, dates, true);
 
         // MarkerView
         markerSatisfaction = new DataTooltipMarkerView(this,
@@ -227,7 +208,9 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
         int[] counts = new int[countList.size()];
         for (int i = 0; i < countList.size(); i++) counts[i] = countList.get(i);
         markerSatisfaction.setCounts(counts);
+        markerSatisfaction.setChartView(lineChartSatisfaction);
         lineChartSatisfaction.setMarker(markerSatisfaction);
+        lineChartSatisfaction.invalidate();
     }
 
     //折线图
@@ -290,46 +273,20 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
             xLabels.add(item.getTime());
         }
 
+        // 服务人次折线——主色采用与 FAQ 区分的中性蓝绿 #10B981
         LineDataSet dataSet = new LineDataSet(entries, "服务人次");
-        dataSet.setColor(Color.parseColor("#4CAF50"));
-        dataSet.setCircleColor(Color.parseColor("#4CAF50"));
-        dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(4f);
-        dataSet.setDrawValues(true);
-        dataSet.setValueTextSize(10f);
+        styleTrendDataSet(dataSet, Color.parseColor("#10B981"));
 
         LineData lineData=new LineData(dataSet);
         lineChart.setData(lineData);
 
-        //x轴配置
-        XAxis xAxis=lineChart.getXAxis();//创建x轴对象
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(xLabels));//标签格式化
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);//x轴放到底部
-        if (xLabels.size() > 15) {
-            // 近30天模式：每隔5天显示一个标签，避免拥挤
-            xAxis.setGranularity(5f);
-            xAxis.setLabelCount(6);
-        } else {
-            xAxis.setGranularity(1f);//最小刻度间隔为1
-            xAxis.setLabelCount(xLabels.size());//标签的数量
-        }
-        if (xLabels.size() > 6) {
-            xAxis.setLabelRotationAngle(45f);
-        }// 如果标签数量超过 6 个，就让标签文字旋转 45°，避免文字挤在一起重叠
-
-        YAxis leftAxis = lineChart.getAxisLeft();// 获取左侧 Y 轴对象
-        leftAxis.setGranularity(1f);// 设置左侧 Y 轴的最小刻度间隔为 1，防止自动合并刻度
-        lineChart.getAxisRight().setEnabled(false);// 禁用右侧 Y 轴
-
-        //图表常规设置
-        lineChart.getDescription().setEnabled(false);// 隐藏图表右下角的默认描述文字
-        lineChart.setTouchEnabled(true);// 开启图表的触摸交互
-        lineChart.setDragEnabled(true);// 开启图表的拖拽/平移功能（手指滑动可以查看超出屏幕的部分）
-        lineChart.animateX(500);//从左到右展开图表，时间5毫秒
+        // 坐标轴 / 网格 / 图例等通用样式
+        applyChartStyle(lineChart, xLabels, false);
 
         // MarkerView 替代浮层
         markerTrend = new DataTooltipMarkerView(this,
                 xLabels.toArray(new String[0]), "人次：");
+        markerTrend.setChartView(lineChart);
         lineChart.setMarker(markerTrend);
         lineChart.invalidate();
     }
@@ -382,6 +339,160 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         hotFaqBarChart.setVisibility(View.VISIBLE);
         tvEmpty.setVisibility(View.GONE);
         hotFaqBarChart.setData(dataList);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 折线图高级样式工具方法（平滑曲线 / 渐变填充 / 虚线网格 / 图例）
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * 统一折线数据集样式：CUBIC_BEZIER 平滑曲线、白色描边实心圆点、
+     * 30% 透明渐变填充、数值标签。
+     *
+     * @param set   LineDataSet 对象
+     * @param color 线条主色（圆点内孔、填充均以此色衍生）
+     */
+    private void styleTrendDataSet(LineDataSet set, int color) {
+        // ---- 线条 ----
+        set.setColor(color);
+        set.setLineWidth(2.5f);
+        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);   // 平滑贝塞尔曲线
+        set.setCubicIntensity(0.2f);
+
+        // ---- 数据点：白色描边的实心圆 ----
+        // circleColor = 白色（外圈/描边），circleHoleColor = 线条色（内孔/实心）
+        set.setCircleColor(Color.WHITE);
+        set.setCircleHoleColor(color);
+        set.setCircleRadius(4f);
+        set.setCircleHoleRadius(3f);
+        set.setDrawCircleHole(true);
+
+        // ---- 数值标签 ----
+        set.setDrawValues(true);
+        set.setValueTextSize(10f);
+        set.setValueTextColor(Color.parseColor("#475569"));
+
+        // ---- 渐变填充（自上而下：线条色 30% 透明 → 全透明） ----
+        set.setDrawFilled(true);
+        set.setFillDrawable(makeGradientFill(color));
+
+        // ---- 点击高亮辅助线 ----
+        set.setHighlightEnabled(true);
+        set.setHighLightColor(Color.parseColor("#94A3B8"));
+        set.setHighlightLineWidth(1f);
+        set.enableDashedHighlightLine(10f, 5f, 0f);
+    }
+
+    /**
+     * 生成自上而下的渐变填充 Drawable（线条色 30% 不透明度 → 全透明）。
+     */
+    private GradientDrawable makeGradientFill(int color) {
+        int top = (color & 0x00FFFFFF) | 0x4D000000;   // 0x4D ≈ 30% 不透明度
+        int bottom = 0x00000000;                        // 完全透明
+        return new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
+    }
+
+    /**
+     * 应用图表通用基础样式：去除边框、浅灰横向虚线网格、底部图例、
+     * 双指缩放平移、X/Y 轴配色。
+     *
+     * @param chart   目标 LineChart
+     * @param xLabels X 轴日期标签列表
+     * @param isScore true 表示满意度图表（Y 轴 0~5），false 表示人次图表（自适应）
+     */
+    private void applyChartStyle(LineChart chart, List<String> xLabels, boolean isScore) {
+        // ---- 基础设置 ----
+        chart.getDescription().setEnabled(false);
+        chart.setDrawBorders(false);
+        chart.setDrawGridBackground(false);
+        chart.setBackgroundColor(Color.WHITE);
+        chart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+
+        // ---- 交互 ----
+        chart.setTouchEnabled(true);
+        chart.setDragEnabled(true);
+        chart.setScaleEnabled(true);
+        chart.setPinchZoom(true);                   // 双指缩放
+        chart.setDoubleTapToZoomEnabled(false);     // 双击缩放关闭，保留单指平移
+
+        // ---- 图例：底部水平排列，圆形 ----
+        Legend legend = chart.getLegend();
+        legend.setEnabled(true);
+        legend.setForm(Legend.LegendForm.CIRCLE);
+        legend.setFormSize(8f);
+        legend.setFormToTextSpace(6f);
+        legend.setTextSize(12f);
+        legend.setTextColor(Color.parseColor("#6B7280"));
+        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
+        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
+        legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
+        legend.setDrawInside(false);
+        legend.setYOffset(8f);
+
+        // ---- X 轴：底部、次要灰色、无轴线/无竖向网格 ----
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setTextSize(11f);
+        xAxis.setDrawGridLines(false);              // 不画竖向网格线
+        xAxis.setDrawAxisLine(false);               // 不画 X 轴线
+        xAxis.setGranularity(1f);
+        xAxis.setYOffset(6f);
+
+        int size = xLabels.size();
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(xLabels));
+        if (size > 15) {
+            xAxis.setGranularity(5f);
+            xAxis.setLabelCount(6, false);
+        } else {
+            xAxis.setGranularity(1f);
+            xAxis.setLabelCount(size, false);
+        }
+        xAxis.setLabelRotationAngle(size > 6 ? 45f : 0f);
+
+        // ---- 左 Y 轴：浅灰横向虚线网格，无轴线 ----
+        YAxis leftAxis = chart.getAxisLeft();
+        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
+        leftAxis.setTextSize(11f);
+        leftAxis.setDrawGridLines(true);
+        leftAxis.enableGridDashedLine(10f, 5f, 0f);
+        leftAxis.setGridColor(Color.parseColor("#3394A3B8"));   // 20% 透明度
+        leftAxis.setGridLineWidth(0.8f);
+        leftAxis.setDrawAxisLine(false);
+        leftAxis.setXOffset(8f);
+
+        if (isScore) {
+            // 满意度 Y 轴：固定 0~5 分，6 个刻度
+            leftAxis.setAxisMinimum(0f);
+            leftAxis.setAxisMaximum(5f);
+            leftAxis.setLabelCount(6, true);
+            leftAxis.setGranularity(1f);
+            leftAxis.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.format(Locale.CHINA, "%.1f", value);
+                }
+            });
+        } else {
+            // 人次 Y 轴：自动范围，整数刻度
+            leftAxis.setAxisMinimum(0f);
+            leftAxis.setGranularity(1f);
+            leftAxis.setLabelCount(6, false);
+            leftAxis.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.valueOf((int) value);
+                }
+            });
+        }
+
+        // ---- 右 Y 轴：隐藏 ----
+        chart.getAxisRight().setEnabled(false);
+
+        // ---- 留白 ----
+        chart.setExtraOffsets(8f, 12f, 8f, 12f);
+        chart.animateX(600);
     }
 
     private void initView() {
