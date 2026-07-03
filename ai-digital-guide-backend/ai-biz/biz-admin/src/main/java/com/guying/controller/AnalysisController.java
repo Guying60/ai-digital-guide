@@ -59,5 +59,4 @@ public class AnalysisController {
         return Result.success(suggestionVO);
     }
 
-
 }

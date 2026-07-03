@@ -40,8 +40,6 @@ public class ChatSessionContext {
     /** 按 PTS 时钟节流的视频出站发送器，afterConnectionEstablished 创建。 */
     @Setter private volatile OutboundPacer outboundPacer;
 
-    @Setter
-    private volatile String pendingImage;
     private volatile long lastActiveTime;
 
     public ChatSessionContext(WebSocketSession session) {
@@ -59,17 +57,6 @@ public class ChatSessionContext {
 
     public void touchActive() {
         this.lastActiveTime = System.currentTimeMillis();
-    }
-
-    /** 取出并清空待处理图片，保证只消费一次 */
-    public String consumePendingImage() {
-        String img = this.pendingImage;
-        this.pendingImage = null;
-        return img;
-    }
-
-    public void clearPendingImage() {
-        this.pendingImage = null;
     }
 
     /** 新一轮对话开始 / 打断时复位句末补静音的轮次计数。 */

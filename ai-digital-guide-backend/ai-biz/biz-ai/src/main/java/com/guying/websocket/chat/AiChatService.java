@@ -10,20 +10,16 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.MimeTypeUtils;
 import reactor.core.publisher.Flux;
 
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AI 讲解员调用入口：
- *  - 根据是否带图选择 VL / DS 模型；
+ *  - 纯文本对话流（后置摄像头"景象识别"方案已弃用，VL 图像问答链路移除）；
  *  - 流式接收文本，按标点切句，逐句下发 aiOutput 并入队 TTS；
  *  - 异步触发用户体验/情感分析。
  */
@@ -33,9 +29,6 @@ public class AiChatService {
 
     @Autowired
     private RateLimiterUtil rateLimiterUtil;
-    @Autowired
-    @Qualifier("vlGuideChatClient")
-    private ChatClient vlGuideChatClient;
 
     @Autowired
     @Qualifier("llmGuideChatClient")
@@ -64,11 +57,9 @@ public class AiChatService {
         ctx.resetRound();
         String conversationId = ctx.conversationId();
         String prompt = dynamicPromptService.build(userText, ctx.getUserId(), ctx.getAttractionId());
-        String pendingImage = ctx.consumePendingImage();
 
-        Flux<String> stream = (pendingImage == null)
-                ? streamDs(userText, prompt, conversationId)
-                : streamVl(userText, prompt, conversationId, pendingImage);
+        // 后置摄像头"景象识别"方案已弃用，对话一律走纯文本流
+        Flux<String> stream = streamDs(userText, prompt, conversationId);
 
         consumeStream(ctx, stream);
 
@@ -80,18 +71,6 @@ public class AiChatService {
         log.info("调用 llm 模型");
         return llmGuideChatClient.prompt()
                 .user(u -> u.text(userText))
-                .system(prompt)
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
-                .stream()
-                .content();
-    }
-
-    private Flux<String> streamVl(String userText, String prompt, String conversationId, String base64Image) {
-        log.info("调用 VL 模型");
-        byte[] imageBytes = Base64.getDecoder().decode(base64Image);
-        Resource resource = new ByteArrayResource(imageBytes);
-        return vlGuideChatClient.prompt()
-                .user(u -> u.text(userText).media(MimeTypeUtils.IMAGE_PNG, resource))
                 .system(prompt)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream()

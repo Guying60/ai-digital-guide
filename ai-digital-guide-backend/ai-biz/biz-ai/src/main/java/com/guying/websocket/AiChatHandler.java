@@ -8,6 +8,8 @@ import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
 import com.guying.attractions.service.ReviewInternalService;
 import com.guying.pojo.vo.RoutePlanVO;
+import com.guying.ratelimit.RateLimiterUtil;
+import com.guying.service.FaceEmotionService;
 import com.guying.service.RouteRecommendationService;
 import com.guying.user.service.UserInternalService;
 import com.guying.websocket.chat.AiChatService;
@@ -79,6 +81,12 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     @Autowired
     private RouteRecommendationService routeRecommendationService;
 
+    @Autowired
+    private FaceEmotionService faceEmotionService;
+
+    @Autowired
+    private RateLimiterUtil rateLimiterUtil;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -121,14 +129,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 log.info("用户输入文本：{}", wordText);
                 aiChatService.invoke(ctx, wordText);
             }
-            case "photo" -> {
-                ctx.setPendingImage(node.get("photo").asText());
-            }
-            case "camera" -> {
-                if ("off".equals(node.get("status").asText())) {
-                    ctx.clearPendingImage();
-                }
-            }
+            case "emotionFrame" -> handleEmotionFrame(ctx, node);
             case "ping" -> sender.sendJson(ctx, "pong", null);
             case "interrupt" -> handleInterrupt(ctx);
             case "routeGenerate" -> routeRecommendationService.generateAndPush(ctx);
@@ -195,6 +196,24 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     /** micOff 与 cleanup 共用：停掉 NLS*/
     private void closeMicAndTts(ChatSessionContext ctx) {
         nlsTranscriberManager.close(ctx);
+    }
+
+    /**
+     * 处理前置摄像头低频采集的面部表情帧：
+     *  - 令牌桶限流（每 userId 每 5 秒最多 1 次视觉调用），超限静默丢弃，控制大模型成本；
+     *  - 异步交给 FaceEmotionService 做视觉分类 + 落库，不阻塞 WS 线程；
+     *  - 原始图像不入库。
+     */
+    private void handleEmotionFrame(ChatSessionContext ctx, ObjectNode node) {
+        String base64 = node.has("photo") ? node.get("photo").asText() : null;
+        if (base64 == null || base64.isEmpty()) {
+            return;
+        }
+        if (!rateLimiterUtil.tryAcquire("ai:face-emotion:" + ctx.getUserId(), 1, 5)) {
+            log.debug("面部表情帧被限流丢弃, userId={}", ctx.getUserId());
+            return;
+        }
+        faceEmotionService.analyze(base64, ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
     }
 
     /**
