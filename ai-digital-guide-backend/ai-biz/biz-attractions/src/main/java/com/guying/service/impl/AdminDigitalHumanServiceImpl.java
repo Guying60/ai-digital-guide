@@ -7,6 +7,7 @@ import com.guying.common.constants.RedisConstants;
 import com.guying.common.enums.TaskStatusEnum;
 import com.guying.context.AdminContext;
 import com.guying.converter.DigitalHumanConverter;
+import com.guying.exception.ServiceException;
 import com.guying.mapper.AdminDigitalHumanMapper;
 import com.guying.message.VideoDeleteMessage;
 import com.guying.message.VideoPreloadMessage;
@@ -82,7 +83,7 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
                 .eq(DigitalHuman::getAdminId, id);
         DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
         if (entity == null) {
-            throw new RuntimeException("数字人不存在");
+            throw new ServiceException("数字人不存在");
         }
         return digitalHumanConverter.toVO(entity);
     }

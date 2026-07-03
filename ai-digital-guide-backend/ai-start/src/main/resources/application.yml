@@ -101,7 +101,7 @@ spring:
 
     # ---- 面部表情情感分析：视觉大模型（千问全模态，支持图像输入） ----
     emotion:
-      vision-model: ${cpp.ai.emotion.vision-model:qwen3.7-max}
+      vision-model: ${cpp.ai.emotion.vision-model:qwen3.7-plus}
 
   # ---- autoDL MuseTalk服务器地址 ----
   museTalk:
