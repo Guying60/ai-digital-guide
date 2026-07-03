@@ -94,9 +94,6 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         lambdaQueryWrapper.eq(DigitalHuman::getAttractionId, attractionId)
                 .eq(DigitalHuman::getAdminId, id);
         DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
-        if (entity == null) {
-            throw new ServiceException("数字人不存在");
-        }
         return digitalHumanConverter.toVO(entity);
     }
 
