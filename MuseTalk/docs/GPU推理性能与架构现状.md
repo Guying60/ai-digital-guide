@@ -41,7 +41,7 @@
                     Android 客户端
 ```
 
-参考：`docs/DEPLOYMENT.md` — 推荐配置为 5090 32GB 同实例运行两服务，合计约 12–16GB 显存。
+参考：`docs/产品部署文档.md` — 推荐配置为 5090 32GB 同实例运行两服务，合计约 12–16GB 显存。
 
 ### 2.2 单用户多句对话时序
 
@@ -287,7 +287,7 @@ watch -n 1 'nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,powe
 | `SoVITS/services/cosyvoice_engine.py` | CosyVoice 引擎、GPU 锁 |
 | `ai-digital-guide-backend/.../CosyVoiceConnector.java` | TTS ↔ MuseTalk 中继、`audio_end` 转发 |
 | `ai-digital-guide-backend/.../AiChatService.java` | LLM 分句 → TTS 单线程池提交 |
-| `docs/DEPLOYMENT.md` | 5090 部署配置与显存估算 |
+| `docs/产品部署文档.md` | 5090 部署配置与显存估算 |
 
 ---
 
