@@ -31,6 +31,19 @@
         android:layout_marginTop="4dp"
         android:text="录制视频" />
 
+    <TextView
+        android:id="@+id/tv_selected_audio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="未选择任何音频"
+        android:layout_marginTop="8dp" />
+
+    <Button
+        android:id="@+id/btn_select_audio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择音频文件" />
+
     <Button
         android:id="@+id/btn_upload"
         android:layout_width="match_parent"

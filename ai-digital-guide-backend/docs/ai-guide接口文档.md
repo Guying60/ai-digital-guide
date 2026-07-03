@@ -1327,7 +1327,8 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 | 参数名       | 类型    | 必填 | 说明                                |
 | ------------ | ------- | ---- | ----------------------------------- |
 | id           | Long    | 否   | 数字人 ID（雪花ID，字符串传递）      |
-| ossUrl       | String  | 是   | 数字人肖像图片的 OSS 地址           |
+| videoUrl     | String  | 是   | 数字人驱动视频 OSS 地址             |
+| audioUrl     | String  | 是   | 数字人音色样本音频 OSS 地址         |
 | attractionId | Long    | 是   | 关联的景点 ID（雪花ID，字符串传递） |
 
 **请求示例：**
@@ -1335,12 +1336,13 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 ```json
 {
   "id": "2044359968888639999",
-  "ossUrl": "https://oss.example.com/portrait/guide_02.jpg",
+  "videoUrl": "https://oss.example.com/video/2026/05/19/guide_02.mp4",
+  "audioUrl": "https://oss.example.com/audio/2026/05/19/guide_02.wav",
   "attractionId": "2044359968888639490"
 }
 ```
 
-> 新增/修改成功后，算力服务器会在后台异步预加载视频。前端应调用 **2.15 预加载状态轮询** 接口，等到状态变为 `SUCCESS` 后数字人才可用。预加载完成后可调用 **2.19 生成测试视频** 接口生成一段测试视频，供管理员预览推理效果。
+> `videoUrl` 与 `audioUrl` 需分别由 **2.18 上传数字人驱动视频** 和 **2.18.1 上传数字人音色音频** 获得，二者都必填。新增/修改成功后，算力服务器会在后台异步下载视频和音频，视频用于数字人驱动，音频会统一转码为 16kHz 单声道 wav 作为音色样本。前端应调用 **2.15 预加载状态轮询** 接口，等到状态变为 `SUCCESS` 后数字人才可用。预加载完成后可调用 **2.19 生成测试视频** 接口生成一段测试视频，供管理员预览推理效果。
 
 **成功响应示例：**
 
@@ -1349,7 +1351,8 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
   "code": 1,
   "data": {
     "id": "2044359968888639999",
-    "ossUrl": "https://oss.example.com/portrait/guide_02.jpg"
+    "videoUrl": "https://oss.example.com/video/2026/05/19/guide_02.mp4",
+    "audioUrl": "https://oss.example.com/audio/2026/05/19/guide_02.wav"
   },
   "msg": "success"
 }
@@ -1378,7 +1381,8 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
   "code": 1,
   "data": {
     "id": "2044359968888639999",
-    "ossUrl": "https://oss.example.com/portrait/guide_02.jpg"
+    "videoUrl": "https://oss.example.com/video/2026/05/19/guide_02.mp4",
+    "audioUrl": "https://oss.example.com/audio/2026/05/19/guide_02.wav"
   },
   "msg": "success"
 }
@@ -1404,9 +1408,9 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 
 | 值         | 含义                                                       |
 | ---------- | ---------------------------------------------------------- |
-| PROCESSING | 正在下载视频并加载模型，继续轮询                           |
+| PROCESSING | 正在下载视频和音频并加载模型，继续轮询                     |
 | SUCCESS    | 预加载完成，数字人可以使用                                 |
-| FAILED     | 预加载失败，检查视频文件是否有效或重试                     |
+| FAILED     | 预加载失败，检查视频/音频文件是否有效或重试                |
 | null       | 尚未开始处理，继续轮询                                     |
 
 **响应示例：**
@@ -1423,7 +1427,7 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 
 **请求 URL：** `DELETE /admins/attractions/digital-human/{id}`
 
-> ⚠️ 删除前请弹窗二次确认
+> ⚠️ 删除前请弹窗二次确认。删除成功后，后端会清理数字人视频、音频 OSS 文件，并通知算力服务器删除本地视频、音频与缓存。
 
 **请求参数（路径参数）：**
 
@@ -1493,9 +1497,9 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 
 **请求方式：** `multipart/form-data`
 
-**接口说明：** 上传数字人驱动视频至阿里云 OSS，返回视频 OSS 地址。返回的 URL 可用于 2.13 新增/修改数字人时填入 `ossUrl` 字段。
+**接口说明：** 上传数字人驱动视频至阿里云 OSS，返回视频 OSS 地址。返回的 URL 可用于 2.13 新增/修改数字人时填入 `videoUrl` 字段。
 
-> 上传视频仅完成文件存储，预加载在调用 2.13 新增/修改数字人后才会触发。预加载完成后（轮询 2.15 获得 `SUCCESS`）数字人才可用。
+> 上传视频仅完成文件存储，需同时上传音频并调用 2.13 新增/修改数字人后才会触发预加载。预加载完成后（轮询 2.15 获得 `SUCCESS`）数字人才可用。
 
 **请求参数（form-data + Query）：**
 
@@ -1536,6 +1540,57 @@ file: <视频文件>
   "code": 400,
   "data": null,
   "msg": "文件格式错误，请上传视频"
+}
+```
+
+---
+
+## 2.18.1 上传数字人音色音频
+
+**请求 URL：** `POST /admins/file/audio`
+
+**请求方式：** `multipart/form-data`
+
+**接口说明：** 上传数字人音色样本音频至阿里云 OSS，返回音频 OSS 地址。返回的 URL 可用于 2.13 新增/修改数字人时填入 `audioUrl` 字段。算力服务器会在预加载阶段将该音频统一转码为 16kHz 单声道 wav；若下载或转码失败，2.15 预加载状态会变为 `FAILED`。
+
+**请求参数（form-data）：**
+
+| 参数名 | 位置      | 类型 | 必填 | 说明                                  |
+| ------ | --------- | ---- | ---- | ------------------------------------- |
+| file   | form-data | File | 是   | 音频文件，仅支持音频格式（`audio/*`） |
+
+**请求示例：**
+
+```
+POST /admins/file/audio
+Content-Type: multipart/form-data
+
+file: <音频文件>
+```
+
+**响应参数说明：**
+
+| 字段 | 类型   | 说明              |
+| ---- | ------ | ----------------- |
+| data | String | 音频 OSS 访问地址 |
+
+**成功响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": "https://oss.example.com/audio/2026/05/19/xxx.wav",
+  "msg": "success"
+}
+```
+
+**错误响应示例：**
+
+```json
+{
+  "code": 400,
+  "data": null,
+  "msg": "文件格式错误，请上传音频"
 }
 ```
 

@@ -52,6 +52,27 @@ public class AIHumanRepository {
         return ld;
     }
 
+    //上传音频
+    public LiveData<BaseResponse<String>> uploadAudio(MultipartBody.Part filePart){
+        MutableLiveData<BaseResponse<String>> ld=new MutableLiveData<>();
+        apiService.uploadDigitalHumanAudio(filePart)
+                .enqueue(new Callback<BaseResponse<String>>() {
+                    @Override
+                    public void onResponse(Call<BaseResponse<String>> call, Response<BaseResponse<String>> response) {
+                        ld.postValue(response.body());
+                    }
+
+                    @Override
+                    public void onFailure(Call<BaseResponse<String>> call, Throwable t) {
+                        BaseResponse<String> errorResp = new BaseResponse<>();
+                        errorResp.setCode(500);
+                        errorResp.setMsg("网络错误：" + t.getMessage());
+                        ld.postValue(errorResp);
+                    }
+                });
+        return ld;
+    }
+
     // 预加载状态轮询（2.15）
     public LiveData<BaseResponse<String>> getPreloadStatus(String attractionId) {
         MutableLiveData<BaseResponse<String>> ld = new MutableLiveData<>();

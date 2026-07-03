@@ -25,6 +25,8 @@ public class AIHumanViewModel extends ViewModel {
     private MutableLiveData<BaseResponse<DigitalHuman>> upsertResult = new MutableLiveData<>();
     // 上传视频结果
     private MutableLiveData<BaseResponse<String>> uploadResult = new MutableLiveData<>();
+    // 上传音频结果
+    private MutableLiveData<BaseResponse<String>> uploadAudioResult = new MutableLiveData<>();
     // 预加载状态轮询
     private MutableLiveData<BaseResponse<String>> preloadStatusResult = new MutableLiveData<>();
     // 生成测试视频
@@ -78,6 +80,7 @@ public class AIHumanViewModel extends ViewModel {
     }
     public LiveData<BaseResponse<DigitalHuman>> getUpsertResult() { return upsertResult; }
     public LiveData<BaseResponse<String>> getUploadResult() { return uploadResult; }
+    public LiveData<BaseResponse<String>> getUploadAudioResult() { return uploadAudioResult; }
     public LiveData<BaseResponse<DigitalHuman>> getQueryResult() {return queryResult;}
 
     public LiveData<BaseResponse<Void>> getDeleteResult() {return deleteResult;}
@@ -86,6 +89,13 @@ public class AIHumanViewModel extends ViewModel {
     public void uploadVideo(String attractionId, MultipartBody.Part filePart) {
         repository.uploadVideo(attractionId, filePart).observeForever(response -> {
             uploadResult.postValue(response);
+        });
+    }
+
+    // 上传音频
+    public void uploadAudio(MultipartBody.Part filePart) {
+        repository.uploadAudio(filePart).observeForever(response -> {
+            uploadAudioResult.postValue(response);
         });
     }
 

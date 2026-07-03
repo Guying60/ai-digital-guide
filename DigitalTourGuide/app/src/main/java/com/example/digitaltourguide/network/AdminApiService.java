@@ -162,6 +162,13 @@ public interface AdminApiService {
             @Query("attractionId") String attractionId
     );
 
+    //上传数字人音色音频
+    @Multipart
+    @POST("admins/file/audio")
+    Call<BaseResponse<String>> uploadDigitalHumanAudio(
+            @Part MultipartBody.Part file
+    );
+
     // 2.19 生成测试视频
     @POST("admins/attractions/digital-human/test-video/{attractionId}")
     Call<ResponseBody> generateTestVideoRaw(@Path("attractionId") String attractionId, @Body Map<String, String> body);

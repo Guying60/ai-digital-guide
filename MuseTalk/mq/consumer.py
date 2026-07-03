@@ -11,18 +11,17 @@ from config import (
     BASE_VIDEO_DIR, VOICES_DIR, TEST_VIDEO_DIR, COSYVOICE_URL,
     REDIS_TEST_VIDEO_KEY, REDIS_TEST_VIDEO_TTL, DEFAULT_TEST_TEXT_PATH,
 )
-from utils.helper import download_video
+from utils.helper import download_file
 
 logger = logging.getLogger(__name__)
 
 
-async def extract_audio(video_path: str, attraction_id: str) -> str:
+async def convert_audio(audio_path: str, attraction_id: str) -> str:
     output_path = VOICES_DIR / f"{attraction_id}.wav"
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
 
     proc = await asyncio.create_subprocess_exec(
-        "ffmpeg", "-i", video_path,
-        "-t", "30",
+        "ffmpeg", "-i", audio_path,
         "-ar", "16000",
         "-ac", "1",
         "-vn",
@@ -128,16 +127,25 @@ async def start_consumer(engine) -> None:
 
                 async def handle_preload(message: aio_pika.IncomingMessage):
                     async with message.process():
+                        attraction_id = "unknown"
                         try:
                             body = json.loads(message.body.decode())
                             attraction_id = str(body["attractionId"])
                             video_url = body["videoUrl"]
-                            dest = str(BASE_VIDEO_DIR / f"{attraction_id}.mp4")
+                            audio_url = body["audioUrl"]
+                            BASE_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+                            VOICES_DIR.mkdir(parents=True, exist_ok=True)
+                            video_dest = str(BASE_VIDEO_DIR / f"{attraction_id}.mp4")
+                            audio_source = VOICES_DIR / f"{attraction_id}.source"
 
                             logger.info(f"[MQ] 收到预加载消息: attractionId={attraction_id}")
                             await _set_preload_status(attraction_id, "PROCESSING")
-                            await download_video(video_url, dest)
-                            logger.info(f"[MQ] 下载完成: {dest}")
+                            await download_file(video_url, video_dest)
+                            logger.info(f"[MQ] 视频下载完成: {video_dest}")
+
+                            await download_file(audio_url, str(audio_source))
+                            audio_path = await convert_audio(str(audio_source), attraction_id)
+                            logger.info(f"[MQ] 音频下载并转码完成: {audio_path}")
 
                             # 驱逐旧缓存，确保更新场景也能重新加载
                             engine.avatar_cache.pop(attraction_id, None)
@@ -145,16 +153,17 @@ async def start_consumer(engine) -> None:
                             await asyncio.to_thread(engine.load_avatar, attraction_id)
                             logger.info(f"[MQ] 预加载完成: {attraction_id}")
                             await _set_preload_status(attraction_id, "SUCCESS")
-
-                            try:
-                                audio_path = await extract_audio(dest, attraction_id)
-                                logger.info(f"[MQ] 音频抽取完成: {audio_path}")
-                                await notify_cosyvoice_reload()
-                            except Exception as e:
-                                logger.warning(f"[MQ] 音频抽取失败（不影响主流程）: {e}", exc_info=True)
+                            await notify_cosyvoice_reload()
                         except Exception as e:
                             logger.error(f"[MQ] 处理预加载消息失败: {e}", exc_info=True)
-                            await _set_preload_status(attraction_id, "FAILED")
+                            if attraction_id != "unknown":
+                                await _set_preload_status(attraction_id, "FAILED")
+                        finally:
+                            try:
+                                if "audio_source" in locals() and audio_source.exists():
+                                    audio_source.unlink()
+                            except Exception as e:
+                                logger.warning(f"[MQ] 清理临时音频失败: {e}")
 
                 async def handle_delete(message: aio_pika.IncomingMessage):
                     async with message.process():

@@ -10,4 +10,5 @@ import java.io.Serializable;
 public class VideoPreloadMessage implements Serializable {
     private Long attractionId;
     private String videoUrl;
+    private String audioUrl;
 }
