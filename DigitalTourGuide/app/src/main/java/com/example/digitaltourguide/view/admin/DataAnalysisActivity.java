@@ -375,7 +375,6 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         hotFaqBarChart.setVisibility(View.GONE);
         tvEmpty.setVisibility(View.VISIBLE);
         tvEmpty.setText(message);
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
    //展示柱状图
