@@ -2,11 +2,14 @@ package com.guying.service.impl;
 
 import com.guying.ai.dto.EmotionStatDTO;
 import com.guying.ai.dto.EmotionTrendDTO;
+import com.guying.ai.dto.FaceEmotionTrendDTO;
 import com.guying.ai.dto.FocusStatDTO;
 import com.guying.ai.dto.SuggestionDTO;
 import com.guying.ai.service.AIExperienceAnalysisInternalService;
 import com.guying.ai.service.AiServiceSuggestionInternalService;
+import com.guying.ai.service.FaceEmotionInternalService;
 import com.guying.common.enums.EmotionEnum;
+import com.guying.common.enums.ExpressionEnum;
 import com.guying.common.enums.FocusEnum;
 import com.guying.converter.AnalysisConverter;
 import com.guying.pojo.vo.EmotionFocusCardVO;
@@ -19,7 +22,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AnalysisServiceImpl implements AnalysisService {
@@ -29,11 +31,26 @@ public class AnalysisServiceImpl implements AnalysisService {
     @Autowired
     private AIExperienceAnalysisInternalService aiExperienceAnalysisInternalService;
     @Autowired
+    private FaceEmotionInternalService faceEmotionInternalService;
+    @Autowired
     private AnalysisConverter analysisConverter;
+
+    /**
+     * 面部表情 code → 文本情感 code 的映射。
+     * 喜悦/惊讶 → 正面，中性/困惑 → 中性，厌恶/愤怒/悲伤 → 负面。
+     */
+    private static EmotionEnum mapFaceToEmotion(int expressionCode) {
+        return switch (ExpressionEnum.fromCode(expressionCode)) {
+            case JOY, SURPRISE -> EmotionEnum.POSITIVE;
+            case NEUTRAL, CONFUSION -> EmotionEnum.NEUTRAL;
+            case DISGUST, ANGER, SADNESS -> EmotionEnum.NEGATIVE;
+        };
+    }
 
     @Override
     public EmotionTrendVO getEmotionTrend(Long attractionId, Integer days) {
-        List<EmotionTrendDTO> rawList = aiExperienceAnalysisInternalService.getEmotionTrend(attractionId, days);
+        List<EmotionTrendDTO> textList = aiExperienceAnalysisInternalService.getEmotionTrend(attractionId, days);
+        List<FaceEmotionTrendDTO> faceList = faceEmotionInternalService.getExpressionTrend(attractionId, days);
 
         // 生成完整日期序列，防止某天无数据导致断点
         List<String> dates = new ArrayList<>();
@@ -47,9 +64,18 @@ public class AnalysisServiceImpl implements AnalysisService {
         for (String date : dates) {
             byDate.put(date, new HashMap<>());
         }
-        for (EmotionTrendDTO dto : rawList) {
+
+        // 文本情感数据
+        for (EmotionTrendDTO dto : textList) {
             byDate.computeIfAbsent(dto.getDate(), k -> new HashMap<>())
                     .put(dto.getEmotion(), dto.getCount());
+        }
+
+        // 面部表情数据：映射到文本三类后累加
+        for (FaceEmotionTrendDTO dto : faceList) {
+            EmotionEnum target = mapFaceToEmotion(dto.getExpression());
+            byDate.computeIfAbsent(dto.getDate(), k -> new HashMap<>())
+                    .merge(target.getCode(), dto.getCount(), Integer::sum);
         }
 
         // 组装 VO
@@ -116,12 +142,26 @@ public class AnalysisServiceImpl implements AnalysisService {
         EmotionStatDTO emotionStat = aiExperienceAnalysisInternalService.getEmotionStat(attractionId, days);
         List<FocusStatDTO> focusStatList = aiExperienceAnalysisInternalService.getFocusStat(attractionId, days);
         List<FocusStatDTO> worstFocusList = aiExperienceAnalysisInternalService.getWorstFocus(attractionId, days);
+        List<FaceEmotionTrendDTO> faceList = faceEmotionInternalService.getExpressionTrend(attractionId, days);
+
+        // 汇总面部贡献：喜悦+惊讶 → 正面
+        int facePositive = 0;
+        int faceTotal = 0;
+        for (FaceEmotionTrendDTO dto : faceList) {
+            faceTotal += dto.getCount();
+            EmotionEnum mapped = mapFaceToEmotion(dto.getExpression());
+            if (mapped == EmotionEnum.POSITIVE) {
+                facePositive += dto.getCount();
+            }
+        }
 
         EmotionFocusCardVO vo = new EmotionFocusCardVO();
 
-        // 正面情感占比
-        double positiveRate = emotionStat.getTotal() == 0 ? 0.0
-                : Math.round(emotionStat.getPositiveCount() * 1000.0 / emotionStat.getTotal()) / 10.0;
+        // 正面情感占比（文本 + 面部合并）
+        long total = emotionStat.getTotal() + faceTotal;
+        long positive = emotionStat.getPositiveCount() + facePositive;
+        double positiveRate = total == 0 ? 0.0
+                : Math.round(positive * 1000.0 / total) / 10.0;
         vo.setPositiveRate(positiveRate);
 
         // 较上期变化
