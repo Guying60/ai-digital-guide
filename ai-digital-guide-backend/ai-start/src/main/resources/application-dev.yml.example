@@ -32,6 +32,9 @@ cpp:
     openai:
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       api-key: <your-dashscope-api-key>
+    # 面部表情情感分析视觉模型（千问全模态，支持图像输入）；默认 qwen3.7-max
+    emotion:
+      vision-model: qwen3.7-max
   jwt:
     secret: <your-jwt-secret>
   museTalk:

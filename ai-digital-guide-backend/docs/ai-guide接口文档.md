@@ -867,6 +867,25 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 { "type": "routeError", "text": "暂无可生成路线的景点资料" }
 ```
 
+### 1.16.3 WebSocket 表情采集协议
+
+复用数字人对话的 WebSocket 连接（`/chat?token=<jwt>&attractionId=<id>`）。表情帧为 JSON 文本帧，以 `type` 字段区分。
+
+**客户端 → 服务端（入站，新增）：**
+
+| type            | 附加字段                | 说明                                                         |
+| --------------- | ----------------------- | ------------------------------------------------------------ |
+| `emotionFrame`  | `photo` (String, base64) | 前置摄像头低频采集的面部帧（JPEG base64，无 data: 前缀），后端限额+异步视觉分析并落库，原始图像不入库/不存 OSS |
+
+请求示例：
+
+```json
+{ "type": "emotionFrame", "photo": "<base64 jpeg>" }
+```
+
+**限流说明：** 后端每用户每 5s 最多处理 1 帧；超限帧静默丢弃。客户端应保持 8~12s 间隔发送、分辨率 480×640 以内。
+
+
 ---
 
 # 二、管理员端接口
@@ -1659,6 +1678,8 @@ POST /admins/attractions/digital-human/test-video/2044359968888639490
 
 > 返回数据已按 `count` 降序排列
 
+**无数据时：** `data` 为空数组 `[]`
+
 **响应示例：**
 
 ```json
@@ -1695,6 +1716,8 @@ POST /admins/attractions/digital-human/test-video/2044359968888639490
 | summary.totalChats    | Integer | 所选周期内的总聊天数                                                 |
 | trendList[].time      | String  | X 轴时间节点，`days=1` 时格式 `HH:00`，`days>1` 时格式 `YYYY-MM-DD` |
 | trendList[].count     | Integer | Y 轴数值，对应时间节点的聊天次数                                     |
+
+**无数据时：** `summary.totalChats` 为 `0`，`trendList` 仍返回完整时间轴，每个点 `count` 均为 `0`（不会断档）
 
 **响应示例（days=7）：**
 
@@ -1762,6 +1785,8 @@ Authorization: Bearer <admin_token>
 | dates         | List\<String\> | 日期列表，格式 `yyyy-MM-dd`，升序       |
 | avgScores     | List\<Double\> | 每日均分，与 dates 一一对应             |
 | counts        | List\<Integer\>| 每日评价数，与 dates 一一对应           |
+
+**无数据时：** `totalAvgScore` 为 `null`（前端需做空值处理），`dates` 仍返回完整日期序列，`avgScores` 全部为 `0.0`，`counts` 全部为 `0`
 
 **响应示例：**
 
@@ -1834,6 +1859,7 @@ Authorization: Bearer <admin_token>
 - 折线图使用 `*Rate` 字段渲染曲线，点击数据点时用同下标的 `*Count` 展示当日详情
 - 环形图直接使用 `total*Rate` 三个字段，无需前端二次计算
 - 某天无数据时 count 为 0、rate 为 0.0，日期序列完整不断档，前端无需做缺失处理
+- **整个周期完全无数据时：** 所有 count 为 `0`、rate 为 `0.0`，`total*Rate` 均为 `0.0`，日期序列照常返回
 
 ---
 
@@ -1879,11 +1905,91 @@ Authorization: Bearer <admin_token>
 **前端使用说明：**
 
 - `topFocus` 和 `worstFocus`：第二名数量不足第一名一半时只返回第一名，否则返回前两名以 `/` 拼接
-- 当期无数据时 `positiveRate`、`topFocusRate` 返回 0.0，`topFocus`、`worstFocus` 返回"暂无数据"
+- **无数据时：** `positiveRate` 为 `0.0`，`positiveRateChange` 为 `0.0`，`changeLabel` 照常返回（如"较上个7天"），`topFocus` 和 `worstFocus` 返回 `"暂无数据"`，`topFocusRate` 始终为 `null`（当前版本未赋值）
 
 ---
 
-## 4.3 获取 AI 服务建议
+## 4.3 面部表情趋势
+
+**请求 URL：** `GET /admin/analysis/face-emotion-trend/{attractionId}`
+
+**请求参数：**
+
+| 参数名       | 类型    | 必填 | 说明                     |
+| ------------ | ------- | ---- | ------------------------ |
+| attractionId | String  | 是   | 景区 ID，路径参数        |
+| days         | Integer | 是   | 时间范围，可传 7 或 30   |
+
+**响应参数说明：**
+
+| 参数名            | 类型            | 说明                                                |
+| ----------------- | --------------- | --------------------------------------------------- |
+| dates             | List\<String\>  | 日期序列，格式 MM-dd，无数据日期照常返回            |
+| joyCount          | List\<Integer\> | 每日喜悦表情数量，下标与 dates 对应                 |
+| surpriseCount     | List\<Integer\> | 每日惊讶表情数量                                    |
+| neutralCount      | List\<Integer\> | 每日中性表情数量                                    |
+| confusionCount    | List\<Integer\> | 每日困惑表情数量                                    |
+| disgustCount      | List\<Integer\> | 每日厌恶表情数量                                    |
+| angerCount        | List\<Integer\> | 每日愤怒表情数量                                    |
+| sadnessCount      | List\<Integer\> | 每日悲伤表情数量                                    |
+| joyRate           | List\<Double\>  | 每日喜悦表情占比，保留一位小数，如 68.4             |
+| surpriseRate      | List\<Double\>  | 每日惊讶表情占比                                    |
+| neutralRate       | List\<Double\>  | 每日中性表情占比                                    |
+| confusionRate     | List\<Double\>  | 每日困惑表情占比                                    |
+| disgustRate       | List\<Double\>  | 每日厌恶表情占比                                    |
+| angerRate         | List\<Double\>  | 每日愤怒表情占比                                    |
+| sadnessRate       | List\<Double\>  | 每日悲伤表情占比                                    |
+| totalJoyRate      | Double          | 所选时间段内喜悦表情整体占比                        |
+| totalSurpriseRate | Double          | 所选时间段内惊讶表情整体占比                        |
+| totalNeutralRate  | Double          | 所选时间段内中性表情整体占比                        |
+| totalConfusionRate| Double          | 所选时间段内困惑表情整体占比                        |
+| totalDisgustRate  | Double          | 所选时间段内厌恶表情整体占比                        |
+| totalAngerRate    | Double          | 所选时间段内愤怒表情整体占比                        |
+| totalSadnessRate  | Double          | 所选时间段内悲伤表情整体占比                        |
+
+**响应示例：**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "dates": ["06-26", "06-27", "06-28"],
+    "joyCount": [15, 20, 18],
+    "surpriseCount": [3, 5, 2],
+    "neutralCount": [60, 55, 62],
+    "confusionCount": [8, 6, 7],
+    "disgustCount": [1, 0, 2],
+    "angerCount": [2, 3, 1],
+    "sadnessCount": [5, 4, 6],
+    "joyRate": [15.8, 21.5, 18.4],
+    "surpriseRate": [3.2, 5.4, 2.0],
+    "neutralRate": [63.2, 59.1, 63.3],
+    "confusionRate": [8.4, 6.5, 7.1],
+    "disgustRate": [1.1, 0.0, 2.0],
+    "angerRate": [2.1, 3.2, 1.0],
+    "sadnessRate": [5.3, 4.3, 6.1],
+    "totalJoyRate": 18.5,
+    "totalSurpriseRate": 3.5,
+    "totalNeutralRate": 61.9,
+    "totalConfusionRate": 7.3,
+    "totalDisgustRate": 1.0,
+    "totalAngerRate": 2.1,
+    "totalSadnessRate": 5.3
+  },
+  "msg": "success"
+}
+```
+
+**前端使用说明：**
+
+- 折线图可选 7 个维度中 top-N 渲染，点击数据点时用同下标的 `*Count` 展示当日详情
+- 环形图直接使用 `total*Rate` 七个字段，无需前端二次计算
+- 某天无数据时 count 为 0、rate 为 0.0，日期序列完整不断档，前端无需做缺失处理
+- **整个周期完全无数据时：** 所有 count 为 `0`、rate 为 `0.0`，`total*Rate` 均为 `0.0`，日期序列照常返回
+
+---
+
+## 4.4 获取 AI 服务建议
 
 **请求 URL：** `GET /admin/analysis/ai-service-suggestion/{attractionId}`
 
@@ -1902,6 +2008,8 @@ Authorization: Bearer <admin_token>
 | ---------- | ------ | --------------------------- |
 | summary    | String | AI 综合分析后生成的总结内容 |
 | suggestion | String | AI 针对该景点给出的具体建议 |
+
+**无数据时：** `summary` 和 `suggestion` 均为 `null`
 
 **成功响应示例：**
 
