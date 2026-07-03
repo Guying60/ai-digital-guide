@@ -25,7 +25,7 @@ public class UserDigitalHumanController {
     private AdminDigitalHumanService adminDigitalHumanService;
 
     /**
-     * 查询景点数字人原始视频地址（含 ossUrl），供数字人页 WS 连接后待机循环播放。
+     * 查询景点数字人原始视频地址（含 videoUrl），供数字人页 WS 连接后待机循环播放。
      * @param attractionId 景点ID
      * @return DigitalHumanVO；无数字人时 data 为 null（前端优雅降级，不展示待机视频）
      */

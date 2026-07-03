@@ -3,7 +3,6 @@ package com.guying.controller;
 import com.guying.common.enums.TaskStatusEnum;
 import com.guying.common.result.Result;
 import com.guying.pojo.dto.DigitalHumanCreateDTO;
-import com.guying.pojo.dto.DigitalHumanUpdateDTO;
 import com.guying.pojo.dto.TestVideoRequestDTO;
 import com.guying.pojo.vo.DigitalHumanVO;
 import com.guying.service.AdminDigitalHumanService;
@@ -18,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -54,6 +52,18 @@ public class AdminDigitalHumanController {
     public Result<DigitalHumanVO> getDetail(@PathVariable Long attractionId) {
         DigitalHumanVO vo = adminDigitalHumanService.getDetail(attractionId);
         return Result.success(vo);
+    }
+
+    /**
+     * 删除数字人
+     * @param id 数字人ID
+     * @return
+     */
+    @Operation(summary = "删除数字人")
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteDigitalHuman(@PathVariable Long id) {
+        adminDigitalHumanService.deleteDigitalHuman(id);
+        return Result.success();
     }
 
     /**

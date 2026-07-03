@@ -7,5 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DigitalHumanCreateVO {
     private Long id;
-    private String ossUrl;
+    private String videoUrl;
+    private String audioUrl;
 }

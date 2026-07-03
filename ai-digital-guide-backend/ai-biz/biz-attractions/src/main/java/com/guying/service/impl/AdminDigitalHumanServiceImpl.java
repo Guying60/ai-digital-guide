@@ -2,7 +2,6 @@ package com.guying.service.impl;
 
 import cn.xuyanwu.spring.file.storage.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
 import com.guying.common.enums.TaskStatusEnum;
 import com.guying.context.AdminContext;
@@ -13,7 +12,6 @@ import com.guying.message.VideoDeleteMessage;
 import com.guying.message.VideoPreloadMessage;
 import com.guying.message.VideoTestMessage;
 import com.guying.pojo.dto.DigitalHumanCreateDTO;
-import com.guying.pojo.dto.DigitalHumanUpdateDTO;
 import com.guying.pojo.entity.DigitalHuman;
 import com.guying.pojo.vo.DigitalHumanVO;
 import com.guying.service.AdminDigitalHumanService;
@@ -24,12 +22,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static com.guying.common.constants.MqConstants.VIDEO_PRELOAD_QUEUE;
-import static com.guying.common.constants.MqConstants.VIDEO_TEST_QUEUE;
+import static com.guying.common.constants.MqConstants.*;
 
 @Service
 @Slf4j
@@ -42,6 +42,8 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Value("${spring.museTalk.http-url}")
     private String museTalkHttpUrl;
@@ -53,13 +55,22 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
      * @param dto
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public DigitalHumanVO addOrUpdate(DigitalHumanCreateDTO dto) {
+        Long adminId = AdminContext.getAdminId();
+        DigitalHuman oldEntity = getExistingDigitalHuman(dto.getId(), dto.getAttractionId(), adminId);
         DigitalHuman entity = digitalHumanConverter.toEntity(dto);
-        entity.setAdminId(AdminContext.getAdminId());
+        if (oldEntity != null) {
+            entity.setId(oldEntity.getId());
+        }
+        entity.setAdminId(adminId);
         adminDigitalHumanMapper.insertOrUpdate(entity);
         //异步发送视频预加载消息
-        VideoPreloadMessage message = new VideoPreloadMessage(entity.getAttractionId(), entity.getOssUrl());
+        VideoPreloadMessage message = new VideoPreloadMessage(
+                entity.getAttractionId(),
+                entity.getVideoUrl(),
+                entity.getAudioUrl());
         rabbitTemplate.convertAndSend(VIDEO_PRELOAD_QUEUE, message);
         // 写入 Redis 初始状态，供前端轮询
         stringRedisTemplate.opsForValue().set(
@@ -67,6 +78,7 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
                 TaskStatusEnum.PROCESSING.toString(),
                 RedisConstants.DIGITAL_HUMAN_PRELOAD_EXPIRE_TIME,
                 TimeUnit.MINUTES);
+        deleteReplacedOssFiles(oldEntity, entity);
         return digitalHumanConverter.toVO(entity);
     }
 
@@ -82,16 +94,13 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         lambdaQueryWrapper.eq(DigitalHuman::getAttractionId, attractionId)
                 .eq(DigitalHuman::getAdminId, id);
         DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
-        if (entity == null) {
-            throw new ServiceException("数字人不存在");
-        }
         return digitalHumanConverter.toVO(entity);
     }
 
     /**
      * 游客侧查询：仅按 attractionId 查询数字人（不带 adminId），查不到返回 null。
      * @param attractionId
-     * @return DigitalHumanVO（含 ossUrl），无数字人时返回 null
+     * @return DigitalHumanVO（含 videoUrl/audioUrl），无数字人时返回 null
      */
     @Override
     public DigitalHumanVO getByAttractionId(Long attractionId) {
@@ -101,6 +110,26 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
                 .last("LIMIT 1");
         DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
         return entity == null ? null : digitalHumanConverter.toVO(entity);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void deleteDigitalHuman(Long id) {
+        Long adminId = AdminContext.getAdminId();
+        LambdaQueryWrapper<DigitalHuman> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(DigitalHuman::getId, id)
+                .eq(DigitalHuman::getAdminId, adminId);
+        DigitalHuman entity = adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
+        if (entity == null) {
+            throw new ServiceException("数字人不存在或无权限删除");
+        }
+
+        adminDigitalHumanMapper.delete(lambdaQueryWrapper);
+        deleteOssFile(entity.getVideoUrl());
+        deleteOssFile(entity.getAudioUrl());
+        rabbitTemplate.convertAndSend(VIDEO_DELETE_QUEUE, new VideoDeleteMessage(entity.getAttractionId()));
+        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + entity.getAttractionId());
+        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + entity.getAttractionId());
     }
 
     /**
@@ -155,6 +184,42 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
                 .uri(museTalkHttpUrl + "/admin/test-video/" + attractionId)
                 .retrieve()
                 .body(Resource.class);
+    }
+
+    private DigitalHuman getExistingDigitalHuman(Long id, Long attractionId, Long adminId) {
+        LambdaQueryWrapper<DigitalHuman> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(DigitalHuman::getAdminId, adminId);
+        if (id != null) {
+            lambdaQueryWrapper.eq(DigitalHuman::getId, id);
+        } else {
+            lambdaQueryWrapper.eq(DigitalHuman::getAttractionId, attractionId)
+                    .orderByDesc(DigitalHuman::getUpdateTime)
+                    .last("LIMIT 1");
+        }
+        return adminDigitalHumanMapper.selectOne(lambdaQueryWrapper);
+    }
+
+    private void deleteReplacedOssFiles(DigitalHuman oldEntity, DigitalHuman newEntity) {
+        if (oldEntity == null) {
+            return;
+        }
+        if (!Objects.equals(oldEntity.getVideoUrl(), newEntity.getVideoUrl())) {
+            deleteOssFile(oldEntity.getVideoUrl());
+        }
+        if (!Objects.equals(oldEntity.getAudioUrl(), newEntity.getAudioUrl())) {
+            deleteOssFile(oldEntity.getAudioUrl());
+        }
+    }
+
+    private void deleteOssFile(String url) {
+        if (!StringUtils.hasText(url)) {
+            return;
+        }
+        try {
+            fileStorageService.delete(url);
+        } catch (Exception e) {
+            log.warn("删除数字人 OSS 文件失败: {}", url, e);
+        }
     }
 
 }

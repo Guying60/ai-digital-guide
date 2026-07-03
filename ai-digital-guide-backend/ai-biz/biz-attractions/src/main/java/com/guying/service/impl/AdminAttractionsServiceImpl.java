@@ -282,7 +282,12 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         dhLqw.eq(DigitalHuman::getAdminId, adminId);
         DigitalHuman digitalHuman = adminDigitalHumanMapper.selectOne(dhLqw);
         if (digitalHuman != null) {
-            fileStorageService.delete(digitalHuman.getOssUrl());
+            if (StringUtils.hasText(digitalHuman.getVideoUrl())) {
+                fileStorageService.delete(digitalHuman.getVideoUrl());
+            }
+            if (StringUtils.hasText(digitalHuman.getAudioUrl())) {
+                fileStorageService.delete(digitalHuman.getAudioUrl());
+            }
             adminDigitalHumanMapper.delete(dhLqw);
             try {
                 rabbitTemplate.convertAndSend(

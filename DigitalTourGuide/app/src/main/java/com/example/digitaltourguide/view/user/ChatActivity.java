@@ -1211,8 +1211,8 @@ public class ChatActivity extends AppCompatActivity {
                                    retrofit2.Response<BaseResponse<DigitalHuman>> response) {
                 BaseResponse<DigitalHuman> body = response.body();
                 if (body != null && body.getCode() == 1 && body.getData() != null
-                        && body.getData().getOssUrl() != null && !body.getData().getOssUrl().isEmpty()) {
-                    idleVideoUrl = body.getData().getOssUrl();
+                        && body.getData().getVideoUrl() != null && !body.getData().getVideoUrl().isEmpty()) {
+                    idleVideoUrl = body.getData().getVideoUrl();
                     runOnUiThread(() -> startIdlePlayer(idleVideoUrl));
                     Log.d(TAG, "待机视频地址: " + idleVideoUrl);
                 } else {

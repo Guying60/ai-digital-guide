@@ -17,6 +17,8 @@ public interface AdminDigitalHumanService {
      */
     DigitalHumanVO getByAttractionId(Long attractionId);
 
+    void deleteDigitalHuman(Long id);
+
     String checkPreloadStatus(Long attractionId);
 
     String generateTestVideo(Long attractionId, String testText);
