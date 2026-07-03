@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -263,8 +264,9 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     // 更新UI：有数字人
     private void updateUIForDigitalHumanExists() {
         Log.d(TAG, "updateUIForDigitalHumanExists, currentVideoUrl = " + currentVideoUrl);
-        // 如果已经显示了视频首帧，不覆盖
-        if (!hasVideoFrameShown) {
+        if (!hasVideoFrameShown && !TextUtils.isEmpty(currentVideoUrl)) {
+            setVideoCoverFromUrl(currentVideoUrl);
+        } else if (!hasVideoFrameShown) {
             ivCover.setImageResource(R.drawable.ic_aihuman_video);
         }
         ivCover.setEnabled(true);
@@ -273,6 +275,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     // 更新UI：无数字人
     private void updateUIForNoDigitalHuman() {
+        hasVideoFrameShown = false;
         ivCover.setImageResource(R.drawable.ic_aihuman_video); // 默认占位图
          ivCover.setEnabled(false);
 
@@ -553,6 +556,34 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "提取视频首帧失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * 回显已有数字人时，从 OSS 视频地址提取首帧展示。
+     */
+    private void setVideoCoverFromUrl(String videoUrl) {
+        if (TextUtils.isEmpty(videoUrl)) return;
+        ivCover.setImageResource(R.drawable.ic_aihuman_video);
+        new Thread(() -> {
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            try {
+                retriever.setDataSource(videoUrl, new HashMap<>());
+                Bitmap frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                if (frame != null) {
+                    runOnUiThread(() -> {
+                        ivCover.setImageBitmap(frame);
+                        hasVideoFrameShown = true;
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "提取远程视频首帧失败：" + e.getMessage());
+            } finally {
+                try {
+                    retriever.release();
+                } catch (Exception ignored) {
+                }
+            }
+        }).start();
     }
 
     @Override
