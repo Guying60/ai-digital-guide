@@ -349,10 +349,12 @@ public class ChatActivity extends AppCompatActivity {
         emotionFrameRunnable = new Runnable() {
             @Override
             public void run() {
-                Bitmap frame = null;
+                final Bitmap frame;
                 synchronized (frameLock) {
                     if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
                         frame = latestFrameBitmap.copy(latestFrameBitmap.getConfig(), false);
+                    } else {
+                        frame = null;
                     }
                 }
                 if (frame != null) {
