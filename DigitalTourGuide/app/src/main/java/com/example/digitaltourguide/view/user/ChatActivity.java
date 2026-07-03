@@ -83,8 +83,6 @@ public class ChatActivity extends AppCompatActivity {
     private static final String TAG="ChatActivity";
     private String conversationId,attractionId;
     private ImageAnalysis imageAnalysis;          // 图像分析用例
-    private Handler emotionFrameHandler;            // 表情帧定时处理器
-    private Runnable emotionFrameRunnable;          // 表情帧定时任务
     private Bitmap latestFrameBitmap;               // 最新的一帧
     private final Object frameLock = new Object();   // 线程安全锁
     private byte[] lastEmotionThumbnail;             // 上一帧降采样灰度图，供帧差初筛
@@ -130,13 +128,12 @@ public class ChatActivity extends AppCompatActivity {
     private Runnable idleShowRunnable;
     private static final long CROSSFADE_MS = 150;          // 待机↔数字人 淡入淡出时长
     private static final long IDLE_SHOW_DELAY_MS = 500;    // 末帧后多久判定"已停说话"显示待机
-    // 面部表情低频采集参数（成本控制 + 带宽隔离）
-    private static final long EMOTION_FRAME_INTERVAL_MS = 8000;  // 采集间隔 8s
+    // 面部表情采集参数（成本控制 + 带宽隔离，事件触发：发文字/开始录音/停止录音）
     private static final int EMOTION_TARGET_WIDTH = 480;          // 面部分辨率上限（宽）
     private static final int EMOTION_TARGET_HEIGHT = 640;         // 面部分辨率上限（高）
     private static final int EMOTION_JPEG_QUALITY = 70;           // JPEG 质量
     private static final int EMOTION_BRIGHTNESS_THRESHOLD = 30;   // 亮度低于该值跳过（过暗）
-    private static final double EMOTION_FRAME_DIFF_THRESHOLD = 5; // 帧差均值低于该值跳过（画面无变化）
+    private static final double EMOTION_FRAME_DIFF_THRESHOLD = 5; // 帧差均值阈值（仅定时采集用，事件触发跳过）
     // 路线数轴
     private RouteTimelineView routeTimeline;
     // GPS 到达判定
@@ -239,6 +236,7 @@ public class ChatActivity extends AppCompatActivity {
             webSocketClient.send(json.toString());
             Log.d("MYTEST","发送文本信息："+text);
             addUserMessage(text);//字幕
+            captureEmotionFrame();  // 事件触发：发文字时抓表情
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -253,9 +251,6 @@ public class ChatActivity extends AppCompatActivity {
                 cameraProvider = cameraProviderFuture.get();
                 bindCameraUseCases(cameraProvider);
                 isCameraOpen = true;
-                if (webSocketClient != null) {
-                    startEmotionFrameSend();
-                }
                 if (previewView != null) {
                     previewView.setVisibility(View.VISIBLE);
                 }
@@ -273,7 +268,6 @@ public class ChatActivity extends AppCompatActivity {
         }
         imageCapture = null;
         imageAnalysis = null;
-        stopEmotionFrameSend();
         synchronized (frameLock) {
             if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
                 latestFrameBitmap.recycle();
@@ -338,53 +332,45 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /**
-     * 前置摄像头低频面部表情采集：8s 间隔、480×640 JPEG q70、本地亮度+帧差初筛。
-     * 编码在 cameraExecutor 执行，不与 AV 二进制流抢线程。
+     * 事件触发采集：文字发送 / 开始录音 / 停止录音时抓一帧。
+     * 取 latestFrameBitmap 副本，分发到 cameraExecutor 做初筛+编码+发送。
      */
-    private void startEmotionFrameSend() {
-        if (emotionFrameHandler == null) {
-            emotionFrameHandler = new Handler(Looper.getMainLooper());
-        }
-        if (emotionFrameRunnable != null) return;
-        emotionFrameRunnable = new Runnable() {
-            @Override
-            public void run() {
-                final Bitmap frame;
-                synchronized (frameLock) {
-                    if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
-                        frame = latestFrameBitmap.copy(latestFrameBitmap.getConfig(), false);
-                    } else {
-                        frame = null;
-                    }
-                }
-                if (frame != null) {
-                    cameraExecutor.execute(() -> preScreenAndEncode(frame));
-                }
-                if (emotionFrameHandler != null) {
-                    emotionFrameHandler.postDelayed(this, EMOTION_FRAME_INTERVAL_MS);
-                }
+    private void captureEmotionFrame() {
+        final Bitmap frame;
+        synchronized (frameLock) {
+            if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
+                frame = latestFrameBitmap.copy(latestFrameBitmap.getConfig(), false);
+            } else {
+                frame = null;
             }
-        };
-        emotionFrameHandler.post(emotionFrameRunnable);
+        }
+        if (frame != null) {
+            cameraExecutor.execute(() -> preScreenAndEncode(frame, true));
+        }
     }
 
-    /** 本地初筛（亮度 + 帧差），通过则编码+发送；均在 cameraExecutor 线程执行。 */
-    private void preScreenAndEncode(Bitmap frame) {
+    /** 本地初筛（亮度 + 可选帧差），通过则编码+发送；均在 cameraExecutor 线程执行。 */
+    private void preScreenAndEncode(Bitmap frame, boolean skipFrameDiff) {
         // 1. 亮度初筛
         if (isTooDark(frame)) {
             Log.d("MYTEST", "表情帧亮度不足，跳过");
             frame.recycle();
             return;
         }
-        // 2. 帧差初筛
-        byte[] thumbnail = toGrayThumbnail(frame, 32);
-        if (isFrameNearlySame(thumbnail)) {
-            Log.d("MYTEST", "表情帧与上一帧无显著变化，跳过");
+        // 2. 帧差初筛（事件触发时跳过，每次交互都有意义）
+        if (!skipFrameDiff) {
+            byte[] thumbnail = toGrayThumbnail(frame, 32);
+            if (lastEmotionThumbnail != null && isFrameNearlySame(thumbnail)) {
+                Log.d("MYTEST", "表情帧与上一帧无显著变化，跳过");
+                lastEmotionThumbnail = thumbnail;
+                frame.recycle();
+                return;
+            }
             lastEmotionThumbnail = thumbnail;
-            frame.recycle();
-            return;
+        } else {
+            // 事件触发：更新 lastEmotionThumbnail 但不做帧差判断
+            lastEmotionThumbnail = toGrayThumbnail(frame, 32);
         }
-        lastEmotionThumbnail = thumbnail;
         // 3. 降分辨率 + 编码 + 发送
         Bitmap scaled = ImageUtils.compressBitmap(frame, EMOTION_TARGET_WIDTH, EMOTION_TARGET_HEIGHT);
         String base64 = bitmapToBase64Quality(scaled, EMOTION_JPEG_QUALITY);
@@ -439,21 +425,6 @@ public class ChatActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e("MYTEST", "bitmap转base64失败", e);
             return "";
-        }
-    }
-
-    private void stopEmotionFrameSend() {
-        if (emotionFrameHandler != null) {
-            emotionFrameHandler.removeCallbacksAndMessages(null);
-            emotionFrameHandler = null;
-        }
-        emotionFrameRunnable = null;
-        lastEmotionThumbnail = null;
-        synchronized (frameLock) {
-            if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
-                latestFrameBitmap.recycle();
-                latestFrameBitmap = null;
-            }
         }
     }
 
@@ -932,6 +903,7 @@ public class ChatActivity extends AppCompatActivity {
 
         isRecording = true;
        sendMicStatus(true);
+       captureEmotionFrame();  // 事件触发：开始说话时抓表情
        try {
             // 启动录音
             audioRecord.startRecording();
@@ -982,6 +954,7 @@ public class ChatActivity extends AppCompatActivity {
             }
             recordThread = null;
         }
+        captureEmotionFrame();  // 事件触发：停止说话时抓表情
     }
 
     //用户说的话
@@ -1037,10 +1010,6 @@ public class ChatActivity extends AppCompatActivity {
                 initWebSocket();
             }
         }
-        //如果相机已初始化且websocket已连接，则恢复表情采集
-        if(imageAnalysis!=null && webSocketClient!=null && isCameraOpen){
-            startEmotionFrameSend();
-        }
         // 恢复 GPS 路线到达监控
         RoutePlanVO currentRoute = routeTimeline != null ? routeTimeline.getCurrentRoute() : null;
         if (currentRoute != null && currentRoute.hasStops()) {
@@ -1055,7 +1024,6 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        stopEmotionFrameSend();
         stopArrivalMonitoring();
         if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
     }
@@ -1063,7 +1031,6 @@ public class ChatActivity extends AppCompatActivity {
     //页面销毁时释放资源
     @Override
     protected void onDestroy() {
-        stopEmotionFrameSend();
         stopHeartbeat();
         stopArrivalMonitoring();
         super.onDestroy();
