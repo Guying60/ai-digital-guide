@@ -29,7 +29,7 @@ public interface UserReviewService extends IService<UserReview> {
     void deleteReview(Long reviewId, Long userId);
 
     /**
-     * 创建待评价记录（对话结束时自动调用，若已存在则跳过）
+     * 创建待评价记录（对话结束时自动调用，同一会话已存在则跳过）
      */
     void createPendingReview(Long userId, Long attractionId, String conversationId);
 

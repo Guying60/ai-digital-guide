@@ -11,11 +11,11 @@ import java.util.List;
 public interface ReviewInternalService {
 
     /**
-     * 创建待评价记录（对话结束时自动调用，若已存在则跳过）
+     * 创建待评价记录（对话结束时自动调用，同一会话已存在则跳过）
      *
      * @param userId         用户ID
      * @param attractionId   景点ID
-     * @param conversationId 对话ID
+     * @param conversationId 会话ID（每次游览唯一）
      */
     void createPendingReview(Long userId, Long attractionId, String conversationId);
 

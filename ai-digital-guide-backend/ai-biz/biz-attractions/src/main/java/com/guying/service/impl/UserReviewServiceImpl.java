@@ -118,14 +118,14 @@ public class UserReviewServiceImpl extends ServiceImpl<UserReviewMapper, UserRev
 
     @Override
     public void createPendingReview(Long userId, Long attractionId, String conversationId) {
-        // 检查是否已存在该用户对该景点的待评价/已评价记录
+        // 按会话去重：每次游览（conversationId）对应一条待评价，与旅游历史一一对应
         LambdaQueryWrapper<UserReview> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserReview::getUserId, userId)
-                .eq(UserReview::getAttractionId, attractionId)
+                .eq(UserReview::getConversationId, conversationId)
                 .eq(UserReview::getIsDeleted, 0);
         Long count = count(wrapper);
         if (count > 0) {
-            log.debug("待评价记录已存在, userId={}, attractionId={}", userId, attractionId);
+            log.debug("待评价记录已存在, userId={}, conversationId={}", userId, conversationId);
             return;
         }
 
@@ -143,7 +143,7 @@ public class UserReviewServiceImpl extends ServiceImpl<UserReviewMapper, UserRev
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void submitByConversationId(String conversationId, Long userId, Integer score, String feedbackText) {
-        // conversationId 格式为 "attractionId:userId"，查找该用户的待评价记录
+        // 按 conversationId 查找该次游览的待评价记录
         LambdaQueryWrapper<UserReview> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserReview::getConversationId, conversationId)
                 .eq(UserReview::getUserId, userId)
