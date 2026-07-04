@@ -74,9 +74,9 @@ public class AIHumanRepository {
     }
 
     // 预加载状态轮询（2.15）
-    public LiveData<BaseResponse<String>> getPreloadStatus(String attractionId) {
+    public LiveData<BaseResponse<String>> getPreloadStatus(String digitalHumanId) {
         MutableLiveData<BaseResponse<String>> ld = new MutableLiveData<>();
-        apiService.getPreloadStatus(attractionId).enqueue(new Callback<BaseResponse<String>>() {
+        apiService.getPreloadStatus(digitalHumanId).enqueue(new Callback<BaseResponse<String>>() {
             @Override
             public void onResponse(Call<BaseResponse<String>> call, Response<BaseResponse<String>> response) {
                 ld.postValue(response.body());
@@ -93,11 +93,11 @@ public class AIHumanRepository {
     }
 
     // 生成测试视频（2.19）
-    public LiveData<BaseResponse<Void>> generateTestVideoManual(String attractionId, String text) {
+    public LiveData<BaseResponse<Void>> generateTestVideoManual(String digitalHumanId, String text) {
         MutableLiveData<BaseResponse<Void>> ld = new MutableLiveData<>();
         Map<String, String> body = new HashMap<>();
         if (!TextUtils.isEmpty(text)) body.put("text", text);
-        apiService.generateTestVideoRaw(attractionId, body).enqueue(new Callback<ResponseBody>() {
+        apiService.generateTestVideoRaw(digitalHumanId, body).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -135,10 +135,10 @@ public class AIHumanRepository {
     }
 
     // 测试视频状态轮询（2.20）
-    public LiveData<BaseResponse<TestVideoStatus>> getTestVideoStatusManual(String attractionId) {
+    public LiveData<BaseResponse<TestVideoStatus>> getTestVideoStatusManual(String digitalHumanId) {
         Log.e("POLL", "进入手动解析 onResponse");
         MutableLiveData<BaseResponse<TestVideoStatus>> ld = new MutableLiveData<>();
-        apiService.getTestVideoStatus(attractionId).enqueue(new Callback<ResponseBody>() {
+        apiService.getTestVideoStatus(digitalHumanId).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful() && response.body() != null) {

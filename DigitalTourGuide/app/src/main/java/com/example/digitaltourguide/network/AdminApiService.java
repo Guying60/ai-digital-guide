@@ -150,8 +150,8 @@ public interface AdminApiService {
     );
 
     // 2.15 预加载状态轮询
-    @GET("admins/attractions/digital-human/preload-status/{attractionId}")
-    Call<BaseResponse<String>> getPreloadStatus(@Path("attractionId") String attractionId);
+    @GET("admins/attractions/digital-human/preload-status/{digitalHumanId}")
+    Call<BaseResponse<String>> getPreloadStatus(@Path("digitalHumanId") String digitalHumanId);
 
     //2.18
     //上传视频
@@ -170,13 +170,13 @@ public interface AdminApiService {
     );
 
     // 2.19 生成测试视频
-    @POST("admins/attractions/digital-human/test-video/{attractionId}")
-    Call<ResponseBody> generateTestVideoRaw(@Path("attractionId") String attractionId, @Body Map<String, String> body);
+    @POST("admins/attractions/digital-human/test-video/{digitalHumanId}")
+    Call<ResponseBody> generateTestVideoRaw(@Path("digitalHumanId") String digitalHumanId, @Body Map<String, String> body);
 
     // 2.20 测试视频状态轮询
-    @GET("admins/attractions/digital-human/test-video-status/{attractionId}")
+    @GET("admins/attractions/digital-human/test-video-status/{digitalHumanId}")
     Call<ResponseBody> getTestVideoStatus(
-            @Path("attractionId") String attractionId
+            @Path("digitalHumanId") String digitalHumanId
     );
 
     //3.1柱状图

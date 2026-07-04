@@ -400,13 +400,13 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     //轮询预加载状态 2.15
     private void startPollingPreloadStatus(){
-        if(isPollingPreload) return;
+        if(isPollingPreload || TextUtils.isEmpty(currentAIHumanId)) return;
         Toast.makeText(this, "正在预加载数字人，请稍候...", Toast.LENGTH_SHORT).show();
         isPollingPreload=true;
         preloadRunnable=new Runnable() {
             @Override
             public void run() {
-                viewModel.getPreloadStatus(attractionId);  // 触发请求
+                viewModel.getPreloadStatus(currentAIHumanId);
             }
         };
         preloadHandler.post(preloadRunnable);
@@ -432,7 +432,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         builder.setPositiveButton("生成", (dialog, which) -> {
             android.widget.EditText etText = dialogView.findViewById(R.id.et_test_text);
             String customText = etText.getText().toString().trim();
-            viewModel.generateTestVideo(attractionId, customText);
+            viewModel.generateTestVideo(currentAIHumanId, customText);
         });
         builder.setNegativeButton("取消", null);
         builder.show();
@@ -441,9 +441,9 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     //轮询测试视频状态 2.20
     private void startPollingTestVideoStatus(){
         Log.e("POLL", "startPollingTestVideoStatus 开始轮询");
-        if(isPollingTestVideo) return;
+        if(isPollingTestVideo || TextUtils.isEmpty(currentAIHumanId)) return;
         isPollingTestVideo=true;
-        testVideoRunnable=()->viewModel.fetchTestVideoStatus(attractionId);
+        testVideoRunnable=()->viewModel.fetchTestVideoStatus(currentAIHumanId);
         testVideoHandler.post(testVideoRunnable);
     }
 
