@@ -6,12 +6,12 @@
     android:background="#F9FAFB"
     android:fitsSystemWindows="true">
 
-    <!-- 滚动内容区域（在底部按钮上方） -->
+    <!-- 滚动内容区域 -->
     <ScrollView
         android:id="@+id/scroll_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@id/btn_generate_test_video"
+        android:layout_above="@id/loading_bottom_bar"
         android:scrollbars="none">
 
         <LinearLayout
@@ -332,6 +332,37 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- ======================== 底部加载状态条 ======================== -->
+    <LinearLayout
+        android:id="@+id/loading_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/btn_generate_test_video"
+        android:layout_marginHorizontal="24dp"
+        android:background="@drawable/bg_loading_bar"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingVertical="14dp"
+        android:paddingHorizontal="20dp"
+        android:visibility="gone">
+
+        <!-- 旋转的加载圈 -->
+        <ProgressBar
+            android:id="@+id/loading_spinner"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:indeterminateDrawable="@drawable/animation_loading_rotate" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="正在配置数字人形象，请耐心等待..."
+            android:textColor="#666666"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <!-- 生成测试视频按钮（固定底部） -->
     <Button

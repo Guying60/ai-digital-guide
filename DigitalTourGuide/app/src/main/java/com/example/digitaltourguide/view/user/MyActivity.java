@@ -27,6 +27,7 @@ import retrofit2.Response;
 public class MyActivity extends AppCompatActivity {
 
     private static final String TAG = "MyActivity";
+    private static final int REQ_PROFILE = 2001;
 
     private ApiService apiService;
     private ImageView ivAvatar;
@@ -46,6 +47,16 @@ public class MyActivity extends AppCompatActivity {
         loadUserInfo();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_PROFILE) {
+            // 从 ProfileInfoActivity 返回，强制刷新用户信息
+            Log.d(TAG, "从 ProfileInfoActivity 返回，刷新用户信息");
+            loadUserInfo();
+        }
+    }
+
     private void initViews() {
         ivAvatar = findViewById(R.id.iv_avatar);
         tvNickname = findViewById(R.id.tv_nickname);
@@ -58,7 +69,7 @@ public class MyActivity extends AppCompatActivity {
     private void initClickListeners() {
         // 用户信息卡片 → 个人信息编辑
         findViewById(R.id.card_user_info).setOnClickListener(v ->
-                startActivity(new Intent(this, ProfileInfoActivity.class))
+                startActivityForResult(new Intent(this, ProfileInfoActivity.class), REQ_PROFILE)
         );
 
         // 我的评价
@@ -78,7 +89,7 @@ public class MyActivity extends AppCompatActivity {
 
         // 账号管理 → 个人信息编辑
         findViewById(R.id.btn_account_mgmt).setOnClickListener(v ->
-                startActivity(new Intent(this, ProfileInfoActivity.class))
+                startActivityForResult(new Intent(this, ProfileInfoActivity.class), REQ_PROFILE)
         );
 
         // 关于我们
@@ -139,10 +150,18 @@ public class MyActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<BaseResponse<UpdateUserRequest>> call,
                                    Response<BaseResponse<UpdateUserRequest>> response) {
-                if (!response.isSuccessful() || response.body() == null) return;
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.w(TAG, "getUserInfo 响应失败: " + response.code());
+                    return;
+                }
                 BaseResponse<UpdateUserRequest> resp = response.body();
+                Log.d(TAG, "getUserInfo code=" + resp.getCode() + " msg=" + resp.getMsg());
                 if (resp.getCode() == 1 && resp.getData() != null) {
-                    bindUserInfo(resp.getData());
+                    UpdateUserRequest data = resp.getData();
+                    Log.d(TAG, "nickname=" + data.getNickname()
+                            + " gender=" + data.getGender()
+                            + " avatar=" + data.getAvatarUrl());
+                    bindUserInfo(data);
                 }
             }
 
@@ -159,11 +178,12 @@ public class MyActivity extends AppCompatActivity {
             tvNickname.setText(data.getNickname());
         }
 
-        // 头像
+        // 头像（跳过 Glide 磁盘缓存确保刷新）
         if (data.getAvatarUrl() != null && !data.getAvatarUrl().isEmpty()) {
             Glide.with(this)
                     .load(data.getAvatarUrl())
                     .circleCrop()
+                    .skipMemoryCache(true)
                     .placeholder(R.drawable.ic_person_filled)
                     .into(ivAvatar);
         } else {

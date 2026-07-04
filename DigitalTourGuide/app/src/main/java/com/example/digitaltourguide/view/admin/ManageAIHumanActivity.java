@@ -48,6 +48,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private ImageView ivCover;
     private TextView tvUpsert,tvScenicEdit;
     private Button btnGenerateTestVideo;
+    private View loadingBottomBar;
     private ActivityManagerAihumanBinding binding;
     private AIHumanViewModel viewModel;
     private String attractionId;
@@ -101,7 +102,8 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 if (ossUrl != null && !TextUtils.isEmpty(ossUrl)) {
                     Log.e(TAG, "========== 上传视频成功，将调用 upsertDigitalHuman ==========");
                     currentOssUrl = ossUrl;
-                    Toast.makeText(this, "视频上传成功,请等待数字人配置...", Toast.LENGTH_SHORT).show();
+                    showLoadingBar();
+                    Toast.makeText(this, "视频上传成功，数字人配置中...", Toast.LENGTH_SHORT).show();
                     Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
                     upsertDigitalHuman(ossUrl);  // ✅ 这里调用保存
 
@@ -120,6 +122,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     }
                 }
             } else {
+                hideLoadingBar();
                 String msg = (response != null) ? response.getMsg() : "上传失败";
                 Toast.makeText(this, "上传失败：" + msg, Toast.LENGTH_SHORT).show();
             }
@@ -140,6 +143,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     Toast.makeText(this, "保存成功但返回数据为空", Toast.LENGTH_SHORT).show();
                 }
             } else {
+                hideLoadingBar();
                 String msg = (response != null) ? response.getMsg() : "保存失败";
                 Toast.makeText(this, "保存数字人失败：" + msg, Toast.LENGTH_SHORT).show();
             }
@@ -204,9 +208,11 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 String status=response.getData();
                 Log.d(TAG, "预加载状态: " + status);
                 if ("SUCCESS".equals(status)) {
+                    hideLoadingBar();
                     Toast.makeText(this, "数字人预加载成功", Toast.LENGTH_SHORT).show();
                     stopPollingPreload();
                 } else if ("FAILED".equals(status)) {
+                    hideLoadingBar();
                     Toast.makeText(this, "预加载失败", Toast.LENGTH_SHORT).show();
                     stopPollingPreload();
                 } else {
@@ -570,6 +576,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        hideLoadingBar();
         if (selectedVideoFile != null && selectedVideoFile.exists()) selectedVideoFile.delete();
         stopPollingPreload();
         stopPollingTestVideo();
@@ -580,6 +587,19 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         tvUpsert = findViewById(R.id.tv_upsert);
         btnGenerateTestVideo = findViewById(R.id.btn_generate_test_video);
         tvScenicEdit = findViewById(R.id.tab_scenic);
+        loadingBottomBar = findViewById(R.id.loading_bottom_bar);
+    }
+
+    private void showLoadingBar() {
+        if (loadingBottomBar != null && loadingBottomBar.getVisibility() != View.VISIBLE) {
+            loadingBottomBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void hideLoadingBar() {
+        if (loadingBottomBar != null) {
+            loadingBottomBar.setVisibility(View.GONE);
+        }
     }
 
     @Override
