@@ -27,6 +27,7 @@ import com.guying.utils.JwtUtil;
 import com.guying.utils.PasswordUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +40,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.guying.common.constants.RedisConstants.*;
-import static net.sf.jsqlparser.util.validation.metadata.NamedObject.user;
 
 @Service
 @Slf4j
@@ -64,11 +64,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public UserLoginVO login(LoginDTO loginDto) {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUsername, loginDto.getUsername());
+        queryWrapper.eq(User::getUsername, loginDto.getUsername())
+                .select(User::getId, User::getUsername, User::getPassword,
+                        User::getNickname, User::getAge, User::getGender, User::getAvatarUrl);
         User user = userMapper.selectOne(queryWrapper);
-//        if (user == null || !PasswordUtil.matches(loginDto.getPassword(), user.getPassword())) {
-//            throw new ServiceException("用户名或密码错误");
-//        }
+        if (user == null || !StringUtils.hasText(user.getPassword())
+                || !PasswordUtil.matches(loginDto.getPassword(), user.getPassword())) {
+            throw new ServiceException("用户名或密码错误");
+        }
         String uuid = UUID.randomUUID().toString();
         //生成JWT令牌，将uuid作为claims的值
         Map<String, Object> claims = new HashMap<>();
@@ -116,12 +119,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())) {
             throw new ServiceException("两次输入的密码不一致");
         }
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getUsername, registerDTO.getUsername());
+        if (userMapper.selectCount(queryWrapper) > 0) {
+            throw new ServiceException("用户名已存在");
+        }
         User user = userConverter.toUser(registerDTO);
         user.setPassword(PasswordUtil.encode(registerDTO.getPassword()));
         try {
             userMapper.insert(user);
-        } catch (Exception e) {
-            throw new ServiceException("注册失败,可能用户名已存在");
+        } catch (DuplicateKeyException e) {
+            throw new ServiceException("用户名已存在");
         }
         return userConverter.toUserRegisterVO(user);
     }

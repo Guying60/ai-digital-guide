@@ -65,7 +65,7 @@ public class MuseTalkConnector {
         try {
             String json = objectMapper.createObjectNode()
                     .put("type", "interrupt")
-                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("digital_human_id", String.valueOf(ctx.getDigitalHumanId()))
                     .put("session_id", ctx.getSid())
                     .toString();
             museTalkSession.sendMessage(new TextMessage(json));
@@ -94,10 +94,10 @@ public class MuseTalkConnector {
 
         @Override
         public void afterConnectionEstablished(WebSocketSession museTalkSession) throws Exception {
-            log.info("建立连接 attractionId={}", ctx.getAttractionId());
+            log.info("建立连接 digitalHumanId={}", ctx.getDigitalHumanId());
             String initJson = objectMapper.createObjectNode()
                     .put("type", "init")
-                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("digital_human_id", String.valueOf(ctx.getDigitalHumanId()))
                     .toString();
             museTalkSession.sendMessage(new TextMessage(initJson));
         }

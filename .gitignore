@@ -21,6 +21,7 @@ target/
 *.iws
 *.ipr
 .vscode/
+.cursor/
 .settings/
 .project
 .classpath

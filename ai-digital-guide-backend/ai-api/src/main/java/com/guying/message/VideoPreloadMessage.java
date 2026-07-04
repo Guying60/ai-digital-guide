@@ -8,6 +8,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VideoPreloadMessage implements Serializable {
-    private Long attractionId;
+    private Long digitalHumanId;
     private String videoUrl;
+    private String audioUrl;
 }

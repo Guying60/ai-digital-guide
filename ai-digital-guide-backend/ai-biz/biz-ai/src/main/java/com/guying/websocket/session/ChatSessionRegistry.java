@@ -16,8 +16,8 @@ public class ChatSessionRegistry {
 
     private final Map<String, ChatSessionContext> contexts = new ConcurrentHashMap<>();
 
-    public ChatSessionContext register(WebSocketSession session) {
-        ChatSessionContext ctx = new ChatSessionContext(session);
+    public ChatSessionContext register(WebSocketSession session, Long digitalHumanId) {
+        ChatSessionContext ctx = new ChatSessionContext(session, digitalHumanId);
         contexts.put(ctx.getSid(), ctx);
         return ctx;
     }

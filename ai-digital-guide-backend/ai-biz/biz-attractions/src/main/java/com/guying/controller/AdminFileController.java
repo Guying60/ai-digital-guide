@@ -141,4 +141,27 @@ public class AdminFileController {
         return Result.error("上传失败！");
     }
 
+    @PostMapping("/audio")
+    public Result uploadAudio(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("上传的文件不能为空");
+        }
+
+        String contentType = file.getContentType();
+
+        if (contentType == null || !contentType.startsWith("audio/")) {
+            log.error("文件格式错误，并非音频类型，实际 Content-Type 为: {}", contentType);
+            return Result.error("文件格式错误，请上传音频");
+        }
+        String path = "audio/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        log.info("音频上传path:{}", path);
+        FileInfo fileInfo = fileStorageService.of(file)
+                .setPath(path)
+                .upload();
+        if (fileInfo != null) {
+            return Result.success(fileInfo.getUrl());
+        }
+        return Result.error("上传失败！");
+    }
+
 }

@@ -10,6 +10,6 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VideoTestMessage implements Serializable {
-    private Long attractionId;
+    private Long digitalHumanId;
     private String testText;
 }

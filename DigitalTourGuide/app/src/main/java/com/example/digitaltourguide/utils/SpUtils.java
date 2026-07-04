@@ -206,6 +206,19 @@ public class SpUtils {
         return sp.getString("user_avatar", "");
     }
 
+    // ----------------------
+    // 表情采集隐私确认标志
+    // ----------------------
+    public static boolean isEmotionPrivacyAcknowledged(Context context) {
+        init(context);
+        return sp.getBoolean("emotion_privacy_acknowledged", false);
+    }
+
+    public static void setEmotionPrivacyAcknowledged(Context context) {
+        init(context);
+        sp.edit().putBoolean("emotion_privacy_acknowledged", true).apply();
+    }
+
     public static String getWebSocketUrl(String userId) {
         // 这里直接写正确的基础地址
         String baseUrl = "wss://ai.guying.xyz/chat/";

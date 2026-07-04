@@ -4,10 +4,13 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
+import com.guying.attractions.service.DigitalHumanInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
 import com.guying.attractions.service.ReviewInternalService;
 import com.guying.pojo.vo.RoutePlanVO;
+import com.guying.ratelimit.RateLimiterUtil;
+import com.guying.service.FaceEmotionService;
 import com.guying.service.RouteRecommendationService;
 import com.guying.user.service.UserInternalService;
 import com.guying.websocket.chat.AiChatService;
@@ -79,13 +82,31 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     @Autowired
     private RouteRecommendationService routeRecommendationService;
 
+    @Autowired
+    private FaceEmotionService faceEmotionService;
+
+    @Autowired
+    private DigitalHumanInternalService digitalHumanInternalService;
+
+    @Autowired
+    private RateLimiterUtil rateLimiterUtil;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /** 连接时间不足该阈值且一句话都没问的会话，不落游览历史/待评价。 */
+    private static final long MIN_VALID_DURATION_MS = 30_000L;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        ChatSessionContext ctx = registry.register(session);
-        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}",
-                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId());
+        Long attractionId = (Long) session.getAttributes().get("attractionId");
+        Long digitalHumanId = digitalHumanInternalService.getDigitalHumanIdByAttractionId(attractionId);
+        if (digitalHumanId == null) {
+            log.warn("WebSocket 连接拒绝：景点 {} 未配置数字人", attractionId);
+            throw new ServiceException("该景点尚未配置数字人");
+        }
+        ChatSessionContext ctx = registry.register(session, digitalHumanId);
+        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}",
+                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId());
         log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
 
         try {
@@ -94,7 +115,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
-            publishUserTourHistory(ctx);
+            // 游览历史不再在连接建立时落库：改为断开时按"是否提问过 / 连接是否≥30s"判定，
+            // 避免零提问且秒断的连接产生历史/待评价脏数据。
             museTalkConnector.connect(ctx);
             cosyVoiceConnector.connect(ctx);
         } catch (Exception e) {
@@ -121,14 +143,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 log.info("用户输入文本：{}", wordText);
                 aiChatService.invoke(ctx, wordText);
             }
-            case "photo" -> {
-                ctx.setPendingImage(node.get("photo").asText());
-            }
-            case "camera" -> {
-                if ("off".equals(node.get("status").asText())) {
-                    ctx.clearPendingImage();
-                }
-            }
+            case "emotionFrame" -> handleEmotionFrame(ctx, node);
             case "ping" -> sender.sendJson(ctx, "pong", null);
             case "interrupt" -> handleInterrupt(ctx);
             case "routeGenerate" -> routeRecommendationService.generateAndPush(ctx);
@@ -177,8 +192,17 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
             return;
         }
-        // 对话结束，自动创建待评价记录
-        reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        // 仅"提问过 或 连接≥30s"的有效会话才落游览历史 + 待评价；
+        // 零提问且秒断的连接直接丢弃，不产生脏数据。
+        boolean shouldPersist = ctx.getQuestionCount() > 0
+                || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
+        if (shouldPersist) {
+            publishUserTourHistory(ctx);
+            reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        } else {
+            log.info("会话判定为无效（零提问且连接<{}ms），不落数据库 sid={}, questionCount={}",
+                    MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
+        }
         // 路线生命周期跟随连接，断开即清理
         routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
         OutboundPacer pacer = ctx.getOutboundPacer();
@@ -198,6 +222,24 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     }
 
     /**
+     * 处理前置摄像头低频采集的面部表情帧：
+     *  - 令牌桶限流（每 userId 每 5 秒最多 1 次视觉调用），超限静默丢弃，控制大模型成本；
+     *  - 异步交给 FaceEmotionService 做视觉分类 + 落库，不阻塞 WS 线程；
+     *  - 原始图像不入库。
+     */
+    private void handleEmotionFrame(ChatSessionContext ctx, ObjectNode node) {
+        String base64 = node.has("photo") ? node.get("photo").asText() : null;
+        if (base64 == null || base64.isEmpty()) {
+            return;
+        }
+        if (!rateLimiterUtil.tryAcquire("ai:face-emotion:" + ctx.getUserId(), 1, 5)) {
+            log.debug("面部表情帧被限流丢弃, userId={}", ctx.getUserId());
+            return;
+        }
+        faceEmotionService.analyze(base64, ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+    }
+
+    /**
      * 处理用户主动打断数字人：
      *  1) 通知 MuseTalk / CosyVoice 停止当前生成并清空待推理任务队列；
      *  2) 立即 shutdownNow 当前 TTS 串行执行器，再新建一个，让后续对话继续。
@@ -207,6 +249,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
         ctx.getPtsTracker().onInterrupt();
+        ctx.resetRound();  // 复位句末补静音计数，避免被打断的旧轮残留触发误补
         OutboundPacer pacer = ctx.getOutboundPacer();
         if (pacer != null) {
             pacer.reset();

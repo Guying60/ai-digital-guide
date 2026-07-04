@@ -282,12 +282,17 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         dhLqw.eq(DigitalHuman::getAdminId, adminId);
         DigitalHuman digitalHuman = adminDigitalHumanMapper.selectOne(dhLqw);
         if (digitalHuman != null) {
-            fileStorageService.delete(digitalHuman.getOssUrl());
+            if (StringUtils.hasText(digitalHuman.getVideoUrl())) {
+                fileStorageService.delete(digitalHuman.getVideoUrl());
+            }
+            if (StringUtils.hasText(digitalHuman.getAudioUrl())) {
+                fileStorageService.delete(digitalHuman.getAudioUrl());
+            }
             adminDigitalHumanMapper.delete(dhLqw);
             try {
                 rabbitTemplate.convertAndSend(
                         MqConstants.VIDEO_DELETE_QUEUE,
-                        new VideoDeleteMessage(attractionId)
+                        new VideoDeleteMessage(digitalHuman.getId())
                 );
             } catch (Exception e) {
                 log.error("删除景点时发送数字人删除消息失败, attractionId: {}", attractionId, e);

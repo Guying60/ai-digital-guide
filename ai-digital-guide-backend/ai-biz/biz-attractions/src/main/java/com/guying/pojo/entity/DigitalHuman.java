@@ -21,14 +21,18 @@ public class DigitalHuman {
     /**
      * 主键 ID
      */
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
-     * 数字人静态图片 OSS 地址
-     * 用于安卓前端展示，同时也对应 Python 算力服务器本地的文件名
+     * 数字人驱动视频 OSS 地址
      */
-    private String ossUrl;
+    private String videoUrl;
+
+    /**
+     * 数字人音色样本音频 OSS 地址
+     */
+    private String audioUrl;
 
 
     /**

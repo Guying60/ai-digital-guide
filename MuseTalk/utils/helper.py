@@ -87,7 +87,7 @@ def _encode_frames_cpu(imgs_cuda_u8: List[torch.Tensor], quality: int) -> List[b
     return out
 
 
-async def download_video(url: str, dest_path: str) -> None:
+async def download_file(url: str, dest_path: str) -> None:
     timeout = aiohttp.ClientTimeout(total=600)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.get(url) as resp:
@@ -95,3 +95,7 @@ async def download_video(url: str, dest_path: str) -> None:
             async with aiofiles.open(dest_path, 'wb') as f:
                 async for chunk in resp.content.iter_chunked(8192):
                     await f.write(chunk)
+
+
+async def download_video(url: str, dest_path: str) -> None:
+    await download_file(url, dest_path)

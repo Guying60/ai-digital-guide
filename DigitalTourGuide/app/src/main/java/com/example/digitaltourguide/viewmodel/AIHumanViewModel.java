@@ -25,6 +25,8 @@ public class AIHumanViewModel extends ViewModel {
     private MutableLiveData<BaseResponse<DigitalHuman>> upsertResult = new MutableLiveData<>();
     // 上传视频结果
     private MutableLiveData<BaseResponse<String>> uploadResult = new MutableLiveData<>();
+    // 上传音频结果
+    private MutableLiveData<BaseResponse<String>> uploadAudioResult = new MutableLiveData<>();
     // 预加载状态轮询
     private MutableLiveData<BaseResponse<String>> preloadStatusResult = new MutableLiveData<>();
     // 生成测试视频
@@ -42,9 +44,9 @@ public class AIHumanViewModel extends ViewModel {
         return testVideoStatusLiveData;
     }
 
-    public LiveData<BaseResponse<TestVideoStatus>> getTestVideoStatus(String attractionId) {
+    public LiveData<BaseResponse<TestVideoStatus>> getTestVideoStatus(String digitalHumanId) {
         // 调用 repository 获取数据，并更新到 LiveData
-        repository.getTestVideoStatusManual(attractionId).observeForever(response -> {
+        repository.getTestVideoStatusManual(digitalHumanId).observeForever(response -> {
             testVideoStatusLiveData.postValue(response);
         });
         return testVideoStatusLiveData;
@@ -54,30 +56,31 @@ public class AIHumanViewModel extends ViewModel {
         return testVideoStatusResult;
     }
 
-    public void fetchTestVideoStatus(String attractionId) {
-        Log.e("POLL", "fetchTestVideoStatus 被调用，attractionId=" + attractionId);
-        repository.getTestVideoStatusManual(attractionId).observeForever(response -> {
+    public void fetchTestVideoStatus(String digitalHumanId) {
+        Log.e("POLL", "fetchTestVideoStatus 被调用，digitalHumanId=" + digitalHumanId);
+        repository.getTestVideoStatusManual(digitalHumanId).observeForever(response -> {
             testVideoStatusResult.postValue(response);
         });
     }
     public LiveData<BaseResponse<Void>> getGenerateTestVideoResult() {
         return generateTestVideoResult;
     }
-    public void generateTestVideo(String attractionId, String text) {
-        repository.generateTestVideoManual(attractionId, text).observeForever(response -> {
+    public void generateTestVideo(String digitalHumanId, String text) {
+        repository.generateTestVideoManual(digitalHumanId, text).observeForever(response -> {
             generateTestVideoResult.postValue(response);
         });
     }
     public LiveData<BaseResponse<String>> getPreloadStatusResult() {
         return preloadStatusResult;
     }
-    public void getPreloadStatus(String attractionId) {
-        repository.getPreloadStatus(attractionId).observeForever(response -> {
+    public void getPreloadStatus(String digitalHumanId) {
+        repository.getPreloadStatus(digitalHumanId).observeForever(response -> {
             preloadStatusResult.postValue(response);
         });
     }
     public LiveData<BaseResponse<DigitalHuman>> getUpsertResult() { return upsertResult; }
     public LiveData<BaseResponse<String>> getUploadResult() { return uploadResult; }
+    public LiveData<BaseResponse<String>> getUploadAudioResult() { return uploadAudioResult; }
     public LiveData<BaseResponse<DigitalHuman>> getQueryResult() {return queryResult;}
 
     public LiveData<BaseResponse<Void>> getDeleteResult() {return deleteResult;}
@@ -86,6 +89,13 @@ public class AIHumanViewModel extends ViewModel {
     public void uploadVideo(String attractionId, MultipartBody.Part filePart) {
         repository.uploadVideo(attractionId, filePart).observeForever(response -> {
             uploadResult.postValue(response);
+        });
+    }
+
+    // 上传音频
+    public void uploadAudio(MultipartBody.Part filePart) {
+        repository.uploadAudio(filePart).observeForever(response -> {
+            uploadAudioResult.postValue(response);
         });
     }
 

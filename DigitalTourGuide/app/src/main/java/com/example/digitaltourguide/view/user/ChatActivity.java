@@ -45,6 +45,12 @@ import androidx.core.content.ContextCompat;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.BaseResponse;
+import com.example.digitaltourguide.model.admin.DigitalHuman;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.example.digitaltourguide.model.LocationManager;
 import com.example.digitaltourguide.model.user.RoutePlanVO;
 import com.example.digitaltourguide.model.user.RouteStopVO;
@@ -73,14 +79,13 @@ import okio.ByteString;
 public class ChatActivity extends AppCompatActivity {
     private boolean isCameraOpen = false;          // 摄像头开关状态
     private ProcessCameraProvider cameraProvider;  // 保存相机提供者实例
-    private int currentLensFacing = CameraSelector.LENS_FACING_BACK;  // 当前使用的摄像头，默认后置
+    private int currentLensFacing = CameraSelector.LENS_FACING_FRONT;  // 当前使用的摄像头，前置采集面部表情
     private static final String TAG="ChatActivity";
     private String conversationId,attractionId;
     private ImageAnalysis imageAnalysis;          // 图像分析用例
-    private Handler autoFrameHandler;             // 定时任务处理器
-    private Runnable autoFrameRunnable;           // 定时任务
-    private Bitmap latestFrameBitmap;             // 最新的一帧
-    private final Object frameLock = new Object(); // 线程安全锁
+    private Bitmap latestFrameBitmap;               // 最新的一帧
+    private final Object frameLock = new Object();   // 线程安全锁
+    private byte[] lastEmotionThumbnail;             // 上一帧降采样灰度图，供帧差初筛
     private Thread recordThread;
     private ScheduledExecutorService heartbeatExecutor;
     private StringBuilder aiBuffer = new StringBuilder(); // 存AI完整句子
@@ -113,6 +118,22 @@ public class ChatActivity extends AppCompatActivity {
     // 数字人视频播放相关（AVSyncPlayer 统一管理音画同步）
     private TextureView tvDigitalHuman;
     private AVSyncPlayer avSyncPlayer;
+    // 数字人待机视频（管理员原始视频静音循环，AI 未说话时盖住空白/冻结帧）
+    private PlayerView idleVideoView;
+    private ExoPlayer idlePlayer;
+    private String idleVideoUrl;
+    private volatile boolean aiRoundTextDone = false;      // 本轮 LLM 文本是否已结束（responseDone）
+    private volatile boolean idleCurrentlyVisible = false; // 当前待机视频是否可见（去重 hide/show）
+    private Handler idleShowHandler;                        // 帧流停止后延时显示待机视频
+    private Runnable idleShowRunnable;
+    private static final long CROSSFADE_MS = 150;          // 待机↔数字人 淡入淡出时长
+    private static final long IDLE_SHOW_DELAY_MS = 500;    // 末帧后多久判定"已停说话"显示待机
+    // 面部表情采集参数（成本控制 + 带宽隔离，事件触发：发文字/开始录音/停止录音）
+    private static final int EMOTION_TARGET_WIDTH = 480;          // 面部分辨率上限（宽）
+    private static final int EMOTION_TARGET_HEIGHT = 640;         // 面部分辨率上限（高）
+    private static final int EMOTION_JPEG_QUALITY = 70;           // JPEG 质量
+    private static final int EMOTION_BRIGHTNESS_THRESHOLD = 30;   // 亮度低于该值跳过（过暗）
+    private static final double EMOTION_FRAME_DIFF_THRESHOLD = 5; // 帧差均值阈值（仅定时采集用，事件触发跳过）
     // 路线数轴
     private RouteTimelineView routeTimeline;
     // GPS 到达判定
@@ -122,7 +143,6 @@ public class ChatActivity extends AppCompatActivity {
     private static final int ARRIVAL_DISTANCE_M = 50;   // 到达判定距离阈值（米）
     private static final int ARRIVAL_CONFIRM_COUNT = 3; // 连续 N 次在范围内才触发（3×2s=6s）
     private int binaryMsgCount = 0;           // 二进制消息计数器，用于限频日志
-    private volatile boolean isAutoFrameRunning = false;
     // ★ 诊断：WebSocket 文本消息接收延迟追踪（Bug 4）
     private long lastTextMsgTime = 0;
     private int textMsgCount = 0;
@@ -194,7 +214,6 @@ public class ChatActivity extends AppCompatActivity {
 
         //初始化相机线程
         cameraExecutor= Executors.newSingleThreadExecutor();
-        ivCapture.setOnClickListener(v->{takePhoto();});
         checkCameraPermissionAndStart();
     }
 
@@ -217,13 +236,14 @@ public class ChatActivity extends AppCompatActivity {
             webSocketClient.send(json.toString());
             Log.d("MYTEST","发送文本信息："+text);
             addUserMessage(text);//字幕
+            captureEmotionFrame();  // 事件触发：发文字时抓表情
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
 
-    // 启动相机拍照
+    // 启动相机：前置摄像头 + 面部表情低频采集
     private void startCamera() {
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderFuture.addListener(() -> {
@@ -231,11 +251,6 @@ public class ChatActivity extends AppCompatActivity {
                 cameraProvider = cameraProviderFuture.get();
                 bindCameraUseCases(cameraProvider);
                 isCameraOpen = true;
-                if (webSocketClient != null) {
-                    startAutoFrameSend();
-                    sendCameraStatus("on");   // 告知后端摄像头已开启
-                }
-                // 新增：显示预览画面
                 if (previewView != null) {
                     previewView.setVisibility(View.VISIBLE);
                 }
@@ -253,36 +268,18 @@ public class ChatActivity extends AppCompatActivity {
         }
         imageCapture = null;
         imageAnalysis = null;
-        stopAutoFrameSend();
         synchronized (frameLock) {
             if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
                 latestFrameBitmap.recycle();
                 latestFrameBitmap = null;
             }
         }
+        lastEmotionThumbnail = null;
         isCameraOpen = false;
-        sendCameraStatus("off");
-        Log.d("MYTEST", "摄像头已关闭");
+        Log.d("MYTEST", "前置摄像头已关闭");
 
-        // 新增：隐藏预览画面
         if (previewView != null) {
             previewView.setVisibility(View.GONE);
-        }
-    }
-
-    private void sendCameraStatus(String status) {
-        if(webSocketClient==null){
-            Log.w("MYTEST","websocket未连接，无法发送相机状态");
-            return;
-        }
-        try {
-            JSONObject json=new JSONObject();
-            json.put("type","camera");
-            json.put("status", status);
-            webSocketClient.send(json.toString());
-            Log.d("MYTEST", "发送相机状态: " + status);
-        } catch (JSONException e) {
-            Log.e("MYTEST", "构造相机状态消息失败", e);
         }
     }
 
@@ -291,7 +288,7 @@ public class ChatActivity extends AppCompatActivity {
         if (isCameraOpen) {
             stopCamera();
         } else {
-            startCamera();   // 重新启动
+            checkEmotionPrivacyAndStart();
         }
     }
 
@@ -334,51 +331,113 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
-    private void startAutoFrameSend() {
-        if(autoFrameHandler==null){
-            autoFrameHandler=new Handler(Looper.getMainLooper());
-        }
-        if(autoFrameRunnable!=null) return;
-        isAutoFrameRunning = true;
-        autoFrameRunnable=new Runnable() {
-            @Override
-            public void run() {
-                //获取最新帧
-                Bitmap frame = null;
-                synchronized (frameLock) {
-                    if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
-                        frame = latestFrameBitmap.copy(latestFrameBitmap.getConfig(), false);
-                    }
-                }
-                if(frame!=null){
-                    //压缩图片
-                    Bitmap scaled= ImageUtils.compressBitmap(frame,1280,720);
-                    String base64=ImageUtils.bitmapToBase64(scaled);
-                    //发送到后端
-                    sendPhotoToServer(base64);
-                    frame.recycle();
-                    if(scaled!=frame) scaled.recycle();
-                }
-                //每隔1.5秒执行一次
-                if(autoFrameHandler!=null && isAutoFrameRunning){
-                    autoFrameHandler.postDelayed(this,1500);
-                }
-            }
-        };
-        autoFrameHandler.post(autoFrameRunnable);
-    }
-    private void stopAutoFrameSend(){
-        isAutoFrameRunning = false;
-        if(autoFrameHandler!=null){
-            autoFrameHandler.removeCallbacksAndMessages(null);
-            autoFrameHandler=null;
-        }
-        autoFrameRunnable=null;
+    /**
+     * 事件触发采集：文字发送 / 开始录音 / 停止录音时抓一帧。
+     * 取 latestFrameBitmap 副本，分发到 cameraExecutor 做初筛+编码+发送。
+     */
+    private void captureEmotionFrame() {
+        final Bitmap frame;
         synchronized (frameLock) {
             if (latestFrameBitmap != null && !latestFrameBitmap.isRecycled()) {
-                latestFrameBitmap.recycle();
-                latestFrameBitmap = null;
+                frame = latestFrameBitmap.copy(latestFrameBitmap.getConfig(), false);
+            } else {
+                frame = null;
             }
+        }
+        if (frame != null) {
+            cameraExecutor.execute(() -> preScreenAndEncode(frame, true));
+        }
+    }
+
+    /** 本地初筛（亮度 + 可选帧差），通过则编码+发送；均在 cameraExecutor 线程执行。 */
+    private void preScreenAndEncode(Bitmap frame, boolean skipFrameDiff) {
+        // 1. 亮度初筛
+        if (isTooDark(frame)) {
+            Log.d("MYTEST", "表情帧亮度不足，跳过");
+            frame.recycle();
+            return;
+        }
+        // 2. 帧差初筛（事件触发时跳过，每次交互都有意义）
+        if (!skipFrameDiff) {
+            byte[] thumbnail = toGrayThumbnail(frame, 32);
+            if (lastEmotionThumbnail != null && isFrameNearlySame(thumbnail)) {
+                Log.d("MYTEST", "表情帧与上一帧无显著变化，跳过");
+                lastEmotionThumbnail = thumbnail;
+                frame.recycle();
+                return;
+            }
+            lastEmotionThumbnail = thumbnail;
+        } else {
+            // 事件触发：更新 lastEmotionThumbnail 但不做帧差判断
+            lastEmotionThumbnail = toGrayThumbnail(frame, 32);
+        }
+        // 3. 降分辨率 + 编码 + 发送
+        Bitmap scaled = ImageUtils.compressBitmap(frame, EMOTION_TARGET_WIDTH, EMOTION_TARGET_HEIGHT);
+        String base64 = bitmapToBase64Quality(scaled, EMOTION_JPEG_QUALITY);
+        sendEmotionFrame(base64);
+        frame.recycle();
+        if (scaled != frame) scaled.recycle();
+    }
+
+    /** 降采样后计算平均亮度，低于阈值视为过暗 */
+    private boolean isTooDark(Bitmap bitmap) {
+        byte[] gray = toGrayThumbnail(bitmap, 32);
+        int sum = 0;
+        for (byte b : gray) sum += (b & 0xFF);
+        double avg = sum / (double) gray.length;
+        return avg < EMOTION_BRIGHTNESS_THRESHOLD;
+    }
+
+    /** 降采样到 smallW×auto 的灰度数组，同时用于亮度与帧差 */
+    private byte[] toGrayThumbnail(Bitmap bitmap, int smallW) {
+        int w = Math.min(bitmap.getWidth(), smallW);
+        int h = bitmap.getHeight() * w / bitmap.getWidth();
+        if (h < 1) h = 1;
+        Bitmap scaled = Bitmap.createScaledBitmap(bitmap, w, h, true);
+        int[] pixels = new int[w * h];
+        scaled.getPixels(pixels, 0, w, 0, 0, w, h);
+        scaled.recycle();
+        byte[] gray = new byte[pixels.length];
+        for (int i = 0; i < pixels.length; i++) {
+            int p = pixels[i];
+            gray[i] = (byte) ((77 * ((p >> 16) & 0xFF) + 150 * ((p >> 8) & 0xFF) + 29 * (p & 0xFF)) >> 8);
+        }
+        return gray;
+    }
+
+    /** 与上一帧灰度均差小于阈值则视为无变化 */
+    private boolean isFrameNearlySame(byte[] gray) {
+        if (lastEmotionThumbnail == null || lastEmotionThumbnail.length != gray.length) return false;
+        long sumDiff = 0;
+        for (int i = 0; i < gray.length; i++) {
+            sumDiff += Math.abs((gray[i] & 0xFF) - (lastEmotionThumbnail[i] & 0xFF));
+        }
+        double avgDiff = sumDiff / (double) gray.length;
+        return avgDiff < EMOTION_FRAME_DIFF_THRESHOLD;
+    }
+
+    /** 按指定质量将 Bitmap 转 base64，无换行。复刻 ImageUtils.bitmapToBase64 逻辑。 */
+    private String bitmapToBase64Quality(Bitmap bitmap, int quality) {
+        if (bitmap == null) return "";
+        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos);
+            return android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP);
+        } catch (Exception e) {
+            Log.e("MYTEST", "bitmap转base64失败", e);
+            return "";
+        }
+    }
+
+    private void sendEmotionFrame(String base64) {
+        if (webSocketClient == null || base64 == null || base64.isEmpty()) return;
+        try {
+            JSONObject msg = new JSONObject();
+            msg.put("type", "emotionFrame");
+            msg.put("photo", base64);
+            webSocketClient.send(msg.toString());
+            Log.d("MYTEST", "发送表情帧, base64长度=" + base64.length());
+        } catch (JSONException e) {
+            Log.e("MYTEST", "构造表情帧消息失败", e);
         }
     }
 
@@ -386,40 +445,26 @@ public class ChatActivity extends AppCompatActivity {
         return imageProxy.toBitmap();
     }
 
-    private void takePhoto(){
-        if (imageCapture == null) return;
-        // 拍照并获取Bitmap
-        imageCapture.takePicture(ContextCompat.getMainExecutor(this),
-                new ImageCapture.OnImageCapturedCallback() {
-                    @Override
-                    public void onCaptureSuccess(@NonNull ImageProxy image) {
-                        Log.d("MYTEST", "✅ 拍照成功");
-
-                        // 1. 转Bitmap
-                        Bitmap bitmap = image.toBitmap();
-                        // 2. 调用工具类：按文档要求缩放到1280×720以内
-                        Bitmap scaledBitmap = ImageUtils.compressBitmap(bitmap, 1280, 720);
-                        // 3. 调用工具类：按文档要求80质量转Base64（NO_WRAP，无前缀）
-                        String base64 = ImageUtils.bitmapToBase64(scaledBitmap);
-
-                        // 4.保存到系统相册
-                       // saveBitmapToGallery(bitmap);
-
-                        // 5. 释放资源
-                        image.close();
-                        bitmap.recycle();
-                        if (scaledBitmap != bitmap) {
-                            scaledBitmap.recycle();
-                        }
-                    }
-
-                    @Override
-                    public void onError(@NonNull ImageCaptureException exception) {
-                        super.onError(exception);
-                        Log.e("MYTEST", "拍照失败", exception);
-                        Toast.makeText(ChatActivity.this, "拍照失败", Toast.LENGTH_SHORT).show();
-                    }
-                });
+    /**
+     * 检查表情采集隐私确认：首次弹对话框说明，已确认则直接启动前置摄像头。
+     * 复刻现有 AlertDialog 风格（路线关闭按钮 / 权限拒绝引导）。
+     */
+    private void checkEmotionPrivacyAndStart() {
+        if (SpUtils.isEmotionPrivacyAcknowledged(this)) {
+            startCamera();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("面部表情采集说明")
+                .setMessage("我们将低频采集您的面部表情，仅用于聚合情感统计并优化导览体验。" +
+                        "您的面部图像不会被存储、不会用于个人身份识别，" +
+                        "也不会与第三方共享。")
+                .setPositiveButton("同意并开启", (dialog, which) -> {
+                    SpUtils.setEmotionPrivacyAcknowledged(this);
+                    startCamera();
+                })
+                .setNegativeButton("暂不开启", null)
+                .show();
     }
 
     private void checkCameraPermissionAndStart() {
@@ -429,8 +474,8 @@ public class ChatActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.CAMERA},
                     REQUEST_CAMERA_PERMISSION);
         } else {
-            Log.d("MYTEST", "已有相机权限 → 启动相机预览");
-            startCamera();
+            Log.d("MYTEST", "已有相机权限 → 启动前置摄像头");
+            checkEmotionPrivacyAndStart();
         }
     }
 
@@ -443,37 +488,6 @@ public class ChatActivity extends AppCompatActivity {
             return false;
         }
         return true;
-    }
-
-    private void sendPhotoToServer(String base64) {
-        if (webSocketClient == null) {
-            Log.e("MYTEST", "❌ 发送失败：WebSocket 未连接！");
-            return;
-        }
-        if (base64 == null || base64.isEmpty()) {
-            return;
-        }
-
-        //Log.d("MYTEST", "准备上传照片，base64 长度：" + base64.length());
-
-        try {
-            JSONObject msg = new JSONObject();
-            msg.put("type", "photo");
-            msg.put("photo", base64);
-            String jsonStr = msg.toString();
-
-           // Log.d("MYTEST", "✅ 构造JSON成功，长度：" + jsonStr.length());
-
-            webSocketClient.send(jsonStr);
-
-
-            //Log.d("MYTEST", "✅ 照片发送成功");
-
-        } catch (JSONException e) {
-            Log.e("MYTEST", "❌ JSON构造失败：" + e.getMessage());
-            runOnUiThread(()-> Toast.makeText(this, "图片上传失败", Toast.LENGTH_SHORT).show());
-        }
-
     }
 
     private void sendMicStatus(boolean isOn){
@@ -527,9 +541,9 @@ public class ChatActivity extends AppCompatActivity {
         //相机
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startCamera();
+                checkEmotionPrivacyAndStart();
             } else {
-                Toast.makeText(this, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "需要相机权限才能进行面部表情采集", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -616,6 +630,8 @@ public class ChatActivity extends AppCompatActivity {
                     startHeartbeat();
                     // 1.16.1 恢复当前激活路线
                     loadCurrentRoute();
+                    // 1.17 拉取数字人原始视频并开始待机循环播放
+                    loadIdleVideo();
                 });
             }
 
@@ -659,12 +675,6 @@ public class ChatActivity extends AppCompatActivity {
                     if("ready".equals(type)){
                         Log.d("MYTEST", "✅ 服务端就绪，数字人待机");
                     }
-                    // 保留你原来的 requestPhoto 逻辑
-                   else if ("requestPhoto".equals(type)) {
-                        Log.d("MYTEST", "收到拍照请求，启动相机");
-                        // 你的拍照代码注释暂时保留，后面再打开
-                        runOnUiThread(() -> checkCameraPermissionAndStart());
-                    }
                     // 新增其他消息类型的识别（核心补充）
                     else if ("speechStarted".equals(type)) {
                         Log.d("MYTEST", "✅ 后端检测到你开始说话");
@@ -707,6 +717,8 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "✅ AI要说话：" + aiSpeakText);
                     } else if ("responseDone".equals(type)) {
                         Log.d("MYTEST", "✅ 本轮对话结束");
+                        // 标记本轮文本已结束：当数字人帧流停止后即可恢复待机视频
+                        aiRoundTextDone = true;
                         runOnUiThread(() -> {
                             aiIsReplying = false;
                             // 输出完成后停留在最后一行
@@ -792,6 +804,8 @@ public class ChatActivity extends AppCompatActivity {
                 } else {
                     Log.w("BINARY", "未知 typeFlag: 0x" + Integer.toHexString(typeFlag));
                 }
+                // 每收到一帧就重置"显示待机"定时器：帧流持续=正在说话；停流后延时恢复待机
+                scheduleIdleShowAfterDrain();
             }
 
             @Override
@@ -889,6 +903,7 @@ public class ChatActivity extends AppCompatActivity {
 
         isRecording = true;
        sendMicStatus(true);
+       captureEmotionFrame();  // 事件触发：开始说话时抓表情
        try {
             // 启动录音
             audioRecord.startRecording();
@@ -939,6 +954,7 @@ public class ChatActivity extends AppCompatActivity {
             }
             recordThread = null;
         }
+        captureEmotionFrame();  // 事件触发：停止说话时抓表情
     }
 
     //用户说的话
@@ -994,28 +1010,27 @@ public class ChatActivity extends AppCompatActivity {
                 initWebSocket();
             }
         }
-        //如果相机已经初始化且websocket已连接，则启动自动发送
-        if(imageAnalysis!=null && webSocketClient!=null){
-            startAutoFrameSend();
-        }
         // 恢复 GPS 路线到达监控
         RoutePlanVO currentRoute = routeTimeline != null ? routeTimeline.getCurrentRoute() : null;
         if (currentRoute != null && currentRoute.hasStops()) {
             startArrivalMonitoring(currentRoute);
+        }
+        // 恢复待机视频播放（仅当其可见时）
+        if (idlePlayer != null && idleVideoView != null && idleVideoView.getVisibility() == View.VISIBLE) {
+            idlePlayer.setPlayWhenReady(true);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        stopAutoFrameSend();
         stopArrivalMonitoring();
+        if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
     }
 
     //页面销毁时释放资源
     @Override
     protected void onDestroy() {
-        stopAutoFrameSend();
         stopHeartbeat();
         stopArrivalMonitoring();
         super.onDestroy();
@@ -1032,6 +1047,11 @@ public class ChatActivity extends AppCompatActivity {
         if (avSyncPlayer != null) {
             avSyncPlayer.release();
             avSyncPlayer = null;
+        }
+        cancelIdleShowTimer();
+        if (idlePlayer != null) {
+            idlePlayer.release();
+            idlePlayer = null;
         }
     }
     private void initView() {
@@ -1052,6 +1072,29 @@ public class ChatActivity extends AppCompatActivity {
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {
             // 字幕更新回调（如需要）
+        });
+
+        // 待机视频：帧流停止后延时显示（避免句间短暂空档误判）
+        idleVideoView = findViewById(R.id.idle_video);
+        idleShowHandler = new Handler(Looper.getMainLooper());
+        idleShowRunnable = () -> {
+            // 仅当本轮文本已结束（responseDone）且帧流已停才显示待机，避免说话中途误显
+            if (aiRoundTextDone) showIdleVideo();
+        };
+        // 数字人开口 → 隐藏待机；数字人停止/被打断 → 显示待机
+        avSyncPlayer.setRenderStateListener(new AVSyncPlayer.RenderStateListener() {
+            @Override
+            public void onFrameRendered() {
+                runOnUiThread(() -> {
+                    aiRoundTextDone = false;
+                    cancelIdleShowTimer();
+                    if (idleCurrentlyVisible) hideIdleVideo();  // 去重：只在可见时才隐藏
+                });
+            }
+            @Override
+            public void onRenderStop() {
+                runOnUiThread(() -> showIdleVideo());
+            }
         });
 
         // 路线数轴
@@ -1152,6 +1195,98 @@ public class ChatActivity extends AppCompatActivity {
                 Log.e(TAG, "路线恢复请求失败: " + t.getMessage());
             }
         });
+    }
+
+    // ====================== 数字人待机视频 ======================
+
+    /**
+     * 1.17 拉取管理员上传的原始视频地址，开始静音循环待机播放（WS 连接成功后调用）。
+     * 无数字人 / 拉取失败时静默跳过，不影响主流程。
+     */
+    private void loadIdleVideo() {
+        if (attractionId == null || attractionId.isEmpty()) return;
+        ApiService.getInstance().getDigitalHuman(attractionId).enqueue(new retrofit2.Callback<BaseResponse<DigitalHuman>>() {
+            @Override
+            public void onResponse(retrofit2.Call<BaseResponse<DigitalHuman>> call,
+                                   retrofit2.Response<BaseResponse<DigitalHuman>> response) {
+                BaseResponse<DigitalHuman> body = response.body();
+                if (body != null && body.getCode() == 1 && body.getData() != null
+                        && body.getData().getVideoUrl() != null && !body.getData().getVideoUrl().isEmpty()) {
+                    idleVideoUrl = body.getData().getVideoUrl();
+                    runOnUiThread(() -> startIdlePlayer(idleVideoUrl));
+                    Log.d(TAG, "待机视频地址: " + idleVideoUrl);
+                } else {
+                    Log.d(TAG, "无数字人原始视频，跳过待机视频");
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<BaseResponse<DigitalHuman>> call, Throwable t) {
+                Log.e(TAG, "待机视频地址获取失败: " + t.getMessage());
+            }
+        });
+    }
+
+    /** 懒创建 ExoPlayer（静音循环），加载原始视频并显示待机画面。 */
+    private void startIdlePlayer(String url) {
+        if (idleVideoView == null || url == null || url.isEmpty()) return;
+        if (idlePlayer == null) {
+            idlePlayer = new ExoPlayer.Builder(this).build();
+            idleVideoView.setPlayer(idlePlayer);
+            idlePlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
+            idlePlayer.setVolume(0f);  // 待机静音，避免与 AI 语音串音
+            idlePlayer.addListener(new Player.Listener() {
+                @Override
+                public void onPlayerError(@NonNull PlaybackException error) {
+                    Log.e(TAG, "待机视频播放错误: " + error.getMessage());
+                    runOnUiThread(() -> hideIdleVideo());
+                }
+            });
+        }
+        idlePlayer.setMediaItem(MediaItem.fromUri(url));
+        idlePlayer.prepare();
+        idlePlayer.setPlayWhenReady(true);
+        showIdleVideo();
+    }
+
+    /** 淡入显示待机视频（盖住数字人区域的空白/冻结帧）。 */
+    private void showIdleVideo() {
+        if (idleVideoView == null || idlePlayer == null) return;
+        if (idleCurrentlyVisible) return;  // 去重
+        idleVideoView.animate().cancel();
+        if (idleVideoView.getVisibility() != View.VISIBLE) {
+            idleVideoView.setAlpha(0f);
+            idleVideoView.setVisibility(View.VISIBLE);
+        }
+        idlePlayer.setPlayWhenReady(true);
+        idleVideoView.animate().alpha(1f).setDuration(CROSSFADE_MS).start();
+        idleCurrentlyVisible = true;
+    }
+
+    /** 淡出隐藏待机视频（露出下层正在说话的数字人）。 */
+    private void hideIdleVideo() {
+        if (idleVideoView == null) return;
+        if (!idleCurrentlyVisible) return;  // 去重
+        if (idleVideoView.getVisibility() != View.VISIBLE) return;
+        idleVideoView.animate().cancel();
+        idleVideoView.animate().alpha(0f).setDuration(CROSSFADE_MS).withEndAction(() -> {
+            idleVideoView.setVisibility(View.GONE);
+            if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
+        }).start();
+        idleCurrentlyVisible = false;
+    }
+
+    /** 重置"帧流停止后显示待机"定时器（每收到一帧调用一次）。 */
+    private void scheduleIdleShowAfterDrain() {
+        if (idleShowHandler == null || idleShowRunnable == null) return;
+        idleShowHandler.removeCallbacks(idleShowRunnable);
+        idleShowHandler.postDelayed(idleShowRunnable, IDLE_SHOW_DELAY_MS);
+    }
+
+    private void cancelIdleShowTimer() {
+        if (idleShowHandler != null && idleShowRunnable != null) {
+            idleShowHandler.removeCallbacks(idleShowRunnable);
+        }
     }
 
     /**

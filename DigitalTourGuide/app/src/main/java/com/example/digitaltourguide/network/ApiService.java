@@ -1,6 +1,7 @@
 package com.example.digitaltourguide.network;
 
 import com.example.digitaltourguide.model.BaseResponse;
+import com.example.digitaltourguide.model.admin.DigitalHuman;
 import com.example.digitaltourguide.model.LoginRequest;
 import com.example.digitaltourguide.model.RegisterRequest;
 
@@ -149,6 +150,14 @@ public interface ApiService {
     @GET("users/route/current")
     Call<BaseResponse<RoutePlanVO>> getCurrentRoute(
             @Query("attractionId") String attractionId
+    );
+
+    //==================================================================
+    // 1.17 获取景点数字人原始视频（供数字人页待机循环播放）
+    //==================================================================
+    @GET("users/attractions/digital-human/{attractionId}")
+    Call<BaseResponse<DigitalHuman>> getDigitalHuman(
+            @Path("attractionId") String attractionId
     );
 }
 

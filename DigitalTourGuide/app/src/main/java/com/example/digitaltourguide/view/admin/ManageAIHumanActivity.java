@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -53,9 +54,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private AIHumanViewModel viewModel;
     private String attractionId;
     private String currentAIHumanId;  // 查询后拿到的数字人id
-    private String currentOssUrl;       // 上传成功后的视频地址
+    private String currentVideoUrl;       // 上传成功后的视频地址
+    private String currentAudioUrl;       // 上传成功后的音频地址
     private String selectedVideoFileName=""; //保存选中的视频文件名，用于显示和确认
+    private String selectedAudioFileName=""; //保存选中的音频文件名，用于显示和确认
     private File selectedVideoFile; // 临时视频文件对象
+    private File selectedAudioFile; // 临时音频文件对象
     private boolean hasVideoFrameShown = false; // 标记是否已展示视频首帧封面
     private AlertDialog uploadDialog,currentDialog;
     // 轮询
@@ -67,6 +71,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private boolean isPollingTestVideo = false;
     private static final int REQUEST_CODE_SELECT_VIDEO = 100;
     private static final int REQUEST_CODE_RECORD_VIDEO = 101;
+    private static final int REQUEST_CODE_SELECT_AUDIO = 102;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,14 +103,11 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         //观察上传视频结果
         viewModel.getUploadResult().observe(this,response->{
             if(response!=null && response.getCode()==1){
-                String ossUrl=response.getData();
-                if (ossUrl != null && !TextUtils.isEmpty(ossUrl)) {
-                    Log.e(TAG, "========== 上传视频成功，将调用 upsertDigitalHuman ==========");
-                    currentOssUrl = ossUrl;
-                    showLoadingBar();
-                    Toast.makeText(this, "视频上传成功，数字人配置中...", Toast.LENGTH_SHORT).show();
-                    Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
-                    upsertDigitalHuman(ossUrl);  // ✅ 这里调用保存
+                String videoUrl=response.getData();
+                if (videoUrl != null && !TextUtils.isEmpty(videoUrl)) {
+                    Log.e(TAG, "========== 上传视频成功 ==========");
+                    currentVideoUrl = videoUrl;
+                    Toast.makeText(this, "视频上传成功", Toast.LENGTH_SHORT).show();
 
                     //删除临时视频文件
                     if (selectedVideoFile != null && selectedVideoFile.exists()) {
@@ -113,18 +115,46 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                         selectedVideoFile = null;   // 清空引用
                     }
 
-                    // 更新弹窗中的视频地址显示
-                    if (currentDialog != null && currentDialog.isShowing()) {
-                        TextView tvOssUrl = uploadDialog.findViewById(R.id.tv_selected_video);
-                        if (tvOssUrl != null) {
-                            tvOssUrl.setText("已上传视频地址：" + ossUrl);
+                    if (uploadDialog != null && uploadDialog.isShowing()) {
+                        TextView tvVideoUrl = uploadDialog.findViewById(R.id.tv_selected_video);
+                        if (tvVideoUrl != null) {
+                            tvVideoUrl.setText("已上传视频地址：" + videoUrl);
                         }
                     }
+                    trySubmitDigitalHuman();
                 }
             } else {
                 hideLoadingBar();
                 String msg = (response != null) ? response.getMsg() : "上传失败";
-                Toast.makeText(this, "上传失败：" + msg, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "视频上传失败：" + msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        //观察上传音频结果
+        viewModel.getUploadAudioResult().observe(this,response->{
+            if(response!=null && response.getCode()==1){
+                String audioUrl=response.getData();
+                if (audioUrl != null && !TextUtils.isEmpty(audioUrl)) {
+                    Log.e(TAG, "========== 上传音频成功 ==========");
+                    currentAudioUrl = audioUrl;
+                    Toast.makeText(this, "音频上传成功", Toast.LENGTH_SHORT).show();
+
+                    if (selectedAudioFile != null && selectedAudioFile.exists()) {
+                        selectedAudioFile.delete();
+                        selectedAudioFile = null;
+                    }
+
+                    if (uploadDialog != null && uploadDialog.isShowing()) {
+                        TextView tvAudioUrl = uploadDialog.findViewById(R.id.tv_selected_audio);
+                        if (tvAudioUrl != null) {
+                            tvAudioUrl.setText("已上传音频地址：" + audioUrl);
+                        }
+                    }
+                    trySubmitDigitalHuman();
+                }
+            } else {
+                String msg = (response != null) ? response.getMsg() : "上传失败";
+                Toast.makeText(this, "音频上传失败：" + msg, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -134,7 +164,8 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 DigitalHuman saved = response.getData();
                 if (saved != null) {
                     currentAIHumanId = saved.getId();
-                    currentOssUrl = saved.getOssUrl();
+                    currentVideoUrl = saved.getVideoUrl();
+                    currentAudioUrl = saved.getAudioUrl();
                     updateUIForDigitalHumanExists();
 
                     Toast.makeText(this, "数字人保存成功，正在预加载...", Toast.LENGTH_SHORT).show();
@@ -155,13 +186,16 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 DigitalHuman digitalHuman = response.getData();
                 if (digitalHuman != null) {
                     currentAIHumanId = digitalHuman.getId();
-                    String ossUrl = digitalHuman.getOssUrl();
-                    Log.d(TAG, "查询返回的 ossUrl = " + ossUrl);
-                    currentOssUrl = ossUrl;  // 确保赋值
+                    String videoUrl = digitalHuman.getVideoUrl();
+                    String audioUrl = digitalHuman.getAudioUrl();
+                    Log.d(TAG, "查询返回的 videoUrl = " + videoUrl + ", audioUrl = " + audioUrl);
+                    currentVideoUrl = videoUrl;  // 确保赋值
+                    currentAudioUrl = audioUrl;
                     updateUIForDigitalHumanExists();
                 } else {
                     currentAIHumanId = null;
-                    currentOssUrl = null;
+                    currentVideoUrl = null;
+                    currentAudioUrl = null;
                     updateUIForNoDigitalHuman();
                 }
             } else {
@@ -234,9 +268,10 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     // 更新UI：有数字人
     private void updateUIForDigitalHumanExists() {
-        Log.d(TAG, "updateUIForDigitalHumanExists, currentOssUrl = " + currentOssUrl);
-        // 如果已经显示了视频首帧，不覆盖
-        if (!hasVideoFrameShown) {
+        Log.d(TAG, "updateUIForDigitalHumanExists, currentVideoUrl = " + currentVideoUrl);
+        if (!hasVideoFrameShown && !TextUtils.isEmpty(currentVideoUrl)) {
+            setVideoCoverFromUrl(currentVideoUrl);
+        } else if (!hasVideoFrameShown) {
             ivCover.setImageResource(R.drawable.ic_aihuman_video);
         }
         ivCover.setEnabled(true);
@@ -245,6 +280,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     // 更新UI：无数字人
     private void updateUIForNoDigitalHuman() {
+        hasVideoFrameShown = false;
         ivCover.setImageResource(R.drawable.ic_aihuman_video); // 默认占位图
          ivCover.setEnabled(false);
 
@@ -252,12 +288,12 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     //播放当前
     private void playCurrentVideo(){
-        if(TextUtils.isEmpty(currentOssUrl)){
+        if(TextUtils.isEmpty(currentVideoUrl)){
             Toast.makeText(this,"没有可播放的视频",Toast.LENGTH_SHORT).show();
             return;
         }
         Intent intent=new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(Uri.parse(currentOssUrl),"video/*");
+        intent.setDataAndType(Uri.parse(currentVideoUrl),"video/*");
         startActivity(intent);
     }
 
@@ -271,6 +307,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         TextView tvSelectedVideo = dialogView.findViewById(R.id.tv_selected_video);
         Button btnSelectVideo = dialogView.findViewById(R.id.btn_select_video);
         Button btnRecordVideo = dialogView.findViewById(R.id.btn_record_video);
+        Button btnSelectAudio = dialogView.findViewById(R.id.btn_select_audio);
         Button btnUpload = dialogView.findViewById(R.id.btn_upload);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
 
@@ -289,17 +326,28 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             startActivityForResult(intent, REQUEST_CODE_RECORD_VIDEO);
         });
 
-        //上传视频按钮
+        //选择音频按钮
+        btnSelectAudio.setOnClickListener(v->{
+            Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("audio/*");
+            startActivityForResult(intent,REQUEST_CODE_SELECT_AUDIO);
+        });
+
+        //上传视频和音频按钮
         btnUpload.setOnClickListener(v -> {
                     if (selectedVideoFile == null || !selectedVideoFile.exists()) {
                         Toast.makeText(this, "请先选择视频文件", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (selectedAudioFile == null || !selectedAudioFile.exists()) {
+                        Toast.makeText(this, "请先选择音频文件", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     new AlertDialog.Builder(this)
                             .setTitle("确认更换")
                             .setMessage("更换后将覆盖当前数字人，是否继续？")
                             .setPositiveButton("继续", (d, w) -> {
-                                uploadVideo();
+                                uploadDigitalHumanAssets();
                                 uploadDialog.dismiss();
                             })
                             .setNegativeButton("取消", null)
@@ -310,25 +358,45 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         uploadDialog.show();
     }
 
-    private void uploadVideo() {
+    private void uploadDigitalHumanAssets() {
         if (selectedVideoFile == null){
             Log.e(TAG, "selectedVideoFile is null");
             return;
         }
+        if (selectedAudioFile == null){
+            Log.e(TAG, "selectedAudioFile is null");
+            return;
+        }
+        currentVideoUrl = null;
+        currentAudioUrl = null;
         Log.d(TAG, "文件名: " + selectedVideoFileName);
         Log.d(TAG, "文件大小: " + selectedVideoFile.length() + " bytes");
-        // 确保文件名不为空且不包含特殊字符（简化：移除空格）
-        String safeFileName = selectedVideoFileName.replace(" ", "_");
         RequestBody requestBody = RequestBody.create(MediaType.parse("video/*"), selectedVideoFile);
         MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", selectedVideoFileName, requestBody);
         viewModel.uploadVideo(attractionId, filePart);
+
+        Log.d(TAG, "音频文件名: " + selectedAudioFileName);
+        Log.d(TAG, "音频文件大小: " + selectedAudioFile.length() + " bytes");
+        RequestBody audioRequestBody = RequestBody.create(MediaType.parse("audio/*"), selectedAudioFile);
+        MultipartBody.Part audioFilePart = MultipartBody.Part.createFormData("file", selectedAudioFileName, audioRequestBody);
+        viewModel.uploadAudio(audioFilePart);
     }
 
-    private void upsertDigitalHuman(String ossUrl) {
-        Log.e(TAG, "upsertDigitalHuman 被调用，ossUrl=" + ossUrl);
+    private void trySubmitDigitalHuman() {
+        if (TextUtils.isEmpty(currentVideoUrl) || TextUtils.isEmpty(currentAudioUrl)) {
+            return;
+        }
+        Toast.makeText(this, "视频和音频上传成功，请等待数字人配置...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
+        upsertDigitalHuman(currentVideoUrl, currentAudioUrl);
+    }
+
+    private void upsertDigitalHuman(String videoUrl, String audioUrl) {
+        Log.e(TAG, "upsertDigitalHuman 被调用，videoUrl=" + videoUrl + ", audioUrl=" + audioUrl);
         DigitalHuman req = new DigitalHuman();
         req.setAttractionId(attractionId);
-        req.setOssUrl(ossUrl);
+        req.setVideoUrl(videoUrl);
+        req.setAudioUrl(audioUrl);
         if (!TextUtils.isEmpty(currentAIHumanId)) {
             req.setId(currentAIHumanId);
         }
@@ -337,13 +405,13 @@ public class ManageAIHumanActivity extends AppCompatActivity {
 
     //轮询预加载状态 2.15
     private void startPollingPreloadStatus(){
-        if(isPollingPreload) return;
+        if(isPollingPreload || TextUtils.isEmpty(currentAIHumanId)) return;
         Toast.makeText(this, "正在预加载数字人，请稍候...", Toast.LENGTH_SHORT).show();
         isPollingPreload=true;
         preloadRunnable=new Runnable() {
             @Override
             public void run() {
-                viewModel.getPreloadStatus(attractionId);  // 触发请求
+                viewModel.getPreloadStatus(currentAIHumanId);
             }
         };
         preloadHandler.post(preloadRunnable);
@@ -369,7 +437,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         builder.setPositiveButton("生成", (dialog, which) -> {
             android.widget.EditText etText = dialogView.findViewById(R.id.et_test_text);
             String customText = etText.getText().toString().trim();
-            viewModel.generateTestVideo(attractionId, customText);
+            viewModel.generateTestVideo(currentAIHumanId, customText);
         });
         builder.setNegativeButton("取消", null);
         builder.show();
@@ -378,9 +446,9 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     //轮询测试视频状态 2.20
     private void startPollingTestVideoStatus(){
         Log.e("POLL", "startPollingTestVideoStatus 开始轮询");
-        if(isPollingTestVideo) return;
+        if(isPollingTestVideo || TextUtils.isEmpty(currentAIHumanId)) return;
         isPollingTestVideo=true;
-        testVideoRunnable=()->viewModel.fetchTestVideoStatus(attractionId);
+        testVideoRunnable=()->viewModel.fetchTestVideoStatus(currentAIHumanId);
         testVideoHandler.post(testVideoRunnable);
     }
 
@@ -495,6 +563,34 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 回显已有数字人时，从 OSS 视频地址提取首帧展示。
+     */
+    private void setVideoCoverFromUrl(String videoUrl) {
+        if (TextUtils.isEmpty(videoUrl)) return;
+        ivCover.setImageResource(R.drawable.ic_aihuman_video);
+        new Thread(() -> {
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            try {
+                retriever.setDataSource(videoUrl, new HashMap<>());
+                Bitmap frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                if (frame != null) {
+                    runOnUiThread(() -> {
+                        ivCover.setImageBitmap(frame);
+                        hasVideoFrameShown = true;
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "提取远程视频首帧失败：" + e.getMessage());
+            } finally {
+                try {
+                    retriever.release();
+                } catch (Exception ignored) {
+                }
+            }
+        }).start();
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -538,6 +634,24 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     Toast.makeText(this, "录制文件无效，请重试", Toast.LENGTH_SHORT).show();
                 }
             }
+        } else if (requestCode == REQUEST_CODE_SELECT_AUDIO && resultCode == RESULT_OK && data != null) {
+            Uri audioUri = data.getData();
+            if (audioUri != null) {
+                try {
+                    selectedAudioFileName = getFileNameFromUri(audioUri);
+                    selectedAudioFile = copyUriToTempFile(audioUri, selectedAudioFileName);
+                    if (uploadDialog != null && uploadDialog.isShowing()) {
+                        TextView tvSelected = uploadDialog.findViewById(R.id.tv_selected_audio);
+                        if (tvSelected != null) {
+                            tvSelected.setText("已选择：" + selectedAudioFileName);
+                        }
+                    }
+                    Toast.makeText(this, "已选择音频：" + selectedAudioFileName, Toast.LENGTH_SHORT).show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "读取音频文件失败", Toast.LENGTH_SHORT).show();
+                }
+            }
         }
     }
 
@@ -555,13 +669,17 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             fileName = uri.getLastPathSegment();
         }
         if (fileName == null) {
-            fileName = "video_" + System.currentTimeMillis() + ".mp4";
+            fileName = "file_" + System.currentTimeMillis();
         }
         return fileName;
     }
 
     private File copyUriToTempFile(Uri uri, String fileName) throws IOException {
-        File tempFile = File.createTempFile("video_", ".mp4", getCacheDir());
+        String suffix = ".tmp";
+        if (!TextUtils.isEmpty(fileName) && fileName.lastIndexOf(".") >= 0) {
+            suffix = fileName.substring(fileName.lastIndexOf("."));
+        }
+        File tempFile = File.createTempFile("digital_human_", suffix, getCacheDir());
         try (InputStream inputStream = getContentResolver().openInputStream(uri);
              FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             byte[] buffer = new byte[8192];
@@ -578,6 +696,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         super.onDestroy();
         hideLoadingBar();
         if (selectedVideoFile != null && selectedVideoFile.exists()) selectedVideoFile.delete();
+        if (selectedAudioFile != null && selectedAudioFile.exists()) selectedAudioFile.delete();
         stopPollingPreload();
         stopPollingTestVideo();
     }

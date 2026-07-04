@@ -11,5 +11,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class DigitalHumanVO {
     private Long id;
-    private String ossUrl;
+    private String videoUrl;
+    private String audioUrl;
 }
