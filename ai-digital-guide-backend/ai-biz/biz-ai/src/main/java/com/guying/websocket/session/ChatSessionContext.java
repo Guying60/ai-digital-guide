@@ -33,6 +33,12 @@ public class ChatSessionContext {
     /** 本轮已收到 chunk_end 的句子计数（CosyVoiceConnector 递增），用于判定"最后一句"补静音收口。 */
     private final AtomicInteger roundChunkEndCount = new AtomicInteger(0);
 
+    /** 会话建立时刻（毫秒），用于断开时判定"连接时间是否 ≥30s"是否落库。final，仅内存比较，不落库。 */
+    private final long connectTime;
+    /** 本次会话内用户实际提问次数（文本/语音均汇入 AiChatService.invoke 递增）。>0 即视为"有效会话"。 */
+    @Getter(lombok.AccessLevel.NONE)
+    private final AtomicInteger questionCount = new AtomicInteger(0);
+
 
     @Setter private volatile WebSocketSession museTalkSession;
     @Setter private volatile WebSocketSession cosyVoiceSession;
@@ -50,11 +56,22 @@ public class ChatSessionContext {
         this.attractionId = (Long) session.getAttributes().get("attractionId");
         this.digitalHumanId = digitalHumanId;
         this.conversationId = UUID.randomUUID().toString();
-        this.lastActiveTime = System.currentTimeMillis();
+        this.connectTime = System.currentTimeMillis();
+        this.lastActiveTime = this.connectTime;
     }
 
     public String conversationId() {
         return conversationId;
+    }
+
+    /** 用户提问一次（文本或语音），递增计数。 */
+    public int incrementQuestionCount() {
+        return questionCount.incrementAndGet();
+    }
+
+    /** 返回当前提问次数（int）。注：questionCount 字段已排除类级 @Getter，避免返回 AtomicInteger 对象。 */
+    public int getQuestionCount() {
+        return questionCount.get();
     }
 
     public void touchActive() {

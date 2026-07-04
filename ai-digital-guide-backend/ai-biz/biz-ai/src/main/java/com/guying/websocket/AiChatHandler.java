@@ -93,6 +93,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** 连接时间不足该阈值且一句话都没问的会话，不落游览历史/待评价。 */
+    private static final long MIN_VALID_DURATION_MS = 30_000L;
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         Long attractionId = (Long) session.getAttributes().get("attractionId");
@@ -112,7 +115,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
-            publishUserTourHistory(ctx);
+            // 游览历史不再在连接建立时落库：改为断开时按"是否提问过 / 连接是否≥30s"判定，
+            // 避免零提问且秒断的连接产生历史/待评价脏数据。
             museTalkConnector.connect(ctx);
             cosyVoiceConnector.connect(ctx);
         } catch (Exception e) {
@@ -188,8 +192,17 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
             return;
         }
-        // 对话结束，自动创建待评价记录
-        reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        // 仅"提问过 或 连接≥30s"的有效会话才落游览历史 + 待评价；
+        // 零提问且秒断的连接直接丢弃，不产生脏数据。
+        boolean shouldPersist = ctx.getQuestionCount() > 0
+                || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
+        if (shouldPersist) {
+            publishUserTourHistory(ctx);
+            reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        } else {
+            log.info("会话判定为无效（零提问且连接<{}ms），不落数据库 sid={}, questionCount={}",
+                    MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
+        }
         // 路线生命周期跟随连接，断开即清理
         routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
         OutboundPacer pacer = ctx.getOutboundPacer();

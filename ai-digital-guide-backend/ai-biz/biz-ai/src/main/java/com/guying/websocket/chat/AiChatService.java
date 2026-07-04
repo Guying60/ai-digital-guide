@@ -53,6 +53,8 @@ public class AiChatService {
             sender.sendError(ctx, "请求太频繁，请稍后再试");
             return;
         }
+        // 本会话首次提问，标记为"有效会话"（断开时据此决定是否落历史/待评价）
+        ctx.incrementQuestionCount();
         // 复位本轮句末补静音的计数（新一轮对话开始）
         ctx.resetRound();
         String conversationId = ctx.conversationId();
