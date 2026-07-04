@@ -73,6 +73,7 @@ public class HistoryActivity extends AppCompatActivity {
    private ImageView ivAdd;
    private LinearLayout tvHistory,tvMine;
     private UserScenicAdapter.OnItemClickListener listener;
+    private boolean needRefresh = false;      // 从 ChatActivity 返回时需要刷新列表
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +87,15 @@ public class HistoryActivity extends AppCompatActivity {
         setupTags();
         loadFirstPage(); // 进入页面立即请求
 
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (needRefresh) {
+            needRefresh = false;
+            resetAndLoad();
+        }
     }
     private void initNetwork() {
         token = SpUtils.getUserToken(this);
@@ -620,6 +630,7 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(intent);
         });
         ivAdd.setOnClickListener(v->{
+            needRefresh = true;  // 返回时自动刷新列表
             if (hasLocationPermission()) {
                 new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
             } else {
