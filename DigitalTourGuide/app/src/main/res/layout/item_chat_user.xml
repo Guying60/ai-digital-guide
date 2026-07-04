@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 用户消息气泡：右对齐，主色渐变背景 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="60dp"
+    android:paddingStart="64dp"
     android:paddingEnd="12dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
-    android:gravity="end">
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
     <TextView
         android:id="@+id/tv_user_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="end"
         android:background="@drawable/bubble_user"
-        android:padding="12dp"
-        android:textColor="#FFFFFF"
+        android:elevation="2dp"
+        android:fontFamily="sans-serif"
+        android:lineSpacingExtra="4dp"
         android:maxWidth="280dp"
-        android:textSize="16sp"/>
-</LinearLayout>
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/chat_on_primary"
+        android:textSize="15sp" />
+
+</FrameLayout>

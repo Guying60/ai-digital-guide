@@ -3,6 +3,7 @@ package com.example.digitaltourguide.view.user;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,6 +17,8 @@ import com.example.digitaltourguide.model.user.ChatHistoryItem;
 import com.example.digitaltourguide.model.user.ChatMessage;
 import com.example.digitaltourguide.network.ApiService;
 import com.example.digitaltourguide.network.RetrofitClient;
+import com.example.digitaltourguide.utils.SpUtils;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,19 +26,32 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import com.example.digitaltourguide.utils.SpUtils;
 
 public class ChatHistoryActivity extends AppCompatActivity {
 
-    private static final String TAG="ChatHistoryActivity";
+    private static final String TAG = "ChatHistoryActivity";
     private RecyclerView rvChatHistory;
     private ChatHistoryAdapter adapter;
     private String conversationId;
+    private View layoutEmpty;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat_history);
+
+        // Toolbar
+        MaterialToolbar toolbar = findViewById(R.id.topAppBar);
+        toolbar.setNavigationOnClickListener(v -> finish());
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_clear) {
+                clearConversation();
+                return true;
+            }
+            return false;
+        });
+
+        layoutEmpty = findViewById(R.id.layout_empty);
 
         conversationId = getIntent().getStringExtra("conversationId");
         if (conversationId == null || conversationId.isEmpty()) {
@@ -51,6 +67,22 @@ public class ChatHistoryActivity extends AppCompatActivity {
 
         loadChatHistory();
     }
+
+    private void clearConversation() {
+        if (adapter != null) {
+            adapter.clearMessages();
+        }
+        layoutEmpty.setVisibility(View.VISIBLE);
+        rvChatHistory.setVisibility(View.GONE);
+        Toast.makeText(this, "已清空", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateEmptyState() {
+        boolean isEmpty = adapter.getItemCount() == 0;
+        layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        rvChatHistory.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+    }
+
     private void loadChatHistory() {
         String token = SpUtils.getUserToken(this);
         Log.d(TAG, "获取到的token: " + token);
@@ -63,7 +95,6 @@ public class ChatHistoryActivity extends AppCompatActivity {
             token = "Bearer " + token;
         }
         Log.d(TAG, "token: " + token);
-        String hardcodedConvId = "2046935279750139906:2046157323100524545";
 
         ApiService apiService = RetrofitClient.getApiService();
         apiService.getChatHistory(conversationId).enqueue(new Callback<BaseResponse<List<ChatHistoryItem>>>() {
@@ -71,9 +102,8 @@ public class ChatHistoryActivity extends AppCompatActivity {
             public void onResponse(Call<BaseResponse<List<ChatHistoryItem>>> call, Response<BaseResponse<List<ChatHistoryItem>>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     Log.d(TAG, "conversationId:" + conversationId);
-                    Log.d(TAG, response.body().toString());  // 或者用 Gson 再打印一次
+                    Log.d(TAG, response.body().toString());
                     BaseResponse<List<ChatHistoryItem>> baseResp = response.body();
-                    // 打印关键字段
                     Log.d(TAG, "code = " + baseResp.getCode());
                     Log.d(TAG, "msg = " + baseResp.getMsg());
                     Log.d(TAG, "data = " + baseResp.getData());
@@ -82,11 +112,11 @@ public class ChatHistoryActivity extends AppCompatActivity {
                     } else {
                         Log.e(TAG, "data 为 null");
                     }
-                    // 如果 code 为 1，尝试显示数据
                     if (baseResp.getCode() == 1) {
                         List<ChatHistoryItem> items = baseResp.getData();
                         if (items == null || items.isEmpty()) {
                             Toast.makeText(ChatHistoryActivity.this, "暂无聊天记录", Toast.LENGTH_SHORT).show();
+                            updateEmptyState();
                         } else {
                             List<ChatMessage> messages = new ArrayList<>();
                             for (ChatHistoryItem item : items) {
@@ -94,6 +124,7 @@ public class ChatHistoryActivity extends AppCompatActivity {
                                 messages.add(new ChatMessage(item.getContent(), isUser));
                             }
                             adapter.setMessages(messages);
+                            updateEmptyState();
                         }
                     } else {
                         Toast.makeText(ChatHistoryActivity.this, "接口错误：" + baseResp.getMsg(), Toast.LENGTH_SHORT).show();
@@ -106,7 +137,7 @@ public class ChatHistoryActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<BaseResponse<List<ChatHistoryItem>>> call, Throwable t) {
-                Toast.makeText(ChatHistoryActivity.this, "网络错误" , Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatHistoryActivity.this, "网络错误", Toast.LENGTH_SHORT).show();
             }
         });
     }

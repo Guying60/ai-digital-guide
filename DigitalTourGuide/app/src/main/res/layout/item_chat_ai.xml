@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- AI 消息气泡：左对齐，浅色背景 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="12dp"
-    android:paddingEnd="60dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
-    android:gravity="start">
+    android:paddingEnd="64dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
     <TextView
         android:id="@+id/tv_ai_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="start"
         android:background="@drawable/bubble_ai"
-        android:padding="12dp"
-        android:textColor="#000000"
+        android:elevation="1dp"
+        android:fontFamily="sans-serif"
+        android:lineSpacingExtra="4dp"
         android:maxWidth="280dp"
-        android:textSize="16sp"/>
-</LinearLayout>
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/chat_on_surface"
+        android:textSize="15sp" />
+
+</FrameLayout>

@@ -159,5 +159,8 @@
     <string name="chat_mic_hint">按住 说话</string>
     <string name="chat_keyboard_input">文字输入</string>
     <string name="chat_text_input">文字</string>
+    <string name="chat_clear">清空</string>
+    <string name="chat_empty_title">暂无对话记录</string>
+    <string name="chat_empty_subtitle">去和 AI 导览聊一聊吧</string>
 
 </resources>

@@ -3,6 +3,7 @@ package com.example.digitaltourguide.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -19,14 +20,21 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private static final int TYPE_USER = 1;
     private List<ChatMessage> messageList;
 
-    public void setMessages(List<ChatMessage> messages){
-        this.messageList=messages;
+    public void setMessages(List<ChatMessage> messages) {
+        this.messageList = messages;
+        notifyDataSetChanged();
+    }
+
+    public void clearMessages() {
+        if (this.messageList != null) {
+            this.messageList.clear();
+        }
         notifyDataSetChanged();
     }
 
     @Override
     public int getItemViewType(int position) {
-        return messageList.get(position).isUser()? TYPE_USER : TYPE_AI;
+        return messageList.get(position).isUser() ? TYPE_USER : TYPE_AI;
     }
 
     @NonNull
@@ -43,10 +51,15 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        ChatMessage msg=messageList.get(position);
-        if(holder instanceof UserViewHolder){
+        ChatMessage msg = messageList.get(position);
+
+        // 入场动画
+        holder.itemView.startAnimation(
+                AnimationUtils.loadAnimation(holder.itemView.getContext(), R.anim.fade_in_scale));
+
+        if (holder instanceof UserViewHolder) {
             ((UserViewHolder) holder).tvUserContent.setText(msg.getContent());
-        }else if(holder instanceof AiViewHolder){
+        } else if (holder instanceof AiViewHolder) {
             ((AiViewHolder) holder).tvAiContent.setText(msg.getContent());
         }
     }
@@ -58,14 +71,16 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView tvUserContent;
+
         UserViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvUserContent=itemView.findViewById(R.id.tv_user_content);
+            tvUserContent = itemView.findViewById(R.id.tv_user_content);
         }
     }
 
     static class AiViewHolder extends RecyclerView.ViewHolder {
         TextView tvAiContent;
+
         public AiViewHolder(@NonNull View itemView) {
             super(itemView);
             tvAiContent = itemView.findViewById(R.id.tv_ai_content);

@@ -1,4 +1,10 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#E0E0E0"/>
-    <corners android:radius="16dp"/>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AI 气泡：浅紫灰底色 + 微描边，圆角 20dp -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#EDECF5" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="0.5dp"
+        android:color="#DCDAED" />
 </shape>
