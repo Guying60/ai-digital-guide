@@ -11,8 +11,10 @@ import com.guying.utils.PasswordUtil;
 import com.guying.converter.AdminConverter;
 import com.guying.mapper.AdminMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import com.guying.pojo.dto.LoginDTO;
 import com.guying.pojo.entity.Admin;
 import com.guying.service.AdminService;
@@ -40,11 +42,13 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
     @Override
     public AdminLoginVO login(LoginDTO loginDto) {
         LambdaQueryWrapper<Admin> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Admin::getUsername, loginDto.getUsername());
+        queryWrapper.eq(Admin::getUsername, loginDto.getUsername())
+                .select(Admin::getId, Admin::getUsername, Admin::getPassword);
         Admin admin = adminMapper.selectOne(queryWrapper);
-//        if (admin == null || !PasswordUtil.matches(loginDto.getPassword(), admin.getPassword())) {
-//            throw new ServiceException("用户名或密码错误");
-//        }
+        if (admin == null || !StringUtils.hasText(admin.getPassword())
+                || !PasswordUtil.matches(loginDto.getPassword(), admin.getPassword())) {
+            throw new ServiceException("用户名或密码错误");
+        }
         String uuid = UUID.randomUUID().toString();
         //生成JWT令牌，将uuid作为claims的值
         Map<String, Object> claims = new HashMap<>();
@@ -61,12 +65,17 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         if (!registerDto.getPassword().equals(registerDto.getConfirmPassword())) {
             throw new ServiceException("两次输入的密码不一致");
         }
+        LambdaQueryWrapper<Admin> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Admin::getUsername, registerDto.getUsername());
+        if (adminMapper.selectCount(queryWrapper) > 0) {
+            throw new ServiceException("用户名已存在");
+        }
         Admin admin = adminConverter.toAdmin(registerDto);
         admin.setPassword(PasswordUtil.encode(registerDto.getPassword()));
         try {
             adminMapper.insert(admin);
-        } catch (Exception e) {
-            throw new ServiceException("注册失败，用户名已存在");
+        } catch (DuplicateKeyException e) {
+            throw new ServiceException("用户名已存在");
         }
         return adminConverter.toRegisterVO(admin);
     }
