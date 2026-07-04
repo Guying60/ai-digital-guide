@@ -6,8 +6,8 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
@@ -18,6 +18,7 @@ import com.example.digitaltourguide.network.ApiService;
 import com.example.digitaltourguide.network.RetrofitClient;
 import com.example.digitaltourguide.utils.SpUtils;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,7 +31,7 @@ public class MyActivity extends AppCompatActivity {
     private ApiService apiService;
     private ImageView ivAvatar;
     private TextView tvNickname, tvUserId;
-    private LinearLayout tvHistory;
+    private LinearLayout tvHistory, tvMine;
     private Chip chipGender;
 
     @Override
@@ -51,39 +52,83 @@ public class MyActivity extends AppCompatActivity {
         tvUserId = findViewById(R.id.tv_user_id);
         chipGender = findViewById(R.id.chip_gender);
         tvHistory = findViewById(R.id.tv_history);
+        tvMine = findViewById(R.id.tv_mine);
     }
 
     private void initClickListeners() {
-        // 顶部用户信息卡片 → ProfileInfoActivity
+        // 用户信息卡片 → 个人信息编辑
         findViewById(R.id.card_user_info).setOnClickListener(v ->
                 startActivity(new Intent(this, ProfileInfoActivity.class))
         );
 
-        // 我的评价 → MyJudgeActivity
+        // 我的评价
         findViewById(R.id.btn_my_reviews).setOnClickListener(v ->
                 startActivity(new Intent(this, MyJudgeActivity.class))
         );
 
-        // 偏好设置 → MyPerActivity
+        // 偏好设置
         findViewById(R.id.card_preferences).setOnClickListener(v ->
                 startActivity(new Intent(this, MyPerActivity.class))
         );
 
+        // 景点地图
+        findViewById(R.id.btn_nearby_map).setOnClickListener(v ->
+                startActivity(new Intent(this, NearbyMapActivity.class))
+        );
+
+        // 账号管理 → 个人信息编辑
+        findViewById(R.id.btn_account_mgmt).setOnClickListener(v ->
+                startActivity(new Intent(this, ProfileInfoActivity.class))
+        );
+
+        // 关于我们
+        findViewById(R.id.btn_about).setOnClickListener(v -> showAboutDialog());
+
+        // 退出登录
+        findViewById(R.id.btn_logout).setOnClickListener(v -> showLogoutDialog());
+
+        // 底部导航：出游记录
         tvHistory.setOnClickListener(v -> {
             Intent intent = new Intent(this, HistoryActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             startActivity(intent);
         });
 
-        // 景点地图
-        findViewById(R.id.btn_nearby_map).setOnClickListener(v ->
-                startActivity(new Intent(this, NearbyMapActivity.class))
+        // 底部导航：个人中心（当前页面）
+        tvMine.setOnClickListener(v ->
+                Toast.makeText(this, "当前已是个人中心", Toast.LENGTH_SHORT).show()
         );
     }
 
+    private void showAboutDialog() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("关于我们")
+                .setMessage("AI 数字导游 v1.0\n\n" +
+                        "为您提供智能导览、实时对话、\n" +
+                        "路线规划等一站式旅游服务。\n\n" +
+                        "让每一次旅行都与众不同。")
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
+    private void showLogoutDialog() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("退出登录")
+                .setMessage("确定要退出当前账号吗？")
+                .setPositiveButton("退出", (dialog, which) -> {
+                    SpUtils.clearUserInfo(this);
+                    Intent intent = new Intent(this, UserLoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     /**
-     * 加载用户信息（1.3 GET /users/userInfo）
-     * AuthInterceptor 自动注入用户 Token，无需手动加 Header
+     * 加载用户信息（GET /users/userInfo）
+     * AuthInterceptor 自动注入用户 Token
      */
     private void loadUserInfo() {
         if (apiService == null) {
@@ -122,7 +167,6 @@ public class MyActivity extends AppCompatActivity {
                     .placeholder(R.drawable.ic_person_filled)
                     .into(ivAvatar);
         } else {
-            // 服务端返回 null，用本地缓存的头像兜底
             String cached = SpUtils.getUserAvatar(this);
             if (!cached.isEmpty()) {
                 Glide.with(this)
@@ -157,7 +201,7 @@ public class MyActivity extends AppCompatActivity {
             chipGender.setVisibility(android.view.View.GONE);
         }
 
-        // 账号 ID（从 SpUtils 读取）
+        // 账号 ID
         String userId = SpUtils.getUserId(this);
         if (userId != null && !userId.isEmpty()) {
             tvUserId.setText("ID: " + userId);
