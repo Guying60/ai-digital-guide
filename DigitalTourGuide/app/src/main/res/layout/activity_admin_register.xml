@@ -168,6 +168,8 @@
                     android:layout_marginEnd="14dp"
                     android:src="@drawable/ic_eye_close"
                     android:contentDescription="@string/register_toggle_visibility"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:importantForAccessibility="no" />
             </FrameLayout>
 
@@ -212,6 +214,8 @@
                     android:layout_marginEnd="14dp"
                     android:src="@drawable/ic_eye_close"
                     android:contentDescription="@string/register_toggle_visibility"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:importantForAccessibility="no" />
             </FrameLayout>
 
@@ -286,6 +290,7 @@
 
             <!-- ========== Footer ========== -->
             <LinearLayout
+                android:id="@+id/user_login"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -301,6 +306,7 @@
                     android:fontFamily="sans-serif" />
 
                 <TextView
+                    android:id="@+id/admin_login"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/register_login_link"

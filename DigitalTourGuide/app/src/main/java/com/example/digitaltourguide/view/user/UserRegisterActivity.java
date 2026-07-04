@@ -2,8 +2,10 @@ package com.example.digitaltourguide.view.user;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,7 +24,10 @@ import retrofit2.Response;
 
 public class UserRegisterActivity extends AppCompatActivity {
     private EditText etUsername, etPassword, etNickname,etConfirmPassword;
-    private TextView btnRegister;
+    private TextView btnRegister,tvLogin;
+    private ImageView ivPwdVisibility, ivPwdVisibilityConfirm;
+    private boolean isPasswordVisible = false;
+    private boolean isConfirmPasswordVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +37,38 @@ public class UserRegisterActivity extends AppCompatActivity {
         initView();
 
         btnRegister.setOnClickListener(v -> doRegister());
+        ivPwdVisibility.setOnClickListener(v -> togglePasswordVisibility(etPassword, ivPwdVisibility, isPasswordVisible = !isPasswordVisible));
+        ivPwdVisibilityConfirm.setOnClickListener(v -> togglePasswordVisibility(etConfirmPassword, ivPwdVisibilityConfirm, isConfirmPasswordVisible = !isConfirmPasswordVisible));
+        tvLogin.setOnClickListener(v->{
+            startActivity(new Intent(UserRegisterActivity.this,UserLoginActivity.class));
+        });
+
+    }
+
+    /**
+     * 切换密码输入框的明文/密文显示。默认闭眼（密文），点击后睁眼（明文）。
+     */
+    private void togglePasswordVisibility(EditText editText, ImageView toggle, boolean visible) {
+        String currentText = editText.getText().toString();
+        int selectionStart = editText.getSelectionStart();
+        int selectionEnd = editText.getSelectionEnd();
+
+        if (visible) {
+            editText.setInputType(InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+            toggle.setImageResource(R.drawable.ic_eye_open);
+        } else {
+            editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            toggle.setImageResource(R.drawable.ic_eye_close);
+        }
+
+        // 切换 inputType 会重置字体，这里保持原字体
+        editText.setTypeface(etPassword.getTypeface());
+        editText.setText(currentText);
+        if (selectionStart >= 0 && selectionEnd >= 0) {
+            editText.setSelection(selectionStart, selectionEnd);
+        } else {
+            editText.setSelection(editText.length());
+        }
     }
 
     private void doRegister() {
@@ -98,5 +135,8 @@ public class UserRegisterActivity extends AppCompatActivity {
         etNickname = findViewById(R.id.et_nickname);
         etConfirmPassword = findViewById(R.id.et_confirm_password);
         btnRegister = findViewById(R.id.btn_register);
+        ivPwdVisibility = findViewById(R.id.iv_pwd_visibility);
+        ivPwdVisibilityConfirm = findViewById(R.id.iv_pwd_visibility_confirm);
+        tvLogin=findViewById(R.id.user_login);
     }
 }
