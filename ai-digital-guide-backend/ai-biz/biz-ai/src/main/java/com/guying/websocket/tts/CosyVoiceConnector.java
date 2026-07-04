@@ -78,8 +78,8 @@ public class CosyVoiceConnector {
         ObjectNode req = objectMapper.createObjectNode();
         req.put("type", "synthesize");
         req.put("text", text);
-        if (ctx.getAttractionId() != null) {
-            req.put("attraction_id", ctx.getAttractionId().toString());
+        if (ctx.getDigitalHumanId() != null) {
+            req.put("digital_human_id", ctx.getDigitalHumanId().toString());
         }
         req.put("session_id", ctx.getSid());
         try {
@@ -102,7 +102,7 @@ public class CosyVoiceConnector {
         try {
             String json = objectMapper.createObjectNode()
                     .put("type", "interrupt")
-                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("digital_human_id", String.valueOf(ctx.getDigitalHumanId()))
                     .put("session_id", ctx.getSid())
                     .toString();
             cosySession.sendMessage(new TextMessage(json));
@@ -133,10 +133,10 @@ public class CosyVoiceConnector {
 
         @Override
         public void afterConnectionEstablished(WebSocketSession cosySession) throws Exception {
-            log.info("[CosyVoice WS] 已连接 sid={} attractionId={}", ctx.getSid(), ctx.getAttractionId());
+            log.info("[CosyVoice WS] 已连接 sid={} digitalHumanId={}", ctx.getSid(), ctx.getDigitalHumanId());
             String initJson = objectMapper.createObjectNode()
                     .put("type", "init")
-                    .put("attraction_id", String.valueOf(ctx.getAttractionId()))
+                    .put("digital_human_id", String.valueOf(ctx.getDigitalHumanId()))
                     .put("session_id", ctx.getSid())
                     .toString();
             cosySession.sendMessage(new TextMessage(initJson));

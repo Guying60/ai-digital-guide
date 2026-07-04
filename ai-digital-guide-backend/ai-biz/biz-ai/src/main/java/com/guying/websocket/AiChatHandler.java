@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
+import com.guying.attractions.service.DigitalHumanInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
 import com.guying.attractions.service.ReviewInternalService;
@@ -85,15 +86,24 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     private FaceEmotionService faceEmotionService;
 
     @Autowired
+    private DigitalHumanInternalService digitalHumanInternalService;
+
+    @Autowired
     private RateLimiterUtil rateLimiterUtil;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        ChatSessionContext ctx = registry.register(session);
-        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}",
-                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId());
+        Long attractionId = (Long) session.getAttributes().get("attractionId");
+        Long digitalHumanId = digitalHumanInternalService.getDigitalHumanIdByAttractionId(attractionId);
+        if (digitalHumanId == null) {
+            log.warn("WebSocket 连接拒绝：景点 {} 未配置数字人", attractionId);
+            throw new ServiceException("该景点尚未配置数字人");
+        }
+        ChatSessionContext ctx = registry.register(session, digitalHumanId);
+        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}",
+                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId());
         log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
 
         try {

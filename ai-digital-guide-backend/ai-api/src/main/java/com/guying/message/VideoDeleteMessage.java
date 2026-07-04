@@ -10,5 +10,5 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VideoDeleteMessage implements Serializable {
-    private Long attractionId;
+    private Long digitalHumanId;
 }

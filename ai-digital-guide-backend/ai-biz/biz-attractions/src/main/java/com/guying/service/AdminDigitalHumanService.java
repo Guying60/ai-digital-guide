@@ -19,12 +19,12 @@ public interface AdminDigitalHumanService {
 
     void deleteDigitalHuman(Long id);
 
-    String checkPreloadStatus(Long attractionId);
+    String checkPreloadStatus(Long digitalHumanId);
 
-    String generateTestVideo(Long attractionId, String testText);
+    String generateTestVideo(Long digitalHumanId, String testText);
 
-    String checkTestVideoStatus(Long attractionId);
+    String checkTestVideoStatus(Long digitalHumanId);
 
-    Resource proxyTestVideo(Long attractionId);
+    Resource proxyTestVideo(Long digitalHumanId);
 
 }

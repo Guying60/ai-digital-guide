@@ -45,7 +45,7 @@ async def reload_voices() -> dict:
 async def tts_offline(request: dict) -> Response:
     """离线 TTS：返回完整 WAV 文件，供测试视频生成等离线场景使用。"""
     text = (request.get("text") or "").strip()
-    attraction_id = str(request.get("attraction_id")) if request.get("attraction_id") else None
+    digital_human_id = str(request.get("digital_human_id")) if request.get("digital_human_id") else None
     if not text:
         return Response(content=b"", media_type="audio/wav", status_code=400)
 
@@ -55,7 +55,7 @@ async def tts_offline(request: dict) -> Response:
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(16000)
-        async for pcm in engine.stream_pcm(text, attraction_id):
+        async for pcm in engine.stream_pcm(text, digital_human_id):
             wf.writeframes(pcm)
 
     return Response(content=buf.getvalue(), media_type="audio/wav")
@@ -69,8 +69,8 @@ async def ws_tts(ws: WebSocket) -> None:
     engine = get_engine()
 
     # 单连接内的会话上下文
-    attraction_id: Optional[str] = None
-    # job_queue: (text, attraction_id, session_id, sentence_id)
+    digital_human_id: Optional[str] = None
+    # job_queue: (text, digital_human_id, session_id, sentence_id)
     job_queue: asyncio.Queue = asyncio.Queue()
     interrupt_flag = asyncio.Event()                   # 当前句中断信号
     current_task: Optional[asyncio.Task] = None        # 当前 worker 正在跑的句子任务
@@ -150,12 +150,12 @@ async def ws_tts(ws: WebSocket) -> None:
             mtype = msg.get("type")
 
             if mtype == "init":
-                attraction_id = (
-                    str(msg["attraction_id"])
-                    if msg.get("attraction_id") is not None
+                digital_human_id = (
+                    str(msg["digital_human_id"])
+                    if msg.get("digital_human_id") is not None
                     else None
                 )
-                logger.info("[tts] sid=%s init attraction=%s", sid, attraction_id)
+                logger.info("[tts] sid=%s init digitalHumanId=%s", sid, digital_human_id)
                 continue
 
             if mtype == "ping":
@@ -191,9 +191,9 @@ async def ws_tts(ws: WebSocket) -> None:
             if mtype == "synthesize":
                 text: str = msg.get("text") or ""
                 attr = (
-                    str(msg["attraction_id"])
-                    if msg.get("attraction_id") is not None
-                    else attraction_id
+                    str(msg["digital_human_id"])
+                    if msg.get("digital_human_id") is not None
+                    else digital_human_id
                 )
                 session_id: Optional[str] = msg.get("session_id")
                 if not text.strip():

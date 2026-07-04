@@ -52,7 +52,7 @@ async def websocket_endpoint(ws: WebSocket):
     engine = ws.app.state.engine
     await ws.accept()
     logger.info("[ws] 客户端已连接")
-    attraction_id: Optional[str] = None
+    digital_human_id: Optional[str] = None
     audio_buffer = bytearray()
 
     last_pong = {"ts": time.time()}
@@ -179,9 +179,9 @@ async def websocket_endpoint(ws: WebSocket):
         raw = await ws.receive()
         msg = json.loads(raw["text"])
         if msg.get("type") == "init":
-            attraction_id = msg.get("attraction_id")
+            digital_human_id = msg.get("digital_human_id")
             try:
-                await asyncio.to_thread(engine.load_avatar, attraction_id)
+                await asyncio.to_thread(engine.load_avatar, digital_human_id)
                 await ws.send_json({"type": "ready"})
             except Exception as e:
                 await ws.send_json({"type": "error", "message": f"预处理崩溃: {e}"})
@@ -220,7 +220,7 @@ async def websocket_endpoint(ws: WebSocket):
                         engine.precompute_audio_chunks, full_audio
                     )
                     await inference_queue.put(
-                        (chunks_future, len(full_audio), attraction_id, sentence_id)
+                        (chunks_future, len(full_audio), digital_human_id, sentence_id)
                     )
                     logger.info(
                         f"[ws] sentence_id={sentence_id} 音频已推入推理队列，audio2feat 预计算已启动"

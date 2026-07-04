@@ -292,7 +292,7 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
             try {
                 rabbitTemplate.convertAndSend(
                         MqConstants.VIDEO_DELETE_QUEUE,
-                        new VideoDeleteMessage(attractionId)
+                        new VideoDeleteMessage(digitalHuman.getId())
                 );
             } catch (Exception e) {
                 log.error("删除景点时发送数字人删除消息失败, attractionId: {}", attractionId, e);

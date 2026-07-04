@@ -22,6 +22,7 @@ public class ChatSessionContext {
     private final String sid;
     private final Long userId;
     private final Long attractionId;
+    private final Long digitalHumanId;
     private final String conversationId;
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
@@ -42,11 +43,12 @@ public class ChatSessionContext {
 
     private volatile long lastActiveTime;
 
-    public ChatSessionContext(WebSocketSession session) {
+    public ChatSessionContext(WebSocketSession session, Long digitalHumanId) {
         this.userSession = session;
         this.sid = session.getId();
         this.userId = (Long) session.getAttributes().get("userId");
         this.attractionId = (Long) session.getAttributes().get("attractionId");
+        this.digitalHumanId = digitalHumanId;
         this.conversationId = UUID.randomUUID().toString();
         this.lastActiveTime = System.currentTimeMillis();
     }

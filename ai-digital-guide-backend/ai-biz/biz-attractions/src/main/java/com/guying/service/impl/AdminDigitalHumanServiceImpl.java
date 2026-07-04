@@ -68,13 +68,13 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         adminDigitalHumanMapper.insertOrUpdate(entity);
         //异步发送视频预加载消息
         VideoPreloadMessage message = new VideoPreloadMessage(
-                entity.getAttractionId(),
+                entity.getId(),
                 entity.getVideoUrl(),
                 entity.getAudioUrl());
         rabbitTemplate.convertAndSend(VIDEO_PRELOAD_QUEUE, message);
         // 写入 Redis 初始状态，供前端轮询
         stringRedisTemplate.opsForValue().set(
-                RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + entity.getAttractionId(),
+                RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + entity.getId(),
                 TaskStatusEnum.PROCESSING.toString(),
                 RedisConstants.DIGITAL_HUMAN_PRELOAD_EXPIRE_TIME,
                 TimeUnit.MINUTES);
@@ -127,61 +127,61 @@ public class AdminDigitalHumanServiceImpl implements AdminDigitalHumanService {
         adminDigitalHumanMapper.delete(lambdaQueryWrapper);
         deleteOssFile(entity.getVideoUrl());
         deleteOssFile(entity.getAudioUrl());
-        rabbitTemplate.convertAndSend(VIDEO_DELETE_QUEUE, new VideoDeleteMessage(entity.getAttractionId()));
-        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + entity.getAttractionId());
-        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + entity.getAttractionId());
+        rabbitTemplate.convertAndSend(VIDEO_DELETE_QUEUE, new VideoDeleteMessage(entity.getId()));
+        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + entity.getId());
+        stringRedisTemplate.delete(RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + entity.getId());
     }
 
     /**
      * 查询数字人预加载状态
-     * @param attractionId
+     * @param digitalHumanId 数字人 ID
      * @return PROCESSING | SUCCESS | FAILED
      */
     @Override
-    public String checkPreloadStatus(Long attractionId) {
+    public String checkPreloadStatus(Long digitalHumanId) {
         return stringRedisTemplate.opsForValue().get(
-                RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + attractionId);
+                RedisConstants.DIGITAL_HUMAN_PRELOAD_KEY + digitalHumanId);
     }
 
     /**
      * 触发测试视频生成
-     * @param attractionId
+     * @param digitalHumanId 数字人 ID
      * @param testText 测试文本，为空时由 Python 端使用默认文本
      * @return
      */
     @Override
-    public String generateTestVideo(Long attractionId, String testText) {
-        VideoTestMessage message = new VideoTestMessage(attractionId, testText);
+    public String generateTestVideo(Long digitalHumanId, String testText) {
+        VideoTestMessage message = new VideoTestMessage(digitalHumanId, testText);
         rabbitTemplate.convertAndSend(VIDEO_TEST_QUEUE, message);
         stringRedisTemplate.opsForValue().set(
-                RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + attractionId,
+                RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + digitalHumanId,
                 TaskStatusEnum.PROCESSING.toString(),
                 RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_EXPIRE_TIME,
                 TimeUnit.MINUTES);
-        log.info("测试视频生成任务已提交: attractionId={}", attractionId);
+        log.info("测试视频生成任务已提交: digitalHumanId={}", digitalHumanId);
         return "任务已提交";
     }
 
     /**
      * 查询测试视频生成状态
-     * @param attractionId
+     * @param digitalHumanId 数字人 ID
      * @return PROCESSING | SUCCESS | FAILED
      */
     @Override
-    public String checkTestVideoStatus(Long attractionId) {
+    public String checkTestVideoStatus(Long digitalHumanId) {
         return stringRedisTemplate.opsForValue().get(
-                RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + attractionId);
+                RedisConstants.DIGITAL_HUMAN_TEST_VIDEO_KEY + digitalHumanId);
     }
 
     /**
      * 代理获取 Python 端生成的测试视频文件
-     * @param attractionId
+     * @param digitalHumanId 数字人 ID
      * @return
      */
     @Override
-    public Resource proxyTestVideo(Long attractionId) {
+    public Resource proxyTestVideo(Long digitalHumanId) {
         return restClient.get()
-                .uri(museTalkHttpUrl + "/admin/test-video/" + attractionId)
+                .uri(museTalkHttpUrl + "/admin/test-video/" + digitalHumanId)
                 .retrieve()
                 .body(Resource.class);
     }
