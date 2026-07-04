@@ -1,9 +1,15 @@
 package com.example.digitaltourguide.view.user;
 
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -45,7 +51,7 @@ public class ChatHistoryActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
         toolbar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_clear) {
-                clearConversation();
+                showClearDialog();
                 return true;
             }
             return false;
@@ -66,6 +72,32 @@ public class ChatHistoryActivity extends AppCompatActivity {
         rvChatHistory.setAdapter(adapter);
 
         loadChatHistory();
+    }
+
+    private void showClearDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_clear_chat, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.85),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        view.findViewById(R.id.btn_cancel_clear).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_confirm_clear).setOnClickListener(v -> {
+            clearConversation();
+            dialog.dismiss();
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
 
     private void clearConversation() {
