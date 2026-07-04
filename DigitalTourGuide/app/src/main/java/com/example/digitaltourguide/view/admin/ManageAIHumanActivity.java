@@ -49,7 +49,9 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     private ImageView ivCover;
     private TextView tvUpsert,tvScenicEdit;
     private Button btnGenerateTestVideo;
-    private View loadingBottomBar;
+    private View loadingOverlay;
+    private TextView tvLoadingStatus;
+    private TextView tvLoadingHint;
     private ActivityManagerAihumanBinding binding;
     private AIHumanViewModel viewModel;
     private String attractionId;
@@ -153,6 +155,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                     trySubmitDigitalHuman();
                 }
             } else {
+                hideLoadingBar();
                 String msg = (response != null) ? response.getMsg() : "上传失败";
                 Toast.makeText(this, "音频上传失败：" + msg, Toast.LENGTH_SHORT).show();
             }
@@ -369,6 +372,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         }
         currentVideoUrl = null;
         currentAudioUrl = null;
+        showLoadingBar("正在上传视频和音频...", "文件较大，请耐心等待");
         Log.d(TAG, "文件名: " + selectedVideoFileName);
         Log.d(TAG, "文件大小: " + selectedVideoFile.length() + " bytes");
         RequestBody requestBody = RequestBody.create(MediaType.parse("video/*"), selectedVideoFile);
@@ -386,8 +390,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(currentVideoUrl) || TextUtils.isEmpty(currentAudioUrl)) {
             return;
         }
-        Toast.makeText(this, "视频和音频上传成功，请等待数字人配置...", Toast.LENGTH_SHORT).show();
-        Toast.makeText(this, "温馨提示：15秒的视频需等待5分钟左右", Toast.LENGTH_SHORT).show();
+        showLoadingBar("正在保存数字人配置...", "15秒的视频约需等待5分钟，请勿退出");
         upsertDigitalHuman(currentVideoUrl, currentAudioUrl);
     }
 
@@ -406,7 +409,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     //轮询预加载状态 2.15
     private void startPollingPreloadStatus(){
         if(isPollingPreload || TextUtils.isEmpty(currentAIHumanId)) return;
-        Toast.makeText(this, "正在预加载数字人，请稍候...", Toast.LENGTH_SHORT).show();
+        showLoadingBar("数字人预加载中...", "预计需要5分钟，请勿退出当前页面");
         isPollingPreload=true;
         preloadRunnable=new Runnable() {
             @Override
@@ -706,23 +709,32 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         tvUpsert = findViewById(R.id.tv_upsert);
         btnGenerateTestVideo = findViewById(R.id.btn_generate_test_video);
         tvScenicEdit = findViewById(R.id.tab_scenic);
-        loadingBottomBar = findViewById(R.id.loading_bottom_bar);
+        loadingOverlay = findViewById(R.id.loading_overlay);
+        tvLoadingStatus = findViewById(R.id.tv_loading_status);
+        tvLoadingHint = findViewById(R.id.tv_loading_hint);
     }
 
-    private void showLoadingBar() {
-        if (loadingBottomBar != null && loadingBottomBar.getVisibility() != View.VISIBLE) {
-            loadingBottomBar.setVisibility(View.VISIBLE);
+    private void showLoadingBar(String status, String hint) {
+        if (tvLoadingStatus != null) tvLoadingStatus.setText(status);
+        if (tvLoadingHint != null) tvLoadingHint.setText(hint);
+        if (loadingOverlay != null && loadingOverlay.getVisibility() != View.VISIBLE) {
+            loadingOverlay.setVisibility(View.VISIBLE);
         }
     }
 
+    private void showLoadingBar() {
+        showLoadingBar("正在配置数字人", "请耐心等待，预计需要几分钟");
+    }
+
     private void hideLoadingBar() {
-        if (loadingBottomBar != null) {
-            loadingBottomBar.setVisibility(View.GONE);
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisibility(View.GONE);
         }
     }
 
     @Override
     public void onBackPressed() {
+        super.onBackPressed();
         Intent intent = new Intent(ManageAIHumanActivity.this, PointManagerActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
