@@ -309,14 +309,6 @@
                 android:src="@drawable/ic_add"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no" />
-
-            <ImageView
-                android:id="@+id/iv_nearby_map"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:src="@drawable/ic_location_pin"
-                android:contentDescription="附近景点地图"
-                android:padding="12dp" />
         </LinearLayout>
 
         <!-- 个人中心 Tab (Inactive) -->

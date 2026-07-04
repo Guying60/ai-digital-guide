@@ -627,9 +627,6 @@ public class HistoryActivity extends AppCompatActivity {
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
             }
         });
-        findViewById(R.id.iv_nearby_map).setOnClickListener(v -> {
-            startActivity(new Intent(this, NearbyMapActivity.class));
-        });
     }
 
 
