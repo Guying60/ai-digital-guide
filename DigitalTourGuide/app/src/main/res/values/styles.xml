@@ -22,6 +22,12 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <!-- 头像圆形覆盖（用于 ShapeableImageView app:shapeAppearanceOverlay） -->
+    <style name="ShapeAppearanceOverlayProfileCircle">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
     <style name="RoundedCornerFull">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">999dp</item>

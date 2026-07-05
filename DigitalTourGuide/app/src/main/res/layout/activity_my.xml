@@ -1,144 +1,257 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   activity_my.xml — Material Design 3 个人中心
-  精简优雅：用户卡片 + 服务入口 + 精简菜单 + 退出登录
+  五段式：头部毛玻璃 + 核心指标悬浮卡 + 我的服务卡片 + 更多功能网格 + 设置列表 + 底部导航
+  原有真功能全部保留并突出展示
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/profile_background"
-    android:orientation="vertical">
+    android:background="@color/profile_background">
 
-    <!-- ==================== Scrollable Content ==================== -->
+    <!-- ==================== 可滚动内容区 ==================== -->
     <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
+        android:id="@+id/scroll_content"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_weight="1"
         android:fillViewport="true"
-        android:overScrollMode="never">
+        android:overScrollMode="never"
+        app:layout_constraintBottom_toTopOf="@id/bottom_nav"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="36dp"
-            android:paddingBottom="24dp">
+            android:orientation="vertical">
 
-            <!-- ═══════════════ 1. 用户信息卡片 ═══════════════ -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_user_info"
+            <!-- ═══════════════ 第一段：头部区域 — 渐变背景 + 个人信息 ═══════════════ -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/header_container"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="240dp"
+                android:background="@drawable/bg_profile_header_gradient"
                 android:clickable="true"
                 android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/profile_surface_container_lowest"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="2dp"
-                app:contentPadding="24dp"
-                app:strokeColor="@color/profile_surface_variant"
-                app:strokeWidth="0.5dp">
+                android:paddingHorizontal="20dp"
+                android:paddingTop="48dp"
+                android:paddingBottom="32dp">
+
+                <!-- 右上角设置齿轮（假入口） -->
+                <ImageButton
+                    android:id="@+id/btn_settings"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/white"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <!-- 头像（圆形 + 白边） -->
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/iv_avatar"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_person_filled"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlayProfileCircle"
+                    app:strokeColor="@color/white"
+                    app:strokeWidth="3dp" />
+
+                <!-- 用户名 -->
+                <TextView
+                    android:id="@+id/tv_nickname"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="旅行小达人"
+                    android:textColor="@color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="@id/iv_avatar"
+                    app:layout_constraintTop_toBottomOf="@id/iv_avatar" />
+
+                <!-- 性别 Chip（代码控制显隐与样式） -->
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_gender"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="♂ 男"
+                    android:textColor="@color/profile_on_primary_container"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    app:chipBackgroundColor="@color/profile_glass_white"
+                    app:chipCornerRadius="20dp"
+                    app:chipMinHeight="24dp"
+                    app:chipStrokeWidth="0dp"
+                    app:layout_constraintBottom_toBottomOf="@id/tv_nickname"
+                    app:layout_constraintStart_toEndOf="@id/tv_nickname"
+                    app:layout_constraintTop_toTopOf="@id/tv_nickname" />
+
+
+                <!-- 用户ID（签名下方，半透白色） -->
+                <TextView
+                    android:id="@+id/tv_user_id"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="sans-serif"
+                    android:text="ID: 12345678"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp"
+                    app:layout_constraintStart_toStartOf="@id/tv_nickname"
+                    app:layout_constraintTop_toBottomOf="@id/tv_nickname" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- ═══════════════ 第二段：核心指标悬浮卡（仿 iOS 三连卡） ═══════════════ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/metrics_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="-20dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:contentPadding="20dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:weightSum="3">
 
-                    <!-- 头像 -->
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/iv_avatar"
-                        android:layout_width="72dp"
-                        android:layout_height="72dp"
-                        android:scaleType="centerCrop"
-                        android:src="@drawable/ic_person_filled"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:shapeAppearanceOverlay="@style/circle_avatar"
-                        app:strokeColor="@color/profile_surface_variant"
-                        app:strokeWidth="2dp" />
-
-                    <!-- 文字区 -->
+                    <!-- 收藏/关注 -->
                     <LinearLayout
+                        android:id="@+id/metric_favorite"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="18dp"
                         android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingVertical="4dp">
 
                         <TextView
-                            android:id="@+id/tv_nickname"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
                             android:fontFamily="sans-serif-medium"
-                            android:maxLines="1"
-                            android:text="旅行小达人"
+                            android:text="128"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="22sp"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_gender"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text="♂ 男"
-                            android:textColor="@color/profile_on_primary_container"
-                            android:textSize="11sp"
-                            app:chipBackgroundColor="@color/profile_primary_container"
-                            app:chipCornerRadius="20dp"
-                            app:chipMinHeight="24dp"
-                            app:chipStrokeWidth="0dp" />
-
                         <TextView
-                            android:id="@+id/tv_user_id"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="5dp"
-                            android:fontFamily="sans-serif"
-                            android:text="ID: 12345678"
+                            android:layout_marginTop="4dp"
+                            android:text="收藏"
                             android:textColor="@color/profile_outline"
-                            android:textSize="13sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
-                    <!-- 箭头 -->
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                    <View
+                        android:layout_width="0.5dp"
+                        android:layout_height="40dp"
                         android:layout_gravity="center_vertical"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_arrow_forward"
-                        app:tint="@color/profile_outline_variant" />
+                        android:background="@color/profile_outline_variant" />
 
+                    <!-- 积分/余额 -->
+                    <LinearLayout
+                        android:id="@+id/metric_points"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingVertical="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="3560"
+                            android:textColor="@color/profile_on_surface"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="积分"
+                            android:textColor="@color/profile_outline"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="0.5dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center_vertical"
+                        android:background="@color/profile_outline_variant" />
+
+                    <!-- 等级/VIP -->
+                    <LinearLayout
+                        android:id="@+id/metric_vip"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingVertical="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="V3"
+                            android:textColor="@color/profile_primary"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:background="@drawable/bg_vip_chip"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="1dp"
+                            android:text="黄金会员"
+                            android:textColor="@color/profile_on_primary_container"
+                            android:textSize="11sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ═══════════════ 2. 我的服务 ═══════════════ -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="4dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="我的服务"
-                android:textColor="@color/profile_on_surface"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
+            <!-- ═══════════════ 第三段：我的服务卡片 — 原评价 + 偏好（真功能，大入口） ═══════════════ -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                app:cardBackgroundColor="@color/profile_surface_container_lowest"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
                 app:contentPadding="12dp"
-                app:strokeColor="@color/profile_surface_variant"
-                app:strokeWidth="0.5dp">
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -146,7 +259,7 @@
                     android:baselineAligned="false"
                     android:orientation="horizontal">
 
-                    <!-- 我的评价 -->
+                    <!-- 我的评价（真功能 → MyJudgeActivity） -->
                     <LinearLayout
                         android:id="@+id/btn_my_reviews"
                         android:layout_width="0dp"
@@ -191,7 +304,7 @@
                             android:textSize="11sp" />
                     </LinearLayout>
 
-                    <!-- 偏好设置 -->
+                    <!-- 偏好设置（真功能 → MyPerActivity） -->
                     <LinearLayout
                         android:id="@+id/card_preferences"
                         android:layout_width="0dp"
@@ -235,67 +348,71 @@
                             android:textColor="@color/profile_outline"
                             android:textSize="11sp" />
                     </LinearLayout>
-
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ═══════════════ 3. 菜单列表 ═══════════════ -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="4dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="更多"
-                android:textColor="@color/profile_on_surface"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
+            <!-- ═══════════════ 第四段：更多功能网格 — 真功能+少量假入口 ═══════════════ -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                app:cardBackgroundColor="@color/profile_surface_container_lowest"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="1dp"
-                app:contentPadding="4dp"
-                app:strokeColor="@color/profile_surface_variant"
-                app:strokeWidth="0.5dp">
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:contentPadding="12dp"
+                app:strokeWidth="0dp">
+
+                <!-- 更多功能网格：2行×4列，由代码动态填充 -->
+                <LinearLayout
+                    android:id="@+id/grid_functions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ═══════════════ 第五段：设置列表 — 极简分割线 ═══════════════ -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="24dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:contentPaddingStart="16dp"
+                app:contentPaddingEnd="16dp"
+                app:contentPaddingTop="4dp"
+                app:contentPaddingBottom="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:divider="@drawable/divider_list"
-                    android:dividerPadding="16dp"
+                    android:dividerPadding="0dp"
                     android:orientation="vertical"
                     android:showDividers="middle">
 
-                    <!-- 景点地图 -->
+                    <!-- 清除缓存（假按钮） -->
                     <LinearLayout
-                        android:id="@+id/btn_nearby_map"
+                        android:id="@+id/btn_cache"
                         android:layout_width="match_parent"
-                        android:layout_height="58dp"
+                        android:layout_height="56dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:orientation="horizontal">
 
-                        <FrameLayout
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_service_icon">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_location_pin"
-                                app:tint="@color/profile_preference_green" />
-                        </FrameLayout>
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_cache"
+                            app:tint="@color/profile_outline" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -303,43 +420,44 @@
                             android:layout_marginStart="14dp"
                             android:layout_weight="1"
                             android:fontFamily="sans-serif"
-                            android:text="景点地图"
+                            android:text="清除缓存"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/tv_cache_size"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="128MB"
+                            android:textColor="@color/profile_outline"
+                            android:textSize="13sp" />
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_forward"
+                            android:src="@drawable/ic_arrow_right"
                             app:tint="@color/profile_outline_variant" />
                     </LinearLayout>
 
-                    <!-- 账号管理 -->
+                    <!-- 隐私政策（假按钮） -->
                     <LinearLayout
-                        android:id="@+id/btn_account_mgmt"
+                        android:id="@+id/btn_privacy"
                         android:layout_width="match_parent"
-                        android:layout_height="58dp"
+                        android:layout_height="56dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:orientation="horizontal">
 
-                        <FrameLayout
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_service_icon">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_person_outline"
-                                app:tint="@color/profile_primary" />
-                        </FrameLayout>
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_privacy"
+                            app:tint="@color/profile_outline" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -347,7 +465,7 @@
                             android:layout_marginStart="14dp"
                             android:layout_weight="1"
                             android:fontFamily="sans-serif"
-                            android:text="账号管理"
+                            android:text="隐私政策"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="15sp" />
 
@@ -355,35 +473,27 @@
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_forward"
+                            android:src="@drawable/ic_arrow_right"
                             app:tint="@color/profile_outline_variant" />
                     </LinearLayout>
 
-                    <!-- 关于我们 -->
+                    <!-- 关于我们（真功能 → showAboutDialog） -->
                     <LinearLayout
                         android:id="@+id/btn_about"
                         android:layout_width="match_parent"
-                        android:layout_height="58dp"
+                        android:layout_height="56dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
+                        android:orientation="horizontal">
 
-                        <FrameLayout
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_service_icon">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_info"
-                                app:tint="@color/profile_outline" />
-                        </FrameLayout>
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_about"
+                            app:tint="@color/profile_outline" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -399,46 +509,70 @@
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_forward"
+                            android:src="@drawable/ic_arrow_right"
                             app:tint="@color/profile_outline_variant" />
                     </LinearLayout>
 
+                    <!-- 退出登录（真功能 → showLogoutDialog） -->
+                    <LinearLayout
+                        android:id="@+id/btn_logout"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_logout"
+                            app:tint="@color/profile_error" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="14dp"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif"
+                            android:text="退出登录"
+                            android:textColor="@color/profile_error"
+                            android:textSize="15sp" />
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_arrow_right"
+                            app:tint="@color/profile_outline_variant" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-
-            <!-- ═══════════════ 4. 退出登录 ═══════════════ -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_logout"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="32dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="退出登录"
-                android:textColor="@color/profile_error"
-                android:textSize="15sp"
-                app:backgroundTint="@color/profile_surface_container_lowest"
-                app:cornerRadius="16dp"
-                app:strokeColor="@color/profile_error_container"
-                app:strokeWidth="1dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ═══════════════ 底部导航栏 ═══════════════ -->
+    <!-- ═══════════════ 底部导航栏（原结构保留） ═══════════════ -->
     <LinearLayout
+        android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:baselineAligned="false"
         android:background="@drawable/bg_bottom_nav"
+        android:baselineAligned="false"
         android:elevation="6dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="12dp"
-        android:paddingEnd="12dp"
         android:paddingTop="14dp"
-        android:paddingBottom="22dp">
+        android:paddingEnd="12dp"
+        android:paddingBottom="22dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-        <!-- 出游记录 Tab -->
+        <!-- 出游记录 -->
         <LinearLayout
             android:id="@+id/tv_history"
             android:layout_width="0dp"
@@ -457,7 +591,6 @@
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
                 android:src="@drawable/ic_travel_record_normal" />
-
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -468,7 +601,7 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- 中间 + 按钮 (FAB feel) -->
+        <!-- 中间 + 按钮 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -486,7 +619,7 @@
                 android:src="@drawable/ic_add" />
         </LinearLayout>
 
-        <!-- 个人中心 Tab (Active) -->
+        <!-- 个人中心 (Active) -->
         <LinearLayout
             android:id="@+id/tv_mine"
             android:layout_width="0dp"
@@ -506,7 +639,6 @@
                 android:importantForAccessibility="no"
                 android:src="@drawable/ic_profile"
                 app:tint="@color/profile_primary" />
-
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -516,7 +648,6 @@
                 android:textColor="@color/profile_primary"
                 android:textSize="11sp" />
         </LinearLayout>
-
     </LinearLayout>
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

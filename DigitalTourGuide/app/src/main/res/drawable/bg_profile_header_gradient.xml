@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 个人中心顶部渐变背景：主色 → 透明，制造毛玻璃悬浮感 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="@color/profile_primary"
+        android:centerColor="@color/profile_primary_container"
+        android:endColor="@color/profile_glass_white"
+        android:type="linear" />
+    <corners android:radius="0dp" />
+</shape>

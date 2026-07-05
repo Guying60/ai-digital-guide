@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 列表项右侧小箭头 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9.29,6.71C8.9,7.1 8.9,7.74 9.29,8.13L13.17,12L9.29,15.88C8.9,16.27 8.9,16.91 9.29,17.3C9.68,17.69 10.32,17.69 10.71,17.3L15.3,12.71C15.69,12.32 15.69,11.68 15.3,11.29L10.71,6.7C10.32,6.32 9.68,6.32 9.29,6.71Z" />
+</vector>
