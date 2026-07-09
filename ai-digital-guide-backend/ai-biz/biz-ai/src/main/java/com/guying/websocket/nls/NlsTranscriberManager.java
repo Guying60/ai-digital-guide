@@ -141,6 +141,7 @@ public class NlsTranscriberManager {
             log.info("一句话结束，文本：{}", text);
             if (text != null && !text.isEmpty()) {
                 sender.sendJson(ctx, "userInput", text);
+                ctx.markE2eUserInput();
                 aiChatService.invoke(ctx, text);
             }
         }

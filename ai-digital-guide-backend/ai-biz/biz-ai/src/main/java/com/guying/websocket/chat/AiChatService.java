@@ -47,7 +47,6 @@ public class AiChatService {
     private CosyVoiceConnector cosyVoiceConnector;
 
     public void invoke(ChatSessionContext ctx, String userText) {
-        log.info("调用 AI 服务，用户输入：{}", userText);
         // 令牌桶限流：每用户每分钟最多10次
         if (!rateLimiterUtil.tryAcquire("ai:chat:" + ctx.getUserId(), 10, 60)) {
             sender.sendError(ctx, "请求太频繁，请稍后再试");
@@ -59,6 +58,7 @@ public class AiChatService {
         ctx.resetRound();
         String conversationId = ctx.conversationId();
         String prompt = dynamicPromptService.build(userText, ctx.getUserId(), ctx.getAttractionId());
+        ctx.markE2eAfterPrompt();  // T1: Prompt+RAG 组装完成
 
         // 后置摄像头"景象识别"方案已弃用，对话一律走纯文本流
         Flux<String> stream = streamDs(userText, prompt, conversationId);
@@ -70,7 +70,6 @@ public class AiChatService {
     }
 
     private Flux<String> streamDs(String userText, String prompt, String conversationId) {
-        log.info("调用 llm 模型");
         return llmGuideChatClient.prompt()
                 .user(u -> u.text(userText))
                 .system(prompt)
@@ -86,6 +85,10 @@ public class AiChatService {
         AtomicInteger sentenceCount = new AtomicInteger(0);
         stream.subscribe(
                 delta -> {
+                    // T2: LLM 首个 token
+                    if (ctx.getE2eLlmFirstTokenTime() == 0) {
+                        ctx.markE2eLlmFirstToken();
+                    }
                     List<String> sentences = splitter.consume(delta);
                     log.debug("收到 delta，切出 {} 个句子", sentences.size());
                     for (String sentence : sentences) {
@@ -100,25 +103,39 @@ public class AiChatService {
                     sender.sendError(ctx, "调用 AI 服务失败");
                 },
                 () -> {
-                    log.info("调用 AI 服务完成");
                     String tail = splitter.drain();
                     if (tail != null) {
-                        // 尾部文本也要走 emitSentence 触发 TTS，不能只 sendJson
                         if (!tail.isBlank()) {
                             sentenceCount.incrementAndGet();
                         }
                         emitSentence(ctx, tail);
                     }
-                    // 标记本轮句子总数，供 CosyVoiceConnector 对最后一句补静音收口
                     ctx.getRoundSentenceTotal().set(sentenceCount.get());
+                    logE2eSummary(ctx);
                     sender.sendJson(ctx, "responseDone", null);
                 }
         );
     }
 
+    private void logE2eSummary(ChatSessionContext ctx) {
+        long t0 = ctx.getE2eUserInputTime();
+        long t1 = ctx.getE2eAfterPromptTime();
+        long t2 = ctx.getE2eLlmFirstTokenTime();
+        long t3 = ctx.getE2eFirstAudioTime();
+        long t4 = ctx.getE2eFirstVideoTime();
+        if (t0 == 0) return;
+
+        long promptRag = t1 > 0 ? t1 - t0 : -1;
+        long llmToken  = t2 > 0 ? t2 - (t1 > 0 ? t1 : t0) : -1;
+        long firstAudio  = t3 > 0 ? t3 - t0 : -1;
+        long firstVideo  = t4 > 0 ? t4 - t0 : -1;
+
+        log.info("═══ [METRICS] E2E-LATENCY | userId={} | prompt+RAG={}ms | LLM→firstToken={}ms | firstAudio={}ms | firstVideo={}ms ═══",
+                ctx.getUserId(), promptRag, llmToken, firstAudio, firstVideo);
+    }
+
     private void emitSentence(ChatSessionContext ctx, String sentence) {
         sender.sendJson(ctx, "aiOutput", sentence);
-        log.info("aiOutput:{}", sentence);
 
         // 未配置数字人时为纯文本会话：无 CosyVoice 连接，跳过 TTS 调度，
         // 避免每句都走到 synthesize 的 "CosyVoice session not ready" 兜底分支造成无效告警刷屏

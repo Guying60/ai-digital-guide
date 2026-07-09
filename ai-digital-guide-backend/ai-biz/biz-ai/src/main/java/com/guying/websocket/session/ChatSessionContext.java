@@ -28,6 +28,26 @@ public class ChatSessionContext {
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
     private final PtsTracker ptsTracker = new PtsTracker();
 
+    // ════ E2E 延迟追踪（ms，System.currentTimeMillis()）════
+    private volatile long e2eUserInputTime;
+    private volatile long e2eAfterPromptTime;
+    private volatile long e2eLlmFirstTokenTime;
+    private volatile long e2eFirstAudioTime;
+    private volatile long e2eFirstVideoTime;
+    public void markE2eUserInput()     { this.e2eUserInputTime = System.currentTimeMillis(); }
+    public void markE2eAfterPrompt()   { this.e2eAfterPromptTime = System.currentTimeMillis(); }
+    public void markE2eLlmFirstToken() { this.e2eLlmFirstTokenTime = System.currentTimeMillis(); }
+    public void markE2eFirstAudio()    { this.e2eFirstAudioTime = System.currentTimeMillis(); }
+    public void markE2eFirstVideo()    { this.e2eFirstVideoTime = System.currentTimeMillis(); }
+    public long getE2eUserInputTime()     { return e2eUserInputTime; }
+    public long getE2eAfterPromptTime()   { return e2eAfterPromptTime; }
+    public long getE2eLlmFirstTokenTime() { return e2eLlmFirstTokenTime; }
+    public long getE2eFirstAudioTime()    { return e2eFirstAudioTime; }
+    public long getE2eFirstVideoTime()    { return e2eFirstVideoTime; }
+    private volatile int lastAudioGlobalPtsMs;
+    public void setLastAudioGlobalPts(int ptsMs) { this.lastAudioGlobalPtsMs = ptsMs; }
+    public int getLastAudioGlobalPtsMs()          { return lastAudioGlobalPtsMs; }
+
     /** 本轮对话的句子总数（responseDone 时由 AiChatService 写入；-1 表示进行中/未知）。 */
     private final AtomicInteger roundSentenceTotal = new AtomicInteger(-1);
     /** 本轮已收到 chunk_end 的句子计数（CosyVoiceConnector 递增），用于判定"最后一句"补静音收口。 */

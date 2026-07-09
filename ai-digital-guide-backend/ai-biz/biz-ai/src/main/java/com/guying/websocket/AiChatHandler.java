@@ -109,7 +109,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         ChatSessionContext ctx = registry.register(session, digitalHumanId);
         log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}，textOnly: {}",
                 ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId(), textOnly);
-        log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
+        log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=CONNECT ═══", registry.size(), ctx.getSid());
 
         try {
             // executor 必须最先初始化，保证后续 emitSentence 总能提交 TTS 任务
@@ -148,6 +148,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             case "text" -> {
                 String wordText = node.get("text").asText();
                 log.info("用户输入文本：{}", wordText);
+                ctx.markE2eUserInput();
                 aiChatService.invoke(ctx, wordText);
             }
             case "emotionFrame" -> handleEmotionFrame(ctx, node);
@@ -196,7 +197,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     public void cleanup(String sid) {
         ChatSessionContext ctx = registry.remove(sid);
         if (ctx == null) {
-            log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
+            log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=DISCONNECT ═══", registry.size(), sid);
             return;
         }
         // 仅"提问过 或 连接≥30s"的有效会话才落游览历史 + 待评价；
@@ -220,7 +221,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         closeQuietly(ctx.getCosyVoiceSession(), "CosyVoice", sid);
         closeMicAndTts(ctx);
         sender.removeSession(sid);
-        log.info("连接关闭 sid={}, 剩余在线={}", sid, registry.size());
+        log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=DISCONNECT ═══", registry.size(), sid);
     }
 
     /** micOff 与 cleanup 共用：停掉 NLS*/

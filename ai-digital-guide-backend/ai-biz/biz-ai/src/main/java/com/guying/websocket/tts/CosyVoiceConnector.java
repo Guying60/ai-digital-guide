@@ -120,12 +120,6 @@ public class CosyVoiceConnector {
         private volatile int currentSentenceId = 0;
         // 当前句子最后一帧的本地 PTS（ms），供句末补静音帧续接 PTS 使用
         private volatile int lastLocalPtsMs = 0;
-        // ★ 句级诊断：追踪每句音频的总字节数、帧数、耗时
-        private int audioCurSentenceId = -1;
-        private long audioSentenceBytes = 0;
-        private int audioSentenceFrameCount = 0;
-        private long audioSentenceStartWallMs = 0;
-        private long audioSentenceLastSendMs = 0;
 
         CosyVoiceHandler(ChatSessionContext ctx) {
             this.ctx = ctx;
@@ -152,14 +146,7 @@ public class CosyVoiceConnector {
                             objectMapper.createObjectNode().put("type", "pong").toString()));
                 }
                 case "chunk_end" -> {
-                    // 使用音频帧头部的 sentenceId（currentSentenceId），
-                    // 而非 chunk_end 消息自身的 sentenceId，保证与 buffer key 一致
-                    // ★ 句级诊断：在 chunk_end 时打印最终统计
-                    long chunkWallMs = audioSentenceStartWallMs > 0 ?
-                            System.currentTimeMillis() - audioSentenceStartWallMs : 0;
-                    log.info("[CosyVoice] chunk_end 消息sentenceId={}, 音频帧sentenceId={} audioFrames={} audioBytes={} audioWall={}ms",
-                            node.has("sentence_id") ? node.get("sentence_id").asInt() : "null",
-                            currentSentenceId, audioSentenceFrameCount, audioSentenceBytes, chunkWallMs);
+                    log.info("[CosyVoice] chunk_end sentenceId={}", currentSentenceId);
                     // 判定是否为本轮最后一句：若是，则句末补静音收口（让数字人嘴闭合）
                     int doneCount = ctx.getRoundChunkEndCount().incrementAndGet();
                     int total = ctx.getRoundSentenceTotal().get();
@@ -179,23 +166,6 @@ public class CosyVoiceConnector {
             // 解析 sentence_id（来自音频帧头部，payload 格式: [0x01][sentenceId:2B][ptsMs:4B][PCM...]）
             int sentenceId = ((payload[1] & 0xFF) << 8) | (payload[2] & 0xFF);
             currentSentenceId = sentenceId;  // 记录当前句子 ID，供 chunk_end 使用
-
-            // ★ 句级诊断：检测句子切换，打印上一句的音频统计
-            long audioNow = System.currentTimeMillis();
-            if (sentenceId != audioCurSentenceId) {
-                if (audioCurSentenceId >= 0 && audioSentenceFrameCount > 0) {
-                    log.info("[CosyVoice] ⇧ AUDIO-SENTENCE-DONE sid={}: frames={} bytes={} wall={}ms",
-                            audioCurSentenceId, audioSentenceFrameCount, audioSentenceBytes,
-                            audioSentenceLastSendMs - audioSentenceStartWallMs);
-                }
-                audioCurSentenceId = sentenceId;
-                audioSentenceBytes = 0;
-                audioSentenceFrameCount = 0;
-                audioSentenceStartWallMs = audioNow;
-                audioSentenceLastSendMs = 0;
-            }
-            audioSentenceBytes += payload.length;
-            audioSentenceFrameCount++;
 
             // 解析本地 PTS，转换为全局 PTS
             int localPtsMs = ((payload[3] & 0xFF) << 24) | ((payload[4] & 0xFF) << 16)
@@ -219,7 +189,11 @@ public class CosyVoiceConnector {
             System.arraycopy(payload, AUDIO_HEADER_LEN, androidFrame, 7,
                     payload.length - AUDIO_HEADER_LEN);
             sender.send(ctx, new BinaryMessage(androidFrame));
-            audioSentenceLastSendMs = System.currentTimeMillis();  // ★ 句级诊断
+            // T3: 首个音频帧发给客户端
+            if (ctx.getE2eFirstAudioTime() == 0) {
+                ctx.markE2eFirstAudio();
+            }
+            ctx.setLastAudioGlobalPts(globalPtsMs);
 
             // 2) 剥离 header，只缓冲裸 PCM 供 MuseTalk 炼丹使用
             if (payload.length > AUDIO_HEADER_LEN) {
