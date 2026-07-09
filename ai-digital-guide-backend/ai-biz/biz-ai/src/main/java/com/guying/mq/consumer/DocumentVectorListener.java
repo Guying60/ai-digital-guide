@@ -6,6 +6,7 @@ import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
 import com.guying.common.enums.TaskStatusEnum;
 import com.guying.message.MarkDownDocumentMessage;
+import com.guying.rag.MarkdownTableSplitter;
 import com.guying.rag.VectorStorageService;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class DocumentVectorListener {
         try {
             if (!msg.isSuccess()) {
                 log.error("文档解析失败，文档名称：{}", msg.getFileName());
+                markFailed(msg);
                 return;
             }
 
@@ -68,9 +70,9 @@ public class DocumentVectorListener {
             for (Document doc : semanticDocs) {
                 String content = doc.getText();
                 if (content.contains("|---") || content.contains("| ---")) {
-                    log.debug("表格块保留, tokens≈{}, fileName={}",
-                            content.length() / 2, msg.getFileName());
-                    finalChunks.add(doc); // 是表格，受保护，整块保留！
+                    // 表格块：小表保留原样，大表按行切分（表头复用），保证不超 embedding token 上限
+                    finalChunks.addAll(MarkdownTableSplitter.split(
+                            doc, MarkdownTableSplitter.MAX_TABLE_CHUNK_CHARS, splitter));
                 } else {
                     finalChunks.addAll(splitter.apply(List.of(doc))); // 纯文本，允许切碎
                 }
@@ -80,21 +82,40 @@ public class DocumentVectorListener {
                 doc.getMetadata().put("fileName", msg.getFileName());
                 doc.getMetadata().put("type", RedisConstants.DOC_TAG);
             });
+            // 提前计算 docIds：即便后续入库失败，catch 块也能据此清理已写入的脏数据
+            docIds = finalChunks.stream().map(Document::getId).toList();
             vectorStorageService.saveDocumentChunks(finalChunks, msg.getFileName());
 
             // 存入数据库MySQL
-            docIds = finalChunks.stream().map(Document::getId).toList();
             attractionsInternalService.saveDocumentToMySql(
                     new AttractionDocumentDTO(msg.getOssUrl(), msg.getFileName(), msg.getFileType(), docIds, msg.getAttractionId(), msg.getAdminId())
             );
             stringRedisTemplate.opsForValue().set(RedisConstants.FILE_PARSING_KEY + msg.getTaskId(), TaskStatusEnum.SUCCESS.toString(), 10, TimeUnit.MINUTES);
             log.info("保存文档向量成功，文档名称：{}", msg.getFileName());
         } catch (Exception e) {
-            //完整兜底，删除脏数据
-            vectorStorageService.deleteDocumentChunk(docIds);
-            log.error("docIds:{}", docIds);
-            stringRedisTemplate.opsForValue().set(RedisConstants.FILE_PARSING_KEY + msg.getTaskId(), TaskStatusEnum.FAILED.toString(), 10, TimeUnit.MINUTES);
-            log.error("解析文档出错,{}", e.getMessage());
+            // 兜底：先回写 FAILED 状态（最关键，保证前端能感知失败），再清理脏数据。
+            // 清理单独 try-catch，避免其自身异常再次掩盖状态回写。
+            log.error("解析文档出错, fileName={}, docIds={}", msg.getFileName(), docIds, e);
+            markFailed(msg);
+            try {
+                vectorStorageService.deleteDocumentChunk(docIds);
+            } catch (Exception ex) {
+                log.error("清理脏数据失败, fileName={}, docIds={}", msg.getFileName(), docIds, ex);
+            }
+        }
+    }
+
+    /**
+     * 将文件解析状态回写为 FAILED。
+     * 抽出公共方法，确保 {@code msg.isSuccess()==false} 与异常分支都走到，避免状态卡在 PROCESSING。
+     */
+    private void markFailed(MarkDownDocumentMessage msg) {
+        try {
+            stringRedisTemplate.opsForValue().set(
+                    RedisConstants.FILE_PARSING_KEY + msg.getTaskId(),
+                    TaskStatusEnum.FAILED.toString(), 10, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.error("回写 FAILED 状态失败, taskId={}", msg.getTaskId(), e);
         }
     }
 

@@ -54,6 +54,12 @@ public class VectorStorageService {
      * @param docIds
      */
     public void deleteDocumentChunk(List<String> docIds) {
+        // 守卫：docIds 为空时直接返回，避免 vectorStore.delete(null) 触发 NPE 逃逸，
+        // 掩盖 catch 块中后续的状态回写逻辑
+        if (docIds == null || docIds.isEmpty()) {
+            log.warn("docIds 为空，跳过删除向量库文档切片");
+            return;
+        }
         vectorStore.delete(docIds);
         log.info("成功删除向量库中的文档切片: {}", docIds);
     }
