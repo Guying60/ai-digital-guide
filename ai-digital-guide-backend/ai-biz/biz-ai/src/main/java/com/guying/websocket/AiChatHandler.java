@@ -100,31 +100,38 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         Long attractionId = (Long) session.getAttributes().get("attractionId");
         Long digitalHumanId = digitalHumanInternalService.getDigitalHumanIdByAttractionId(attractionId);
-        if (digitalHumanId == null) {
-            log.warn("WebSocket 连接拒绝：景点 {} 未配置数字人", attractionId);
-            throw new ServiceException("该景点尚未配置数字人");
+        // 未配置数字人时不再拒绝连接：降级为纯文本问答会话，仍可用 AI 文本/语音问答，
+        // 仅跳过 CosyVoice 语音合成与 MuseTalk 数字人视频（二者均依赖数字人素材）。
+        boolean textOnly = digitalHumanId == null;
+        if (textOnly) {
+            log.warn("景点 {} 未配置数字人，降级为纯文本问答模式 sid={}", attractionId, session.getId());
         }
         ChatSessionContext ctx = registry.register(session, digitalHumanId);
-        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}",
-                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId());
+        log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}，textOnly: {}",
+                ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId(), textOnly);
         log.info("客户端连接成功，sid: {}，当前在线人数：{}", ctx.getSid(), registry.size());
 
         try {
             // executor 必须最先初始化，保证后续 emitSentence 总能提交 TTS 任务
+            // （纯文本模式下 AiChatService.emitSentence 会跳过 TTS，executor 仅作占位，断开时一并清理）
             ctx.setTtsExecutor(Executors.newSingleThreadExecutor());
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
             // 游览历史不再在连接建立时落库：改为断开时按"是否提问过 / 连接是否≥30s"判定，
             // 避免零提问且秒断的连接产生历史/待评价脏数据。
-            museTalkConnector.connect(ctx);
-            cosyVoiceConnector.connect(ctx);
+            // 数字人音视频连接仅在配置了数字人时建立，纯文本会话不依赖二者
+            if (!textOnly) {
+                museTalkConnector.connect(ctx);
+                cosyVoiceConnector.connect(ctx);
+            }
         } catch (Exception e) {
             log.error("会话初始化失败 sid={}", ctx.getSid(), e);
             throw new ServiceException("会话初始化失败");
         }
-        log.info("所有初始化完成 sid={}", ctx.getSid());
-        sender.sendJson(ctx, "allDone", null);
+        log.info("所有初始化完成 sid={} textOnly={}", ctx.getSid(), textOnly);
+        // 下发 textOnly 标识，前端可据此隐藏数字人视频面板；已配数字人的会话恒为 false，向后兼容
+        sender.sendJson(ctx, "allDone", Map.of("textOnly", textOnly));
     }
 
     @Override

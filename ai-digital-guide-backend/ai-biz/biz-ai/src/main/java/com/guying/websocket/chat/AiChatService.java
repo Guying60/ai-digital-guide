@@ -120,6 +120,11 @@ public class AiChatService {
         sender.sendJson(ctx, "aiOutput", sentence);
         log.info("aiOutput:{}", sentence);
 
+        // 未配置数字人时为纯文本会话：无 CosyVoice 连接，跳过 TTS 调度，
+        // 避免每句都走到 synthesize 的 "CosyVoice session not ready" 兜底分支造成无效告警刷屏
+        if (ctx.getDigitalHumanId() == null) {
+            return;
+        }
         ExecutorService executor = ctx.getTtsExecutor();
         // 把可能阻塞的 TTS 调度扔进单线程池里串行执行，
         // 仅阻塞当前用户的 TTS 队列，不影响 WebFlux 主流和其它会话
