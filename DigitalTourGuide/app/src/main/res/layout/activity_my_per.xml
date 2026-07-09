@@ -66,11 +66,10 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_auto_stories"
-                    app:tint="#e59c5d" />
+                    android:src="@drawable/ic_expert" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -129,16 +128,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_school"
-                            app:tint="@color/profile_primary" />
+                            android:src="@drawable/ic_expert"
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -146,7 +145,7 @@
                             android:layout_marginTop="2dp"
                             android:text="专业讲解"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="13sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_pro"
@@ -191,16 +190,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_auto_stories"
-                            app:tint="#e59c5d" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -208,7 +207,7 @@
                             android:layout_marginTop="2dp"
                             android:text="故事化讲解"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="13sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_story"
@@ -253,16 +252,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_smile"
-                            app:tint="#4cd964" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -315,16 +314,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_child_care"
-                            app:tint="#ff4b4b" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -367,11 +366,11 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_view_list"
-                    app:tint="@color/profile_primary" />
+                     />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -428,25 +427,24 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="55dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_list"
-                            app:tint="@color/profile_outline" />
+                            />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
                             android:gravity="center"
                             android:text="简洁速览"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="12sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_brief"
@@ -488,25 +486,25 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="55dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_view_list"
-                            app:tint="@color/profile_outline" />
+                            />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_marginTop="1dp"
                             android:gravity="center"
                             android:text="标准导览"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="12sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_std"
@@ -548,25 +546,25 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="55dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_school"
-                            app:tint="@color/profile_secondary" />
+                            android:src="@drawable/ic_deep"
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_marginTop="1dp"
                             android:gravity="center"
                             android:text="深度文化解析"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="12sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_deep"
