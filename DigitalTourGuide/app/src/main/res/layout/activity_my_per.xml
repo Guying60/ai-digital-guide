@@ -106,7 +106,7 @@
                 android:columnOrderPreserved="false"
                 android:rowCount="2">
 
-                <!-- 专业讲解 (selected) -->
+                <!-- 专业讲解 -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_style_professional"
                     android:layout_width="0dp"
@@ -120,12 +120,12 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:paddingVertical="28dp"
                     android:paddingHorizontal="12dp"
-                    app:cardBackgroundColor="@color/profile_on_primary_container"
+                    app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:cardPreventCornerOverlap="false"
-                    app:strokeColor="@color/profile_primary"
-                    app:strokeWidth="2dp">
+                    app:strokeColor="@color/profile_outline_variant"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -145,9 +145,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="专业讲解"
-                            android:textColor="@color/profile_primary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textColor="@color/profile_on_surface"
+                            android:textSize="13sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_pro"
@@ -157,7 +156,7 @@
                             android:layout_marginTop="-44dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
-                            android:visibility="visible">
+                            android:visibility="gone">
 
                             <ImageView
                                 android:layout_width="12dp"
@@ -468,7 +467,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- 标准导览 (selected) -->
+                <!-- 标准导览 -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_depth_standard"
                     android:layout_width="0dp"
@@ -480,12 +479,12 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:paddingVertical="16dp"
                     android:paddingHorizontal="8dp"
-                    app:cardBackgroundColor="@color/profile_on_primary_container"
+                    app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:cardPreventCornerOverlap="false"
-                    app:strokeColor="@color/profile_primary"
-                    app:strokeWidth="2dp">
+                    app:strokeColor="@color/profile_outline_variant"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -498,7 +497,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_view_list"
-                            app:tint="@color/profile_primary" />
+                            app:tint="@color/profile_outline" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -506,9 +505,8 @@
                             android:layout_marginTop="3dp"
                             android:gravity="center"
                             android:text="标准导览"
-                            android:textColor="@color/profile_primary"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
+                            android:textColor="@color/profile_on_surface"
+                            android:textSize="12sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_std"
@@ -518,7 +516,7 @@
                             android:layout_marginTop="-28dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
-                            android:visibility="visible">
+                            android:visibility="gone">
                             <ImageView
                                 android:layout_width="12dp"
                                 android:layout_height="12dp"
@@ -660,12 +658,12 @@
                         android:id="@+id/tv_tag_historical"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_chip_filter_selected"
+                        android:background="@drawable/bg_chip_filter_unselected"
                         android:gravity="center"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="8dp"
                         android:text="历史文化"
-                        android:textColor="@color/profile_on_primary"
+                        android:textColor="@color/profile_on_surface_variant"
                         android:textSize="12sp" />
 
                     <ImageView
@@ -678,7 +676,7 @@
                         android:background="@drawable/bg_circle_check"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_check"
-                        android:visibility="visible" />
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <FrameLayout
@@ -695,12 +693,12 @@
                         android:id="@+id/tv_tag_architecture"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_chip_filter_selected"
+                        android:background="@drawable/bg_chip_filter_unselected"
                         android:gravity="center"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="8dp"
                         android:text="建筑艺术"
-                        android:textColor="@color/profile_on_primary"
+                        android:textColor="@color/profile_on_surface_variant"
                         android:textSize="12sp" />
 
                     <ImageView
@@ -713,7 +711,7 @@
                         android:background="@drawable/bg_circle_check"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_check"
-                        android:visibility="visible" />
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <FrameLayout
@@ -730,12 +728,12 @@
                         android:id="@+id/tv_tag_royal"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_chip_filter_selected"
+                        android:background="@drawable/bg_chip_filter_unselected"
                         android:gravity="center"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="8dp"
                         android:text="皇家故事"
-                        android:textColor="@color/profile_on_primary"
+                        android:textColor="@color/profile_on_surface_variant"
                         android:textSize="12sp" />
 
                     <ImageView
@@ -748,7 +746,7 @@
                         android:background="@drawable/bg_circle_check"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_check"
-                        android:visibility="visible" />
+                        android:visibility="gone" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -1030,7 +1028,7 @@
                 android:columnOrderPreserved="false"
                 android:rowCount="2">
 
-                <!-- 学习知识 (selected) -->
+                <!-- 学习知识 -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_purpose_learning"
                     android:layout_width="0dp"
@@ -1044,12 +1042,12 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:paddingVertical="20dp"
                     android:paddingHorizontal="12dp"
-                    app:cardBackgroundColor="@color/profile_on_primary_container"
+                    app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:cardPreventCornerOverlap="false"
-                    app:strokeColor="@color/profile_primary"
-                    app:strokeWidth="2dp">
+                    app:strokeColor="@color/profile_outline_variant"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1062,16 +1060,15 @@
                             android:layout_height="28dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_book"
-                            app:tint="@color/profile_primary" />
+                            app:tint="@color/profile_outline" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
                             android:text="学习知识"
-                            android:textColor="@color/profile_primary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textColor="@color/profile_on_surface"
+                            android:textSize="13sp" />
 
                         <FrameLayout
                             android:id="@+id/check_purpose_learn"
@@ -1081,7 +1078,7 @@
                             android:layout_marginTop="-36dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
-                            android:visibility="visible">
+                            android:visibility="gone">
                             <ImageView
                                 android:layout_width="12dp"
                                 android:layout_height="12dp"

@@ -22,8 +22,6 @@ import com.example.digitaltourguide.network.RetrofitClient;
 import com.example.digitaltourguide.utils.SpUtils;
 import com.google.android.material.card.MaterialCardView;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -40,10 +38,10 @@ public class MyPerActivity extends AppCompatActivity {
     private static final String TAG = "MyPerActivity";
 
     // ── 状态字段 ──
-    private String selectedStyle = "professional";
-    private String selectedDepth = "standard";
+    private String selectedStyle = null;
+    private String selectedDepth = null;
     private final Set<String> selectedInterests = new HashSet<>();
-    private String selectedPurpose = "learning";
+    private String selectedPurpose = null;
     private String requirementsText = "";
 
     // ── 兴趣标签 ──
@@ -73,9 +71,7 @@ public class MyPerActivity extends AppCompatActivity {
             "NATURE_ECOLOGY", "PHOTOGRAPHY", "MYTHS_LEGENDS",
             "FOLK_CULTURE", "FOOD_CULTURE", "INTANGIBLE_HERITAGE"
     };
-    private static final Set<String> DEFAULT_INTERESTS = new HashSet<>(Arrays.asList(
-            "历史文化", "建筑艺术", "皇家故事"
-    ));
+    private static final Set<String> DEFAULT_INTERESTS = new HashSet<>();
 
     // ── 卡片 ID 数组 ──
     private static final int[] STYLE_CARD_IDS = {
@@ -150,7 +146,6 @@ public class MyPerActivity extends AppCompatActivity {
             final int index = i;
             card.setOnClickListener(v -> selectStyle(index));
         }
-        selectStyle(0);
     }
 
     private void selectStyle(int index) {
@@ -158,6 +153,13 @@ public class MyPerActivity extends AppCompatActivity {
             setCardSelected(styleCards[i], i == index, STYLE_CHECK_IDS[i]);
         }
         selectedStyle = STYLE_VALUES[index];
+    }
+
+    private void clearStyleSelection() {
+        for (int i = 0; i < styleCards.length; i++) {
+            setCardSelected(styleCards[i], false, STYLE_CHECK_IDS[i]);
+        }
+        selectedStyle = null;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -171,7 +173,6 @@ public class MyPerActivity extends AppCompatActivity {
             final int index = i;
             card.setOnClickListener(v -> selectDepth(index));
         }
-        selectDepth(1);
     }
 
     private void selectDepth(int index) {
@@ -181,13 +182,19 @@ public class MyPerActivity extends AppCompatActivity {
         selectedDepth = DEPTH_VALUES[index];
     }
 
+    private void clearDepthSelection() {
+        for (int i = 0; i < depthCards.length; i++) {
+            setCardSelected(depthCards[i], false, DEPTH_CHECK_IDS[i]);
+        }
+        selectedDepth = null;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  兴趣偏好 (多选项)
     // ═══════════════════════════════════════════════════════════════
 
     private void initInterestTags() {
         selectedInterests.clear();
-        selectedInterests.addAll(DEFAULT_INTERESTS);
 
         for (int i = 0; i < TAG_CONTAINER_IDS.length; i++) {
             final String label = TAG_LABELS[i];
@@ -248,7 +255,6 @@ public class MyPerActivity extends AppCompatActivity {
             final int index = i;
             card.setOnClickListener(v -> selectPurpose(index));
         }
-        selectPurpose(0);
     }
 
     private void selectPurpose(int index) {
@@ -256,6 +262,13 @@ public class MyPerActivity extends AppCompatActivity {
             setCardSelected(purposeCards[i], i == index, PURPOSE_CHECK_IDS[i]);
         }
         selectedPurpose = PURPOSE_VALUES[index];
+    }
+
+    private void clearPurposeSelection() {
+        for (int i = 0; i < purposeCards.length; i++) {
+            setCardSelected(purposeCards[i], false, PURPOSE_CHECK_IDS[i]);
+        }
+        selectedPurpose = null;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -353,14 +366,13 @@ public class MyPerActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════════
 
     private void resetToDefaults() {
-        selectStyle(0);
-        selectDepth(1);
+        clearStyleSelection();
+        clearDepthSelection();
         selectedInterests.clear();
-        selectedInterests.addAll(DEFAULT_INTERESTS);
         refreshInterestTagStates();
-        selectPurpose(0);
+        clearPurposeSelection();
         etRequirements.setText("");
-        Toast.makeText(this, "已重置为默认值", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "已重置", Toast.LENGTH_SHORT).show();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -372,6 +384,7 @@ public class MyPerActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════════
 
     private int styleToCode(String style) {
+        if (style == null) return 1;
         switch (style) {
             case "professional": return 1;
             case "story":        return 2;
@@ -392,6 +405,7 @@ public class MyPerActivity extends AppCompatActivity {
     }
 
     private int depthToCode(String depth) {
+        if (depth == null) return 2;
         switch (depth) {
             case "brief":    return 1;
             case "standard": return 2;
@@ -410,6 +424,7 @@ public class MyPerActivity extends AppCompatActivity {
     }
 
     private int purposeToCode(String purpose) {
+        if (purpose == null) return 1;
         switch (purpose) {
             case "learning": return 1;
             case "family":   return 2;
