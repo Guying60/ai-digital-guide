@@ -26,7 +26,7 @@
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:contentDescription="@null"
-            android:src="@drawable/ic_school"
+            android:src="@drawable/ic_expert"
             app:tint="@color/profile_primary" />
 
         <TextView
