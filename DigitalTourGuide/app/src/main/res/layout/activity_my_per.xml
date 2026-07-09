@@ -118,7 +118,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="28dp"
                     android:paddingHorizontal="12dp"
                     app:cardBackgroundColor="@color/profile_on_primary_container"
                     app:cardCornerRadius="12dp"
@@ -129,7 +129,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -143,7 +143,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="2dp"
                             android:text="专业讲解"
                             android:textColor="@color/profile_primary"
                             android:textSize="13sp"
@@ -154,7 +154,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:layout_gravity="end"
-                            android:layout_marginTop="-36dp"
+                            android:layout_marginTop="-44dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
                             android:visibility="visible">
@@ -181,7 +181,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="28dp"
                     android:paddingHorizontal="12dp"
                     app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
@@ -192,7 +192,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -206,7 +206,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="2dp"
                             android:text="故事化讲解"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -216,7 +216,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:layout_gravity="end"
-                            android:layout_marginTop="-36dp"
+                            android:layout_marginTop="-44dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
                             android:visibility="gone">
@@ -243,7 +243,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="28dp"
                     android:paddingHorizontal="12dp"
                     app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
@@ -254,7 +254,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -268,7 +268,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="2dp"
                             android:text="轻松幽默"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -278,7 +278,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:layout_gravity="end"
-                            android:layout_marginTop="-36dp"
+                            android:layout_marginTop="-40dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
                             android:visibility="gone">
@@ -305,7 +305,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="28dp"
                     android:paddingHorizontal="12dp"
                     app:cardBackgroundColor="@color/profile_surface_container_lowest"
                     app:cardCornerRadius="12dp"
@@ -316,7 +316,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -330,7 +330,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="2dp"
                             android:text="儿童模式"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -340,7 +340,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:layout_gravity="end"
-                            android:layout_marginTop="-36dp"
+                            android:layout_marginTop="-44dp"
                             android:layout_marginEnd="-4dp"
                             android:background="@drawable/bg_circle_check"
                             android:visibility="gone">
@@ -429,7 +429,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="55dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -443,7 +443,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:gravity="center"
                             android:text="简洁速览"
                             android:textColor="@color/profile_on_surface"
@@ -489,7 +489,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="55dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -503,7 +503,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:gravity="center"
                             android:text="标准导览"
                             android:textColor="@color/profile_primary"
@@ -550,7 +550,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="55dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -564,7 +564,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:gravity="center"
                             android:text="深度文化解析"
                             android:textColor="@color/profile_on_surface"
@@ -1053,7 +1053,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -1067,7 +1067,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:text="学习知识"
                             android:textColor="@color/profile_primary"
                             android:textSize="13sp"
@@ -1115,7 +1115,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -1129,7 +1129,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:text="亲子陪伴"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -1176,7 +1176,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -1190,7 +1190,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:text="拍照打卡"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -1237,7 +1237,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
@@ -1251,7 +1251,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="3dp"
                             android:text="休闲放松"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
