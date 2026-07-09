@@ -1,7 +1,6 @@
 package com.guying.pojo.dto;
 
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -15,12 +14,6 @@ public class AttractionsPageQueryDTO {
 
     @Size(max = 20, message = "不能超过20个字符")
     private String keyWord;
-
-    /**
-     * 当前所在城市(地区筛选键),前端定位后传入
-     */
-    @NotBlank(message = "城市不能为空")
-    private String city;
 
     /**
      * 用户当前经度(GCJ-02)

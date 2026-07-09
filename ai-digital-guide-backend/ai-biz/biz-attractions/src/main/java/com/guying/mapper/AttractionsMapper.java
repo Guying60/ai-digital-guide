@@ -11,9 +11,8 @@ import java.util.List;
 public interface AttractionsMapper extends BaseMapper<Attraction> {
 
     /**
-     * 查询当前城市的景点,按距离用户由近到远排序(Haversine),并基于(距离,id)游标分页。
+     * 查询全部景点,按距离用户由近到远排序(Haversine),并基于(距离,id)游标分页。
      *
-     * @param city         当前所在城市(精确匹配)
      * @param userLng      用户当前经度(GCJ-02)
      * @param userLat      用户当前纬度(GCJ-02)
      * @param keyWord      景点名称模糊匹配,可空
@@ -22,8 +21,7 @@ public interface AttractionsMapper extends BaseMapper<Attraction> {
      * @param limit        取数条数(通常为 pageSize+1 用于判断 hasMore)
      * @return 含动态 distance 字段的景点列表
      */
-    List<Attraction> selectAround(@Param("city") String city,
-                                  @Param("userLng") Double userLng,
+    List<Attraction> selectAround(@Param("userLng") Double userLng,
                                   @Param("userLat") Double userLat,
                                   @Param("keyWord") String keyWord,
                                   @Param("lastDistance") Double lastDistance,

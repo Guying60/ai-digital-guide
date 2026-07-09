@@ -34,9 +34,8 @@ public class UserAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, A
                 ? Long.valueOf(attractionsPageQueryDTO.getLastId())
                 : null;
 
-        // 限定当前城市,按距离用户由近到远排序,基于(距离,id)游标分页
+        // 不限城市,按距离用户由近到远排序,基于(距离,id)游标分页
         List<Attraction> attractions = attractionsMapper.selectAround(
-                attractionsPageQueryDTO.getCity(),
                 attractionsPageQueryDTO.getUserLongitude(),
                 attractionsPageQueryDTO.getUserLatitude(),
                 attractionsPageQueryDTO.getKeyWord(),

@@ -3,7 +3,7 @@
 
 <mapper namespace="com.guying.mapper.AttractionsMapper">
 
-    <!-- 当前城市内,按距离用户由近到远排序,基于(距离,id)游标分页 -->
+    <!-- 不限城市,按距离用户由近到远排序,基于(距离,id)游标分页 -->
     <select id="selectAround" resultType="com.guying.pojo.entity.Attraction">
         SELECT id, attraction_name, cover_url, type, longitude, latitude,
         (6371000 * acos(
@@ -14,10 +14,11 @@
         ))
         )) AS distance
         FROM tb_attraction
-        WHERE city = #{city}
-        <if test="keyWord != null and keyWord != ''">
-            AND attraction_name LIKE CONCAT('%', #{keyWord}, '%')
-        </if>
+        <where>
+            <if test="keyWord != null and keyWord != ''">
+                attraction_name LIKE CONCAT('%', #{keyWord}, '%')
+            </if>
+        </where>
         HAVING distance IS NOT NULL
         <if test="lastDistance != null and lastId != null">
             AND (distance > #{lastDistance}
