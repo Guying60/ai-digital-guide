@@ -6,7 +6,6 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -229,9 +228,6 @@ public class MyPerActivity extends AppCompatActivity {
         tvLabel.setTextColor(getColor(selected
                 ? R.color.profile_on_primary
                 : R.color.profile_on_surface_variant));
-        if (ivCheck != null) {
-            ivCheck.setVisibility(selected ? View.VISIBLE : View.GONE);
-        }
     }
 
     private void refreshInterestTagStates() {
@@ -276,10 +272,6 @@ public class MyPerActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════════
 
     private void setCardSelected(MaterialCardView card, boolean selected, int checkMarkId) {
-        FrameLayout checkMark = card.findViewById(checkMarkId);
-        if (checkMark != null) {
-            checkMark.setVisibility(selected ? View.VISIBLE : View.GONE);
-        }
         if (selected) {
             card.setStrokeColor(getColor(R.color.profile_primary));
             card.setStrokeWidth(2);
