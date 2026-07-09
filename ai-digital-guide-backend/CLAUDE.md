@@ -82,10 +82,10 @@ Upload file → Aliyun OSS → RabbitMQ RESULT_QUEUE
 ### WebSocket AI Chat
 
 - `AiChatHandler` (extends `AbstractWebSocketHandler`) manages persistent connections.
-- Supports text messages, image frames (Base64), and real-time audio via Alibaba NLS speech recognition.
-- Two ChatClient paths: `vlGuideChatClient` (VL model with image) and `dsGuideChatClient` (DeepSeek text-only).
+- Supports text messages, emotion frames (Base64 from front camera, token-bucket rate limited), and real-time audio via Alibaba NLS speech recognition.
+- Multiple ChatClient beans: `llmGuideChatClient` (qwen3.7-max, text conversation), `vlGuideChatClient` (VL model), `expertChatClient` (qwen3.6-plus, structured JSON for route/emotion/suggestions), `etlChatClient` (deepseek-v4-pro, document processing), `emotionVisionChatClient` (qwen3.7-max, face emotion classification).
 - Dynamic prompt assembled from: user profile (Redis), hot FAQ match (Redis/MySQL), or RAG document context.
-- Conversation memory: JDBC-persisted `MessageWindowChatMemory` (10 messages), conversation ID = `attractionId:userId`.
+- Conversation memory: JDBC-persisted `MessageWindowChatMemory` (10 messages), conversation ID = `UUID.randomUUID()` (generated per WS connection in `ChatSessionContext`).
 
 ### Scheduled Tasks
 
