@@ -88,7 +88,7 @@ public class AttractionPickerDialog extends DialogFragment {
         // 关闭按钮
         ivClose.setOnClickListener(v -> dismiss());
 
-        rvAttractions.setLayoutManager(new GridLayoutManager(getContext(),2));
+        rvAttractions.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new AttractionPickerAdapter(getContext(),spotList);
         adapter.setOnItemClickListener(spot -> {
             Intent intent = new Intent(getActivity(), ChatActivity.class);

@@ -63,7 +63,7 @@
             <ImageView
                 android:layout_width="14dp"
                 android:layout_height="14dp"
-                android:src="@drawable/ic_star_filled"
+                android:src="@drawable/ic_star"
                 app:tint="#FFC107" />
 
             <TextView

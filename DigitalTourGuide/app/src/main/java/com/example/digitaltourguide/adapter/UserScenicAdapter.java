@@ -120,6 +120,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         // ── 上次对话时间（暂无数据，默认隐藏） ──
         holder.tvLastTime.setVisibility(View.GONE);
 
+
         // 根据是否已评价（或已结束）决定显示哪个按钮布局
         if (isRated || spot.isEnded()) {
             holder.layoutDualButtons.setVisibility(View.GONE);

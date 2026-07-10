@@ -27,6 +27,12 @@ public class ScenicSpot {
     @SerializedName("ScenicSpot")
     private boolean ended;
 
+    @SerializedName("rating")
+    private Double rating;
+
+    @SerializedName("reviewCount")
+    private Integer reviewCount;
+
 
     public ScenicSpot() {}
 
@@ -49,6 +55,12 @@ public class ScenicSpot {
     public void setEnded(boolean ended) {
         this.ended = ended;
     }
+
+    public Double getRating() { return rating; }
+    public void setRating(Double rating) { this.rating = rating; }
+
+    public Integer getReviewCount() { return reviewCount; }
+    public void setReviewCount(Integer reviewCount) { this.reviewCount = reviewCount; }
 
     public String getConversationId() {
         return conversationId;

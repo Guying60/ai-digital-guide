@@ -1,61 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   item_attraction_picker.xml
-  景点选择弹窗中的卡片网格项 — 圆角图片 + 标题
+  景点选择弹窗中的单列条目 — 左侧封面图 + 右侧标题，类 HistoryActivity 风格
 -->
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="6dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/profile_surface_container_lowest"
-    app:cardPreventCornerOverlap="true"
-    app:contentPadding="0dp">
+    app:cardCornerRadius="12dp"
+    app:cardElevation="1dp"
+    app:contentPadding="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <!-- 景点封面图 -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="120dp">
+        <!-- 左侧：封面图 -->
+        <ImageView
+            android:id="@+id/iv_cover"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:background="#F0F1F5"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_pdf" />
 
-            <ImageView
-                android:id="@+id/iv_cover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_pdf"
-                android:importantForAccessibility="no" />
-
-            <!-- 图片底部的渐变遮罩，提升标题可读性 -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_gravity="bottom"
-                android:background="@drawable/bg_image_shade"
-                android:importantForAccessibility="no" />
-        </FrameLayout>
-
-        <!-- 景点名称 -->
-        <TextView
-            android:id="@+id/tv_title"
-            android:layout_width="match_parent"
+        <!-- 右侧：标题 + 辅助信息 -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="10dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="10dp"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-medium"
-            android:textColor="@color/profile_on_surface"
-            android:gravity="start"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:lineSpacingExtra="2dp" />
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="2"
+                android:textColor="@color/profile_on_surface"
+                android:textSize="15sp" />
+
+            <!-- 评分星级（PointManagerActivity 风格） -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_star"
+                    app:tint="#FFC107" />
+
+                <TextView
+                    android:id="@+id/tv_rating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:textColor="#333333"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_review_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textColor="#999999"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif"
+                android:text="点击开始对话"
+                android:textColor="@color/profile_outline"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- 右侧箭头 -->
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_arrow_right"
+            app:tint="@color/profile_outline_variant" />
 
     </LinearLayout>
 

@@ -55,6 +55,13 @@ public class AttractionPickerAdapter extends RecyclerView.Adapter<AttractionPick
         } else {
             holder.ivCover.setImageResource(R.drawable.ic_pdf);
         }
+
+        // 评分星级（PointManagerActivity 风格）
+        double rating = spot.getRating() != null ? spot.getRating() : 0.0;
+        int reviewCount = spot.getReviewCount() != null ? spot.getReviewCount() : 0;
+        holder.tvRating.setText(String.format("%.1f分", rating));
+        holder.tvReviewCount.setText(String.format("%d 条评论", reviewCount));
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onItemClick(spot);
@@ -68,12 +75,14 @@ public class AttractionPickerAdapter extends RecyclerView.Adapter<AttractionPick
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitle;
+        TextView tvTitle, tvRating, tvReviewCount;
         ImageView ivCover;
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitle = itemView.findViewById(R.id.tv_title);
             ivCover = itemView.findViewById(R.id.iv_cover);
+            tvRating = itemView.findViewById(R.id.tv_rating);
+            tvReviewCount = itemView.findViewById(R.id.tv_review_count);
         }
     }
 }
