@@ -56,9 +56,9 @@ public class DynamicPromptService {
         List<Document> hotQuestions = vectorSearchService.searchSimilarQuestion(userText, attractionId, 0.85);
         if (!hotQuestions.isEmpty()) {
             applyHotFaq(dynamicPrompt, hotQuestions.getFirst(), attractionId);
-            String score = formatSimilarity(hotQuestions.getFirst());
-            log.info("═══ [METRICS] RAG | attractionId={} | faqHit=true | faqSimilarity={} | docCount=0 ═══",
-                    attractionId, score);
+            double similarity = distanceToSimilarity(hotQuestions.getFirst());
+            log.info("═══ [METRICS] RAG | HIT(FAQ) | attractionId={} | similarity={} ═══",
+                    attractionId, similarity);
         } else {
             applyRagContext(dynamicPrompt, userText, attractionId);
         }
@@ -66,12 +66,16 @@ public class DynamicPromptService {
         return new PromptTemplate(AiSystemConstants.AI_GUIDE_SYSTEM_PROMPT).render(dynamicPrompt);
     }
 
-    private static String formatSimilarity(Document doc) {
+    /** COSINE 距离 → 相似度（距离 = 1 - 相似度），保留 2 位小数，0~1 之间 */
+    private static double distanceToSimilarity(Document doc) {
         Object score = doc.getMetadata().get("distance");
         if (score instanceof Number n) {
-            return String.format("%.4f", n.doubleValue());
+            double d = n.doubleValue();
+            // COSINE 距离范围 [0, 2]，夹到合理范围后转换
+            if (d >= 0 && d <= 2) return Math.round((1.0 - d) * 100.0) / 100.0;
+            return Math.round(d * 100.0) / 100.0;
         }
-        return "N/A";
+        return -1;
     }
 
     private void applyHotFaq(Map<String, Object> dynamicPrompt, Document hitDoc, Long attractionId) {
@@ -103,9 +107,13 @@ public class DynamicPromptService {
                 .collect(Collectors.joining("\n\n"));
         dynamicPrompt.put("context", context);
 
-        String topScore = documents.isEmpty() ? "N/A" : formatSimilarity(documents.getFirst());
-        log.info("═══ [METRICS] RAG | attractionId={} | faqHit=false | docCount={} | docTopScore={} | contextLen={} ═══",
-                attractionId, documents.size(), topScore, context.length());
+        if (documents.isEmpty()) {
+            log.info("═══ [METRICS] RAG | MISS | attractionId={} | reason=noDocsAboveThreshold ═══", attractionId);
+        } else {
+            double topSimilarity = distanceToSimilarity(documents.getFirst());
+            log.info("═══ [METRICS] RAG | HIT(DOC) | attractionId={} | docCount={} | topSimilarity={} | contextLen={} ═══",
+                    attractionId, documents.size(), topSimilarity, context.length());
+        }
 
         // 长度合规且样本未超量则记入待学习库
         Long size = stringRedisTemplate.opsForSet().size(HOT_QUESTION_KEY + attractionId);
