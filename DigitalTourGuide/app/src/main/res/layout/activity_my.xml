@@ -38,7 +38,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingHorizontal="20dp"
-                android:paddingTop="48dp"
+                android:paddingTop="60dp"
                 android:paddingBottom="32dp">
 
                 <!-- 右上角设置齿轮（假入口） -->

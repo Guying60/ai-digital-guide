@@ -69,7 +69,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_expert" />
+                    android:src="@drawable/ic_teach" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -369,7 +369,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_view_list"
+                    android:src="@drawable/ic_teach_deep"
                      />
 
                 <LinearLayout
@@ -598,11 +598,11 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_heart"
-                    app:tint="#FF9500" />
+                     />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -986,11 +986,11 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_compass"
-                    app:tint="#34c759" />
+                    />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -1049,16 +1049,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_book"
-                            app:tint="@color/profile_outline" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -1110,16 +1110,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_family"
-                            app:tint="#ff9500" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -1171,16 +1171,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_camera"
-                            app:tint="#34c759" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -1232,16 +1232,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
                         <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_cafe"
-                            app:tint="#a2845e" />
+                             />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -1283,11 +1283,11 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_edit_small"
-                    app:tint="@color/profile_primary_container" />
+                     />
 
                 <LinearLayout
                     android:layout_width="0dp"
