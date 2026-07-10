@@ -11,6 +11,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/login_background"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:orientation="vertical"
     tools:context=".view.user.HistoryActivity">
 
@@ -249,98 +251,111 @@
         android:scrollbars="none"
         android:overScrollMode="always" />
 
-    <!-- ==================== Bottom Navigation Bar ==================== -->
-    <LinearLayout
+    <!-- ==================== Bottom Navigation Bar (Floating Pill) ==================== -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:baselineAligned="false"
-        android:background="@drawable/bg_bottom_nav"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="20dp"
-        android:elevation="6dp">
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="@color/profile_surface_container_lowest"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:strokeWidth="0dp">
 
-        <!-- 出游记录 Tab (Active) -->
         <LinearLayout
-            android:id="@+id/tv_history"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp">
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="8dp">
 
-            <ImageView
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:src="@drawable/ic_travel_record"
-                android:contentDescription="@null"
-                android:importantForAccessibility="no" />
+            <!-- 出游记录 Tab (Active) -->
+            <LinearLayout
+                android:id="@+id/tv_history"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_nav_active"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:layout_marginHorizontal="4dp">
 
-            <TextView
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_nav_history"
+                    app:tint="@color/profile_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="@string/history_bottom_history"
+                    android:textColor="@color/profile_primary"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- 中间 + 按钮 -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/history_bottom_history"
-                android:textColor="@color/login_primary"
-                android:textSize="11sp"
-                android:fontFamily="sans-serif-medium"
-                android:layout_marginTop="6dp" />
-        </LinearLayout>
+                android:layout_marginHorizontal="8dp"
+                android:gravity="center"
+                android:orientation="vertical">
 
-        <!-- 中间按钮组 -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp">
+                <ImageView
+                    android:id="@+id/iv_add_chat"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_add_btn"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_nav_add" />
+            </LinearLayout>
 
-            <ImageView
-                android:id="@+id/iv_add_chat"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:src="@drawable/ic_add"
-                android:contentDescription="@null"
-                android:importantForAccessibility="no" />
-        </LinearLayout>
-
-        <!-- 个人中心 Tab (Inactive) -->
-        <LinearLayout
-            android:id="@+id/tv_mine"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp">
-
-            <ImageView
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:src="@drawable/ic_profile_normal"
-                android:contentDescription="@null"
-                android:importantForAccessibility="no" />
-
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- 个人中心 Tab (Inactive) -->
+            <LinearLayout
+                android:id="@+id/tv_mine"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="@string/history_bottom_profile"
-                android:textColor="@color/login_on_surface_variant"
-                android:textSize="11sp"
-                android:fontFamily="sans-serif"
-                android:layout_marginTop="6dp" />
-        </LinearLayout>
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:layout_marginHorizontal="4dp">
 
-    </LinearLayout>
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_nav_profile"
+                    app:tint="@color/profile_outline" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="sans-serif"
+                    android:text="@string/history_bottom_profile"
+                    android:textColor="@color/profile_outline"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

@@ -629,8 +629,7 @@ public class HistoryActivity extends AppCompatActivity {
         ivAdd=findViewById(R.id.iv_add_chat);
         tvHistory=findViewById(R.id.tv_history);
         tvMine=findViewById(R.id.tv_mine);
-        tvHistory.setBackgroundResource(R.drawable.bg_nav_text_selected);
-        tvMine.setBackgroundResource(R.drawable.bg_nav_text_selected);
+        // 活跃标签指示器已在布局 XML 中通过 bg_nav_active 设置
         rvScenic = findViewById(R.id.rv_scenic);
         etSearch = findViewById(R.id.et_search);
 
