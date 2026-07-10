@@ -30,6 +30,9 @@
             android:orientation="vertical">
 
             <!-- ═══════════════ 第一段：头部区域 — 渐变背景 + 个人信息 ═══════════════ -->
+
+
+            <!-- ═══════════════ 第三段：我的服务卡片 — 原评价 + 偏好（真功能，大入口） ═══════════════ -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/header_container"
                 android:layout_width="match_parent"
@@ -49,22 +52,22 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_settings"
-                    app:tint="@color/white"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="@color/white" />
 
                 <!-- 头像（MaterialCardView 圆形裁切 + 白边，避免 ShapeableImageView 的裁边问题） -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_avatar"
                     android:layout_width="86dp"
                     android:layout_height="86dp"
+                    app:cardBackgroundColor="@android:color/transparent"
                     app:cardCornerRadius="43dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/white"
-                    app:strokeWidth="3dp"
-                    app:cardBackgroundColor="@android:color/transparent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:strokeColor="@color/white"
+                    app:strokeWidth="3dp">
 
                     <ImageView
                         android:id="@+id/iv_avatar"
@@ -124,9 +127,6 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-
-
-            <!-- ═══════════════ 第三段：我的服务卡片 — 原评价 + 偏好（真功能，大入口） ═══════════════ -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
