@@ -4,6 +4,7 @@ import cn.xuyanwu.spring.file.storage.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.guying.admin.service.StatInternalService;
+import com.guying.attractions.dto.AttractionReviewAggregateDTO;
 import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
 import com.guying.common.result.ScrollResult;
@@ -15,6 +16,7 @@ import com.guying.mapper.AdminDigitalHumanMapper;
 import com.guying.mapper.AttractionDocumentMapper;
 import com.guying.mapper.AttractionFaqMapper;
 import com.guying.mapper.AttractionsMapper;
+import com.guying.mapper.UserReviewMapper;
 import com.guying.message.VideoDeleteMessage;
 import com.guying.pojo.dto.AttractionCreateDTO;
 import com.guying.pojo.dto.AttractionListQueryDTO;
@@ -38,12 +40,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, Attraction> implements AdminAttractionsService {
     @Autowired
     private AttractionsConverter attractionsConverter;
+    @Autowired
+    private UserReviewMapper userReviewMapper;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
@@ -217,7 +223,6 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
      */
     @Override
     public ScrollResult<AttractionListVO> getAttractionList(AttractionListQueryDTO attractionListQueryDTO) {
-        //TODO展示景点平均分和评论数？
         Long adminId = AdminContext.getAdminId();
         LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Attraction::getAdminId, adminId)
@@ -238,7 +243,33 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
         List<AttractionListVO> attractionListVOList =
                 attractionsConverter.toAttractionListVOList(attractionList);
 
+        // 回填景点平均分与评论数(全量口径)
+        enrichReviewAggregates(attractionListVOList);
+
         return new ScrollResult<>(attractionListVOList, nextLastId, hasMore);
+    }
+
+    /**
+     * 回填景点平均分与评论数(全量口径,单次批量查询避免 N+1)。
+     */
+    private void enrichReviewAggregates(List<AttractionListVO> voList) {
+        if (voList == null || voList.isEmpty()) {
+            return;
+        }
+        List<Long> ids = voList.stream().map(AttractionListVO::getId).toList();
+        Map<Long, AttractionReviewAggregateDTO> aggMap = userReviewMapper
+                .selectBatchAggregates(ids).stream()
+                .collect(Collectors.toMap(AttractionReviewAggregateDTO::getAttractionId, a -> a));
+        for (AttractionListVO vo : voList) {
+            AttractionReviewAggregateDTO agg = aggMap.get(vo.getId());
+            if (agg != null) {
+                vo.setRating(agg.getAvgScore());
+                vo.setReviewCount(agg.getReviewCount().intValue());
+            } else {
+                vo.setRating(null);
+                vo.setReviewCount(0);
+            }
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

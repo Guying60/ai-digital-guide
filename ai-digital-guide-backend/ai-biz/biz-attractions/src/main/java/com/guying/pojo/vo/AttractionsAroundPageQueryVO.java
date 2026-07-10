@@ -16,4 +16,13 @@ public class AttractionsAroundPageQueryVO {
      */
     private Double distance;
 
+    /**
+     * 平均分(全量口径,ROUND(AVG,1)),无评论时为 null
+     */
+    private Double rating;
+    /**
+     * 评论数(全量口径),无评论时为 0
+     */
+    private Integer reviewCount;
+
 }

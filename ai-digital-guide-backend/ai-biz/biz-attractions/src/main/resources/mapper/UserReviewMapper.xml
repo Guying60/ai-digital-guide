@@ -44,4 +44,21 @@
         LIMIT 100
     </select>
 
+    <!-- 批量全量聚合：景点列表的平均分与评论数（无时间窗口，按 attraction_id IN 批量查询避免 N+1） -->
+    <select id="selectBatchAggregates" resultType="com.guying.attractions.dto.AttractionReviewAggregateDTO">
+        SELECT
+            attraction_id AS attractionId,
+            ROUND(AVG(rating), 1) AS avgScore,
+            COUNT(*) AS reviewCount
+        FROM tb_user_review
+        WHERE attraction_id IN
+            <foreach collection="attractionIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          AND status = 1
+          AND rating IS NOT NULL
+          AND is_deleted = 0
+        GROUP BY attraction_id
+    </select>
+
 </mapper>
