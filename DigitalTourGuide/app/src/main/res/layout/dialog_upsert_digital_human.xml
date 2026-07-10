@@ -1,59 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  dialog_upsert_digital_human.xml — 上传/更换数字人弹窗
+  Material 风格，分组布局 + 品牌色按钮
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_rounded"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingBottom="20dp">
 
-    <TextView
-        android:id="@+id/tv_attraction_id"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="16sp" />
-
-    <TextView
-        android:id="@+id/tv_selected_video"
+    <!-- ========== 标题栏 ========== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="未选择任何视频"
-        android:layout_marginTop="8dp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="12dp">
 
-    <Button
-        android:id="@+id/btn_select_video"
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_person_filled"
+            app:tint="@color/profile_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="数字人管理"
+            android:textColor="@color/profile_on_surface"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_attraction_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_nav_active"
+            android:fontFamily="sans-serif"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/profile_primary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- ========== 分隔线 ========== -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="20dp"
+        android:alpha="0.4"
+        android:background="@color/profile_surface_variant" />
+
+    <!-- ========== 视频素材区域 ========== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="选择视频文件" />
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_search_rounded"
+        android:orientation="vertical"
+        android:padding="14dp">
 
-    <Button
-        android:id="@+id/btn_record_video"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_video"
+                app:tint="@color/profile_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="视频素材"
+                android:textColor="@color/profile_on_surface"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_selected_video"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="sans-serif"
+            android:text="未选择任何视频"
+            android:textColor="@color/profile_outline"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_select_video"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="选择视频"
+                android:textSize="13sp"
+                app:cornerRadius="20dp"
+                app:strokeColor="@color/profile_primary"
+                app:strokeWidth="1dp"
+                android:textColor="@color/profile_primary"
+                app:rippleColor="@color/profile_surface_container" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_record_video"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="录制视频"
+                android:textSize="13sp"
+                app:cornerRadius="20dp"
+                app:strokeColor="@color/profile_outline"
+                app:strokeWidth="1dp"
+                android:textColor="@color/profile_on_surface_variant"
+                app:rippleColor="@color/profile_surface_container" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ========== 音频素材区域 ========== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="录制视频" />
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_search_rounded"
+        android:orientation="vertical"
+        android:padding="14dp">
 
-    <TextView
-        android:id="@+id/tv_selected_audio"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_mico"
+                app:tint="@color/profile_preference_green" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="音频素材"
+                android:textColor="@color/profile_on_surface"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_selected_audio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="sans-serif"
+            android:text="未选择任何音频"
+            android:textColor="@color/profile_outline"
+            android:textSize="12sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_select_audio"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:text="选择音频文件"
+            android:textSize="13sp"
+            app:cornerRadius="20dp"
+            app:strokeColor="@color/profile_preference_green"
+            app:strokeWidth="1dp"
+            android:textColor="@color/profile_preference_green"
+            app:rippleColor="@color/profile_surface_container" />
+    </LinearLayout>
+
+    <!-- ========== 底部操作按钮 ========== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="未选择任何音频"
-        android:layout_marginTop="8dp" />
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="20dp"
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/btn_select_audio"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="选择音频文件" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="取消"
+            android:textColor="@color/profile_outline"
+            android:textSize="14sp"
+            app:cornerRadius="22dp"
+            app:rippleColor="@color/profile_surface_container" />
 
-    <Button
-        android:id="@+id/btn_upload"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="确认上传并更换" />
-
-    <Button
-        android:id="@+id/btn_cancel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="取消" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_upload"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1.5"
+            android:layout_marginStart="10dp"
+            android:text="确认上传并更换"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            app:backgroundTint="@color/profile_primary"
+            app:cornerRadius="22dp"
+            app:rippleColor="@color/profile_primary_container" />
+    </LinearLayout>
 
 </LinearLayout>

@@ -12,6 +12,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import com.google.android.material.button.MaterialButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -306,13 +307,18 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         builder.setView(dialogView);
         uploadDialog=builder.create();
 
+        // 透明背景让 bg_dialog_rounded 的圆角露出来
+        if (uploadDialog.getWindow() != null) {
+            uploadDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
         TextView tvAttractionId = dialogView.findViewById(R.id.tv_attraction_id);
         TextView tvSelectedVideo = dialogView.findViewById(R.id.tv_selected_video);
-        Button btnSelectVideo = dialogView.findViewById(R.id.btn_select_video);
-        Button btnRecordVideo = dialogView.findViewById(R.id.btn_record_video);
-        Button btnSelectAudio = dialogView.findViewById(R.id.btn_select_audio);
-        Button btnUpload = dialogView.findViewById(R.id.btn_upload);
-        Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
+        MaterialButton btnSelectVideo = dialogView.findViewById(R.id.btn_select_video);
+        MaterialButton btnRecordVideo = dialogView.findViewById(R.id.btn_record_video);
+        MaterialButton btnSelectAudio = dialogView.findViewById(R.id.btn_select_audio);
+        MaterialButton btnUpload = dialogView.findViewById(R.id.btn_upload);
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btn_cancel);
 
         tvAttractionId.setText("景点id："+attractionId);
 
@@ -436,14 +442,25 @@ public class ManageAIHumanActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_test_video_text, null);
         builder.setView(dialogView);
-        builder.setTitle("生成测试视频");
-        builder.setPositiveButton("生成", (dialog, which) -> {
-            android.widget.EditText etText = dialogView.findViewById(R.id.et_test_text);
+        AlertDialog testVideoDialog = builder.create();
+
+        // 透明背景让 bg_dialog_rounded 的圆角露出来
+        if (testVideoDialog.getWindow() != null) {
+            testVideoDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        android.widget.EditText etText = dialogView.findViewById(R.id.et_test_text);
+        MaterialButton btnGenerate = dialogView.findViewById(R.id.btn_generate);
+        MaterialButton btnCancelTest = dialogView.findViewById(R.id.btn_cancel_test);
+
+        btnGenerate.setOnClickListener(v -> {
             String customText = etText.getText().toString().trim();
             viewModel.generateTestVideo(currentAIHumanId, customText);
+            testVideoDialog.dismiss();
         });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+        btnCancelTest.setOnClickListener(v -> testVideoDialog.dismiss());
+
+        testVideoDialog.show();
     }
 
     //轮询测试视频状态 2.20
