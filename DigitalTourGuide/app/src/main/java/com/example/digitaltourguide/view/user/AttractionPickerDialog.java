@@ -3,16 +3,21 @@ package com.example.digitaltourguide.view.user;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -48,6 +53,7 @@ public class AttractionPickerDialog extends DialogFragment {
     private EditText etSearch;
     private RecyclerView rvAttractions;
     private AttractionPickerAdapter adapter;
+    private ImageView ivClose;
     private String currentKeyword = "";
     private String nextLastId = null;//最后一条数据的id
     private boolean isLoading = false;//表示当前正在加载数据，防止用户快速滑动重复触发加载请求
@@ -67,12 +73,20 @@ public class AttractionPickerDialog extends DialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        // 设置对话框无标题栏、透明背景、底部弹出
+        if (getDialog() != null) {
+            getDialog().requestWindowFeature(Window.FEATURE_NO_TITLE);
+        }
         View view = inflater.inflate(R.layout.dialog_attraction_list, container, false);
         etSearch = view.findViewById(R.id.et_search);
         rvAttractions = view.findViewById(R.id.rv_attractions);
         progressBar = view.findViewById(R.id.progress_bar);
         tvStatus = view.findViewById(R.id.tv_status);
         llLoading = view.findViewById(R.id.ll_loading);
+        ivClose = view.findViewById(R.id.iv_close);
+
+        // 关闭按钮
+        ivClose.setOnClickListener(v -> dismiss());
 
         rvAttractions.setLayoutManager(new GridLayoutManager(getContext(),2));
         adapter = new AttractionPickerAdapter(getContext(),spotList);
@@ -295,7 +309,14 @@ public class AttractionPickerDialog extends DialogFragment {
     public void onResume() {
         super.onResume();
         if(getDialog()!=null && getDialog().getWindow()!=null){
-            getDialog().getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+            Window window = getDialog().getWindow();
+            // 透明背景（让 dialog 的圆角背景透出来）
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            // 全宽、自适应高度、底部弹出
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.BOTTOM);
+            // 底部弹出 / 收起动画
+            window.setWindowAnimations(R.style.DialogBottomAnimation);
         }
     }
 }

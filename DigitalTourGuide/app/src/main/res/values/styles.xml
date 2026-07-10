@@ -114,6 +114,12 @@
         <item name="rippleColor">@color/profile_surface_variant</item>
     </style>
 
+    <!-- ===================== Dialog Animation ===================== -->
+    <style name="DialogBottomAnimation">
+        <item name="android:windowEnterAnimation">@anim/dialog_slide_up</item>
+        <item name="android:windowExitAnimation">@anim/dialog_slide_down</item>
+    </style>
+
     <!-- ===================== Button ===================== -->
     <style name="Widget_Profile_Button_SignOut" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="backgroundTint">@color/profile_error_container</item>

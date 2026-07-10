@@ -1,50 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  dialog_attraction_list.xml
+  底部弹出式景点选择弹窗 — 圆角、搜索、卡片网格
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@drawable/bg_dialog_bottom"
+    android:orientation="vertical">
 
-    <!-- 搜索框 -->
-    <EditText
-        android:id="@+id/et_search"
+    <!-- ========== 拖拽手柄 (视觉提示) ========== -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="搜索景点"
-        android:padding="12dp"
-        android:background="@android:drawable/editbox_background" />
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
 
-    <!-- 加载中 / 定位状态 -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_drag_handle"
+            android:importantForAccessibility="no" />
+    </FrameLayout>
+
+    <!-- ========== 头部：标题 + 关闭按钮 ========== -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:text="选择景点"
+            android:textColor="@color/profile_on_surface"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/iv_close"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="end|center_vertical"
+            android:background="@drawable/bg_icon_circle"
+            android:padding="8dp"
+            android:src="@drawable/ic_close_vector"
+            android:contentDescription="关闭"
+            android:importantForAccessibility="yes"
+            android:clickable="true"
+            android:focusable="true" />
+    </FrameLayout>
+
+    <!-- ========== 分隔线 ========== -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/profile_surface_variant"
+        android:alpha="0.5" />
+
+    <!-- ========== 搜索栏 ========== -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="8dp">
+
+        <EditText
+            android:id="@+id/et_search"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_search_rounded"
+            android:drawableStart="@drawable/ic_search_fit"
+            android:drawablePadding="10dp"
+            android:gravity="center_vertical"
+            android:hint="搜索景点名称"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textColor="@color/profile_on_surface"
+            android:textColorHint="@color/profile_outline"
+            android:textSize="14sp" />
+    </FrameLayout>
+
+    <!-- ========== 加载 / 定位状态 ========== -->
     <LinearLayout
         android:id="@+id/ll_loading"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="48dp"
         android:visibility="visible">
 
         <ProgressBar
             android:id="@+id/progress_bar"
-            android:layout_width="48dp"
-            android:layout_height="48dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:indeterminateTint="@color/profile_primary" />
 
         <TextView
             android:id="@+id/tv_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="14dp"
             android:text="正在获取位置..."
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp" />
+            android:textColor="@color/profile_on_surface_variant"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif" />
     </LinearLayout>
 
-    <!-- 景点列表 -->
+    <!-- ========== 景点列表 (网格 2列) ========== -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_attractions"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
-        android:layout_marginTop="12dp"
-        android:visibility="gone" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="24dp"
+        android:visibility="gone"
+        android:nestedScrollingEnabled="false" />
 
 </LinearLayout>

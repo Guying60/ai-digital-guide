@@ -1,29 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  item_attraction_picker.xml
+  景点选择弹窗中的卡片网格项 — 圆角图片 + 标题
+-->
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@drawable/input_card_bg"
-    android:gravity="center_horizontal"
-    >
+    android:layout_margin="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/profile_surface_container_lowest"
+    app:cardPreventCornerOverlap="true"
+    app:contentPadding="0dp">
 
-    <ImageView
-        android:id="@+id/iv_cover"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:scaleType="centerCrop"
-        android:src="@drawable/ic_pdf" />
-
-    <TextView
-        android:id="@+id/tv_title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="14sp"
-        android:gravity="center"
-        android:maxLines="2"
-        android:ellipsize="end" />
+        android:orientation="vertical">
 
+        <!-- 景点封面图 -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="120dp">
 
-</LinearLayout>
+            <ImageView
+                android:id="@+id/iv_cover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_pdf"
+                android:importantForAccessibility="no" />
+
+            <!-- 图片底部的渐变遮罩，提升标题可读性 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/bg_image_shade"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <!-- 景点名称 -->
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="10dp"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/profile_on_surface"
+            android:gravity="start"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:lineSpacingExtra="2dp" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
