@@ -51,18 +51,26 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <!-- 头像（圆形 + 白边） -->
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/iv_avatar"
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ic_person_filled"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlayProfileCircle"
+                <!-- 头像（MaterialCardView 圆形裁切 + 白边，避免 ShapeableImageView 的裁边问题） -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_avatar"
+                    android:layout_width="86dp"
+                    android:layout_height="86dp"
+                    app:cardCornerRadius="43dp"
+                    app:cardElevation="0dp"
                     app:strokeColor="@color/white"
-                    app:strokeWidth="3dp" />
+                    app:strokeWidth="3dp"
+                    app:cardBackgroundColor="@android:color/transparent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        android:id="@+id/iv_avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_person_filled" />
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- 用户名 -->
                 <TextView
@@ -77,8 +85,8 @@
                     android:textColor="@color/white"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="@id/iv_avatar"
-                    app:layout_constraintTop_toBottomOf="@id/iv_avatar" />
+                    app:layout_constraintStart_toStartOf="@id/card_avatar"
+                    app:layout_constraintTop_toBottomOf="@id/card_avatar" />
 
                 <!-- 性别 Chip（代码控制显隐与样式） -->
                 <com.google.android.material.chip.Chip
@@ -259,6 +267,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
+                        android:paddingLeft="10dp"
                         android:orientation="horizontal">
 
                         <ImageView
@@ -295,6 +304,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
+                        android:paddingLeft="10dp"
                         android:orientation="horizontal">
 
                         <ImageView
@@ -331,6 +341,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
+                        android:paddingLeft="10dp"
                         android:orientation="horizontal">
 
                         <ImageView
@@ -368,6 +379,8 @@
                     </LinearLayout>
 
                     <!-- 隐私政策（假按钮） -->
+
+                    <!-- 关于我们（真功能 → showAboutDialog） -->
                     <LinearLayout
                         android:id="@+id/btn_privacy"
                         android:layout_width="match_parent"
@@ -376,7 +389,8 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:paddingLeft="10dp">
 
                         <ImageView
                             android:layout_width="22dp"
@@ -403,7 +417,6 @@
                             app:tint="@color/profile_outline_variant" />
                     </LinearLayout>
 
-                    <!-- 关于我们（真功能 → showAboutDialog） -->
                     <LinearLayout
                         android:id="@+id/btn_about"
                         android:layout_width="match_parent"
@@ -412,6 +425,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
+                        android:paddingLeft="10dp"
                         android:orientation="horizontal">
 
                         <ImageView
@@ -448,6 +462,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
+                        android:paddingLeft="10dp"
                         android:orientation="horizontal">
 
                         <ImageView
