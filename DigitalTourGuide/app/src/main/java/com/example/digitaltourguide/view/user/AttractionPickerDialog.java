@@ -93,7 +93,10 @@ public class AttractionPickerDialog extends DialogFragment {
         adapter.setOnItemClickListener(spot -> {
             Intent intent = new Intent(getActivity(), ChatActivity.class);
             intent.putExtra("attractionId", spot.getId());
-            startActivity(intent);
+            // 使用 startActivityForResult：当 ChatActivity 结束时，HistoryActivity.onActivityResult 会刷新列表
+            if (getActivity() != null) {
+                getActivity().startActivityForResult(intent, HistoryActivity.REQUEST_CHAT);
+            }
             dismiss();
         });
         rvAttractions.setAdapter(adapter);

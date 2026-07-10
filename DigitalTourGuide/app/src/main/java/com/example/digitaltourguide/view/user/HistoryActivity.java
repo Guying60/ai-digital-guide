@@ -23,6 +23,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -51,6 +52,8 @@ import retrofit2.Response;
 public class HistoryActivity extends AppCompatActivity {
     private static final String TAG="HistoryActivity";
     private static final int REQ_LOCATION = 5001;
+    /** AttractionPickerDialog 启动 ChatActivity 用的请求码，用于 onActivityResult 刷新 */
+    public static final int REQUEST_CHAT = 200;
     private EditText etSearch;
     private RecyclerView rvScenic;
     private UserScenicAdapter adapter;
@@ -94,6 +97,16 @@ public class HistoryActivity extends AppCompatActivity {
         super.onResume();
         if (needRefresh) {
             needRefresh = false;
+            resetAndLoad();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CHAT) {
+            // 从 ChatActivity 返回后强制刷新列表，无论 resultCode 是什么
+            needRefresh = true;
             resetAndLoad();
         }
     }
@@ -630,7 +643,6 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(intent);
         });
         ivAdd.setOnClickListener(v->{
-            needRefresh = true;  // 返回时自动刷新列表
             if (hasLocationPermission()) {
                 new AttractionPickerDialog().show(getSupportFragmentManager(), "AttractionPicker");
             } else {

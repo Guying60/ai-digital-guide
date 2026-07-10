@@ -288,12 +288,11 @@ public class ChatActivity extends AppCompatActivity {
             Log.e(TAG, "清理资源时出错", e);
         }
 
-        // 8. 跳转到 HistoryActivity（使用与数据分析相同的 fade 动画）
-        Intent intent = new Intent(ChatActivity.this, HistoryActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        startActivity(intent);
-        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+        // 8. 返回 HistoryActivity（使用与数据分析相同的 fade 动画）
+        // 使用 finish() 而非 startActivity，确保 onActivityResult 被正确触发
+        setResult(RESULT_OK);
         finish();
+        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
     }
 
     private void sendTextMessage(String text) {
@@ -1069,6 +1068,24 @@ public class ChatActivity extends AppCompatActivity {
             heartbeatExecutor.shutdownNow();
             heartbeatExecutor=null;
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // 按返回键时也要断开 WebSocket，然后回到 HistoryActivity
+        setResult(RESULT_OK);
+        // 清理 WebSocket 和资源（精简版，onDestroy 会兜底）
+        if (webSocketClient != null) {
+            webSocketClient.close(1000, "用户返回");
+            webSocketClient = null;
+        }
+        wsConnected = false;
+        stopHeartbeat();
+        stopArrivalMonitoring();
+        if (avSyncPlayer != null) {
+            avSyncPlayer.interrupt();
+        }
+        super.onBackPressed();
     }
 
     @Override
