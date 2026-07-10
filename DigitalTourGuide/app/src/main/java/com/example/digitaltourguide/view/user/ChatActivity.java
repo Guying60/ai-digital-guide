@@ -107,6 +107,7 @@ public class ChatActivity extends AppCompatActivity {
     private int bufferSize;
     private EditText etMessage;
     private Button btnSend;
+    private TextView btnEndChat;
     private ImageView ivMic,ivCapture,ivSubtitleBtn,ivCamera;
     private ImageCapture imageCapture;
     private PreviewView previewView;
@@ -222,6 +223,77 @@ public class ChatActivity extends AppCompatActivity {
             avSyncPlayer.interrupt();
         }
         Log.d("MYTEST", "已主动停止播放，等待下次交互");
+    }
+
+    /**
+     * 结束对话：关闭 WebSocket、释放资源，回到 HistoryActivity。
+     * 页面过渡动画与 DataAnalysisActivity ↔ TouristAnalysisActivity 一致（sibling_fade）。
+     */
+    private void endChatAndGoBack() {
+        Log.d(TAG, "结束对话按钮被点击，开始清理资源");
+        try {
+            // 1. 关闭 WebSocket
+            if (webSocketClient != null) {
+                webSocketClient.close(1000, "用户结束对话");
+                webSocketClient = null;
+            }
+            wsConnected = false;
+
+            // 2. 停止心跳
+            stopHeartbeat();
+
+            // 3. 停止录音
+            if (isRecording) {
+                isRecording = false;
+                if (audioRecord != null) {
+                    audioRecord.stop();
+                }
+                if (recordThread != null) {
+                    try {
+                        recordThread.join(500);
+                    } catch (InterruptedException ignored) {}
+                    recordThread = null;
+                }
+            }
+            if (audioRecord != null) {
+                audioRecord.release();
+                audioRecord = null;
+            }
+
+            // 4. 停止相机
+            stopCamera();
+            if (cameraExecutor != null) {
+                cameraExecutor.shutdownNow();
+                cameraExecutor = null;
+            }
+
+            // 5. 释放 AVSyncPlayer
+            if (avSyncPlayer != null) {
+                avSyncPlayer.release();
+                avSyncPlayer = null;
+            }
+
+            // 6. 释放待机视频
+            cancelIdleShowTimer();
+            if (idlePlayer != null) {
+                idlePlayer.release();
+                idlePlayer = null;
+            }
+
+            // 7. 停止路线 GPS 监控
+            stopArrivalMonitoring();
+
+            Log.d(TAG, "资源清理完成，准备跳转到 HistoryActivity");
+        } catch (Exception e) {
+            Log.e(TAG, "清理资源时出错", e);
+        }
+
+        // 8. 跳转到 HistoryActivity（使用与数据分析相同的 fade 动画）
+        Intent intent = new Intent(ChatActivity.this, HistoryActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        startActivity(intent);
+        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+        finish();
     }
 
     private void sendTextMessage(String text) {
@@ -1068,6 +1140,10 @@ public class ChatActivity extends AppCompatActivity {
         btnSend = findViewById(R.id.btn_send);
         ivCamera = findViewById(R.id.btn_camera);
         ivCamera.setOnClickListener(v -> toggleCamera());
+
+        // 结束对话按钮
+        btnEndChat = findViewById(R.id.btn_end_chat);
+        btnEndChat.setOnClickListener(v -> endChatAndGoBack());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {
