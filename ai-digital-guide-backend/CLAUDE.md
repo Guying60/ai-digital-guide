@@ -45,7 +45,7 @@ ai-start ──→ ai-framework ──→ ai-common
   - `biz-user` — User login/register/profile, tour history tracking.
   - `biz-admin` — Admin auth, analytics dashboard (emotion/focus stats, FAQ hot charts, chat trends).
   - `biz-attractions` — Attractions CRUD, file upload (Aliyun OSS via `spring-file-storage`), document/FAQ management.
-  - `biz-ai` — Core AI: WebSocket chat handler, RAG vector search/storage, experience analysis, MCP client for Amap integration. Contains multiple `ChatClient` beans (VL model, DeepSeek, ETL qwen3.6-flash, Expert qwen3.6-plus).
+  - `biz-ai` — Core AI: WebSocket chat handler, RAG vector search/storage, experience analysis, MCP client for Amap integration. Contains multiple `ChatClient` beans (VL model, qwen3.7-max for text processing, qwen3.7-plus for emotion vision, qwen3.6-flash for main dialogue).
 - **ai-start** — Entry point (`@SpringBootApplication`), `application.yml` (context-path `/ai-project`, port 8080), and `application-{dev,prod}.yml` profiles.
 
 ### Layered Pattern Within Each Biz Module
@@ -83,7 +83,7 @@ Upload file → Aliyun OSS → RabbitMQ RESULT_QUEUE
 
 - `AiChatHandler` (extends `AbstractWebSocketHandler`) manages persistent connections.
 - Supports text messages, emotion frames (Base64 from front camera, token-bucket rate limited), and real-time audio via Alibaba NLS speech recognition.
-- Multiple ChatClient beans: `llmGuideChatClient` (qwen3.7-max, text conversation), `vlGuideChatClient` (VL model), `expertChatClient` (qwen3.6-plus, structured JSON for route/emotion/suggestions), `etlChatClient` (deepseek-v4-pro, document processing), `emotionVisionChatClient` (qwen3.7-max, face emotion classification).
+- Multiple ChatClient beans: `llmGuideChatClient` (qwen3.6-flash, WebSocket real-time dialogue), `vlGuideChatClient` (VL model, deprecated), `etlChatClient` (qwen3.7-max, document/FAQ text processing), `expertChatClient` (qwen3.7-max, structured JSON for route/emotion/suggestions), `emotionVisionChatClient` (qwen3.7-plus, face emotion classification).
 - Dynamic prompt assembled from: user profile (Redis), hot FAQ match (Redis/MySQL), or RAG document context.
 - Conversation memory: JDBC-persisted `MessageWindowChatMemory` (10 messages), conversation ID = `UUID.randomUUID()` (generated per WS connection in `ChatSessionContext`).
 
