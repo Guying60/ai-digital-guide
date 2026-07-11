@@ -48,6 +48,9 @@ public class HotFaqBarChart extends View {
     // 触摸状态
     private int highlightIndex = -1;       // 当前按下的行，-1 表示无
 
+    // 缓存：根据数据动态计算的左/右边距，确保数值标签不被裁剪
+    private float dynamicLeftM, dynamicRightM;
+
     // 缓存的布局参数（onDraw 时更新，onTouchEvent 复用以定位点击行）
     private float cachedTopM, cachedRowH, cachedGap, cachedStartY;
     private int   cachedItemCount;
@@ -119,6 +122,37 @@ public class HotFaqBarChart extends View {
         invalidate();
     }
 
+    // --------------- 测量 ---------------
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (dataList == null || dataList.isEmpty()) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            return;
+        }
+        // 根据数据计算动态边距
+        computeDynamicMargins();
+        int contentW = (int) (dynamicLeftM + dp(80) + dynamicRightM);
+        int minW = MeasureSpec.getSize(widthMeasureSpec);
+        // HorizontalScrollView 传入 UNSPECIFIED，此时用 contentW；否则取较大值
+        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+            setMeasuredDimension(contentW, getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+        } else {
+            setMeasuredDimension(Math.max(minW, contentW), getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+        }
+    }
+
+    /** 根据数据动态计算左/右边距，确保问题文本和数值均不被裁剪 */
+    private void computeDynamicMargins() {
+        float maxTextW = 0;
+        for (HotFaqItem item : dataList) {
+            float tw = textQuestion.measureText(item.getQuestion());
+            if (tw > maxTextW) maxTextW = tw;
+        }
+        float maxValW = textValue.measureText(String.valueOf((int) maxCount));
+        dynamicLeftM  = dp(20) + dp(6) + maxTextW + dp(6);   // 排名 + 问题文本
+        dynamicRightM = dp(16) + maxValW + dp(16);            // 条柱后数值 + 缓冲
+    }
+
     // --------------- 绘制 ---------------
     @Override
     protected void onDraw(Canvas canvas) {
@@ -129,10 +163,11 @@ public class HotFaqBarChart extends View {
         int h = getHeight();
         if (w <= 0 || h <= 0) return;
 
-        float leftM  = dp(104);
-        float rightM = dp(16);
+        computeDynamicMargins();
+        float leftM  = dynamicLeftM;
+        float rightM = dynamicRightM;
         float topM   = dp(12);
-        float botM   = dp(40);
+        float botM   = dp(12);
 
         float chartW = w - leftM - rightM;
         float chartH = h - topM - botM;
@@ -189,38 +224,28 @@ public class HotFaqBarChart extends View {
             // ---- 行分隔线 ----
             float sepY = y + rowH;
             if (i < n - 1) {
-                canvas.drawLine(leftM, sepY, w - rightM, sepY, lineGrid);
+                canvas.drawLine(dp(12), sepY, w - rightM, sepY, lineGrid);
             }
 
             float textBaseY = barT + barH / 2f + textQuestion.getTextSize() / 3f;
 
-            // ---- 排名 ----
+            // ---- 排名（左对齐）----
             String rank = String.valueOf(i + 1);
-            float rankX = leftM - textRank.measureText(rank) - dp(10);
+            float rankX = dp(20);
             canvas.drawText(rank, rankX, textBaseY, textRank);
 
-            // ---- 问题文本（超长截断） ----
+            // ---- 问题文本（完整显示，不截断）----
             String q = item.getQuestion();
-            float maxQw = rankX - dp(8);
-            String sq = clipText(q, textQuestion, maxQw);
-            float qx = rankX - textQuestion.measureText(sq) - dp(6);
-            canvas.drawText(sq, qx, textBaseY, textQuestion);
+            float qx = rankX + textRank.measureText(rank) + dp(6);
+            canvas.drawText(q, qx, textBaseY, textQuestion);
 
-            // ---- 数值 ----
+            // ---- 数值（条柱右侧）----
             String valStr = String.valueOf(item.getCount());
             canvas.drawText(valStr, barR + dp(8), textBaseY, textValue);
 
             y += rowH;
         }
 
-        // ---- 底部刻度 ----
-        int steps = 5;
-        for (int i = 0; i <= steps; i++) {
-            float x = leftM + (i * chartW / steps);
-            String label = String.valueOf((int) (maxCount * i / steps));
-            float lw = textRank.measureText(label);
-            canvas.drawText(label, x - lw / 2f, h - dp(8), textRank);
-        }
     }
 
     // --------------- 触摸：点击弹窗看完整问题 ---------------
