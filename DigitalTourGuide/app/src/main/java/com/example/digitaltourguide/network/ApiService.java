@@ -5,6 +5,7 @@ import com.example.digitaltourguide.model.admin.DigitalHuman;
 import com.example.digitaltourguide.model.LoginRequest;
 import com.example.digitaltourguide.model.RegisterRequest;
 
+import com.example.digitaltourguide.model.user.AttractionListResponse;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ChatHistoryItem;
 import com.example.digitaltourguide.model.user.DeleteResponse;
@@ -63,7 +64,7 @@ public interface ApiService {
 
     //1.5弹窗景点列表（根据距离游标分页）
     @GET("users/attractions")
-    Call<AttractionPage> getAttractions(
+    Call<AttractionListResponse> getAttractions(
             @Query("city") String city,
             @Query("userLongitude") Double userLongitude,
             @Query("userLatitude") Double userLatitude,

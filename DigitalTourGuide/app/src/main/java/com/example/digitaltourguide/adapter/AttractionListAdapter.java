@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -80,20 +81,21 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
         AddAttractionRequest item = data.get(position);
         holder.tvName.setText(item.getAttractionName());
 
-        // 评分
-        if (item.getRating() != null) {
+        // 评分 & 评论数（控制整行显隐）
+        if (item.getRating() != null && item.getReviewCount() != null) {
             holder.tvRating.setText(String.format("%.1f分", item.getRating()));
-            holder.tvRating.setVisibility(View.VISIBLE);
-        } else {
-            holder.tvRating.setVisibility(View.GONE);
-        }
-
-        // 评论数
-        if (item.getReviewCount() != null) {
             holder.tvReviewCount.setText(String.format("%d 条评论", item.getReviewCount()));
-            holder.tvReviewCount.setVisibility(View.VISIBLE);
-        } else {
+            holder.layoutRatingInfo.setVisibility(View.VISIBLE);
+        } else if (item.getRating() != null) {
+            holder.tvRating.setText(String.format("%.1f分", item.getRating()));
             holder.tvReviewCount.setVisibility(View.GONE);
+            holder.layoutRatingInfo.setVisibility(View.VISIBLE);
+        } else if (item.getReviewCount() != null && item.getReviewCount() > 0) {
+            holder.tvRating.setVisibility(View.GONE);
+            holder.tvReviewCount.setText(String.format("%d 条评论", item.getReviewCount()));
+            holder.layoutRatingInfo.setVisibility(View.VISIBLE);
+        } else {
+            holder.layoutRatingInfo.setVisibility(View.GONE);
         }
 
         // 开放时间
@@ -155,6 +157,7 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
         TextView tvName, tvType, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours;
         ImageView ivCover;
         CheckBox checkBox;
+        LinearLayout layoutRatingInfo;
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tv_name);
@@ -165,6 +168,7 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             tvRating = itemView.findViewById(R.id.tv_rating);
             tvReviewCount = itemView.findViewById(R.id.tv_review_count);
             tvOpenHours = itemView.findViewById(R.id.tv_open_hours);
+            layoutRatingInfo = itemView.findViewById(R.id.layout_rating_info);
         }
     }
 
