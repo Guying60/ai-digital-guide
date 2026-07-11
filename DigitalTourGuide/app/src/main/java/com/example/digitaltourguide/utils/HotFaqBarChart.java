@@ -49,7 +49,7 @@ public class HotFaqBarChart extends View {
     private int highlightIndex = -1;       // 当前按下的行，-1 表示无
 
     // 缓存的布局参数（onDraw 时更新，onTouchEvent 复用以定位点击行）
-    private float cachedTopM, cachedRowH, cachedGap;
+    private float cachedTopM, cachedRowH, cachedGap, cachedStartY;
     private int   cachedItemCount;
 
     // --------------- 翠绿色阶（排名 1→3 逐级变浅，其余最浅） ---------------
@@ -138,16 +138,22 @@ public class HotFaqBarChart extends View {
         float chartH = h - topM - botM;
 
         int n = dataList.size();
-        float rowH  = chartH / n;
-        float gap   = rowH * 0.26f;
-        float barH  = rowH - gap;
+        // 每行最大高度不超过 44dp，防止只有一条数据时条柱过高占满整个卡片
+        float maxRowH = dp(44);
+        float rawRowH = chartH / n;
+        float rowH   = Math.min(rawRowH, maxRowH);
+        float gap    = rowH * 0.26f;
+        float barH   = rowH - gap;
         float cornerR = dp(5);
-        float y = topM + gap / 2f;
+        // 垂直居中：总内容高度 < chartH 时顶部留空
+        float totalContentH = rowH * n;
+        float y = topM + gap / 2f + (chartH - totalContentH) / 2f;
 
         // 缓存布局参数供 onTouchEvent 定位点击行
         cachedTopM      = topM;
         cachedRowH      = rowH;
         cachedGap       = gap;
+        cachedStartY    = y;  // 垂直居中后的实际起始 Y
         cachedItemCount = n;
 
         for (int i = 0; i < n; i++) {
@@ -260,7 +266,7 @@ public class HotFaqBarChart extends View {
      * 根据触摸 Y 坐标定位行索引，-1 表示未命中。
      */
     private int hitTest(float touchY) {
-        float y = cachedTopM + cachedGap / 2f;
+        float y = cachedStartY - cachedGap / 2f;
         for (int i = 0; i < cachedItemCount; i++) {
             if (touchY >= y && touchY < y + cachedRowH) {
                 return i;
