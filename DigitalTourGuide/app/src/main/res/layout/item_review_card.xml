@@ -94,31 +94,36 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/profile_star_yellow" />
                 <ImageView
                     android:id="@+id/star_2"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/profile_star_yellow" />
                 <ImageView
                     android:id="@+id/star_3"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/profile_star_yellow" />
                 <ImageView
                     android:id="@+id/star_4"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/profile_star_yellow" />
                 <ImageView
                     android:id="@+id/star_5"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_star_filled" />
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/profile_star_yellow" />
 
                 <TextView
                     android:id="@+id/review_rating"

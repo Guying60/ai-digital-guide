@@ -87,12 +87,14 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             // 设置星级（支持半星，这里简化处理为整星）
             double rating = item.getRating() != null ? item.getRating() : 0;
             int fullStars = (int) Math.round(rating);
+            int goldColor = holder.itemView.getContext().getColor(R.color.profile_star_yellow);
+            int grayColor = holder.itemView.getContext().getColor(R.color.profile_outline_variant);
             for (int i = 0; i < 5; i++) {
                 ImageView star = holder.stars[i];
                 if (star != null) {
-                    star.setImageResource(i < fullStars
-                            ? R.drawable.ic_star_filled
-                            : R.drawable.ic_star_outline);
+                    star.setImageResource(R.drawable.ic_star);
+                    star.setImageTintList(android.content.res.ColorStateList.valueOf(
+                            i < fullStars ? goldColor : grayColor));
                 }
             }
 

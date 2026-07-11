@@ -5,6 +5,7 @@ import com.example.digitaltourguide.model.admin.DigitalHuman;
 import com.example.digitaltourguide.model.LoginRequest;
 import com.example.digitaltourguide.model.RegisterRequest;
 
+import com.example.digitaltourguide.model.user.AttractionListResponse;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ChatHistoryItem;
 import com.example.digitaltourguide.model.user.DeleteResponse;

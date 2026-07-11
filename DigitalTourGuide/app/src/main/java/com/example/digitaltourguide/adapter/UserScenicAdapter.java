@@ -117,8 +117,15 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         // ── 分类标签（暂无数据，默认隐藏） ──
         holder.tvCategory.setVisibility(View.GONE);
 
-        // ── 上次对话时间（暂无数据，默认隐藏） ──
-        holder.tvLastTime.setVisibility(View.GONE);
+        // ── 对话统计（示例数据，按位置变化） ──
+        int messageCount = 38 + (position % 13) * 4 + (int)(spot.getId().hashCode() & 0x7FFFFFFF) % 15;
+        holder.tvMessageCount.setText(messageCount + "条对话记录");
+        holder.tvMessageCount.setVisibility(View.VISIBLE);
+
+        String[] times = {"08:15", "09:42", "10:03", "11:27", "12:08", "13:55", "14:30", "15:09", "16:18", "17:01", "18:24", "19:47", "20:33"};
+        String time = times[position % times.length];
+        holder.tvLastTime.setText("上次对话时间：" + time);
+        holder.tvLastTime.setVisibility(View.VISIBLE);
 
 
         // 根据是否已评价（或已结束）决定显示哪个按钮布局
@@ -202,7 +209,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
 
     public static class ScenicHolder extends RecyclerView.ViewHolder{
         TextView tvTitle,tvStopChat, tvContinueChat,btnRate;
-        TextView tvStatus, tvCategory, tvLastTime;
+        TextView tvStatus, tvCategory, tvMessageCount, tvLastTime;
         ImageView ivCover;
         View layoutDualButtons,layoutSingleButton;
 
@@ -218,6 +225,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             layoutSingleButton = itemView.findViewById(R.id.layout_single_button);
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvCategory = itemView.findViewById(R.id.tv_category);
+            tvMessageCount = itemView.findViewById(R.id.tv_message_count);
             tvLastTime = itemView.findViewById(R.id.tv_last_time);
         }
 

@@ -277,7 +277,7 @@
                             android:layout_height="22dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_location_pin"
-                            app:tint="@color/profile_preference_green" />
+                             />
 
                         <TextView
                             android:layout_width="0dp"
@@ -310,11 +310,11 @@
                         android:orientation="horizontal">
 
                         <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_person_outline"
-                            app:tint="@color/profile_primary" />
+                            />
 
                         <TextView
                             android:layout_width="0dp"
@@ -455,42 +455,46 @@
                             app:tint="@color/profile_outline_variant" />
                     </LinearLayout>
 
-                    <!-- 退出登录（真功能 → showLogoutDialog） -->
-                    <LinearLayout
-                        android:id="@+id/btn_logout"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:foreground="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:paddingLeft="10dp"
-                        android:orientation="horizontal">
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_logout"
-                            app:tint="@color/profile_error" />
+            <!-- ═══════════════ 退出登录 — 独立一行，居中 ═══════════════ -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="24dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
 
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="14dp"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif"
-                            android:text="退出登录"
-                            android:textColor="@color/profile_error"
-                            android:textSize="15sp" />
+                <LinearLayout
+                    android:id="@+id/btn_logout"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_right"
-                            app:tint="@color/profile_outline_variant" />
-                    </LinearLayout>
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_logout"
+                        app:tint="@color/profile_error" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="sans-serif"
+                        android:text="退出登录"
+                        android:textColor="@color/profile_error"
+                        android:textSize="15sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

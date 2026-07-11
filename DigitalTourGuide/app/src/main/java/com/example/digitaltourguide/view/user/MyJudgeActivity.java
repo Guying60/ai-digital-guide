@@ -312,6 +312,9 @@ public class MyJudgeActivity extends AppCompatActivity {
         updateStarDisplay(stars, 5);
         updateTagsByRating(5);
 
+        // 输入框（前置声明，标签点击时需要用到）
+        EditText editFeedback = dialog.findViewById(R.id.edit_feedback);
+
         // 可点击标签
         final int[] tagIds = {
                 R.id.tag_professional, R.id.tag_rich, R.id.tag_fun,
@@ -322,12 +325,23 @@ public class MyJudgeActivity extends AppCompatActivity {
             if (tag != null) {
                 tag.setTag("unselected");
                 tag.setOnClickListener(v -> {
+                    String tagText = tag.getText().toString();
                     if ("unselected".equals(tag.getTag())) {
                         if (selectedTags.size() < 5) {
                             tag.setTag("selected");
                             tag.setBackgroundResource(R.drawable.bg_chip_filter_selected);
                             tag.setTextColor(getColor(R.color.profile_on_primary));
-                            selectedTags.add(tag.getText().toString());
+                            selectedTags.add(tagText);
+
+                            // 选中：追加标签文字到输入框
+                            if (editFeedback != null) {
+                                String current = editFeedback.getText().toString();
+                                if (!current.isEmpty() && !current.endsWith("，")) {
+                                    current += "，";
+                                }
+                                editFeedback.setText(current + tagText);
+                                editFeedback.setSelection(editFeedback.getText().length());
+                            }
                         } else {
                             Toast.makeText(this, "最多选择 5 个标签", Toast.LENGTH_SHORT).show();
                         }
@@ -335,14 +349,26 @@ public class MyJudgeActivity extends AppCompatActivity {
                         tag.setTag("unselected");
                         tag.setBackgroundResource(R.drawable.bg_tag_rating);
                         tag.setTextColor(getColor(R.color.profile_primary));
-                        selectedTags.remove(tag.getText().toString());
+                        selectedTags.remove(tagText);
+
+                        // 取消选中：从输入框移除标签文字
+                        if (editFeedback != null) {
+                            String current = editFeedback.getText().toString();
+                            String cleaned = current.replace(tagText + "，", "")
+                                                    .replace("，" + tagText, "")
+                                                    .replace(tagText, "");
+                            cleaned = cleaned.replaceAll("，，", "，")
+                                             .replaceAll("^，", "")
+                                             .replaceAll("，$", "");
+                            editFeedback.setText(cleaned);
+                            editFeedback.setSelection(editFeedback.getText().length());
+                        }
                     }
                 });
             }
         }
 
-        // 输入框
-        EditText editFeedback = dialog.findViewById(R.id.edit_feedback);
+        // 字数统计
         TextView tvCharCount = dialog.findViewById(R.id.tv_char_count);
 
         if (editFeedback != null && tvCharCount != null) {
@@ -382,10 +408,9 @@ public class MyJudgeActivity extends AppCompatActivity {
         int grayColor = getColor(R.color.profile_outline_variant);
         for (int i = 0; i < 5; i++) {
             boolean selected = i < count;
-            stars[i].setImageResource(selected
-                    ? R.drawable.ic_star_filled
-                    : R.drawable.ic_star_outline);
-            stars[i].setColorFilter(selected ? goldColor : grayColor);
+            stars[i].setImageResource(R.drawable.ic_star);
+            stars[i].setImageTintList(android.content.res.ColorStateList.valueOf(
+                    selected ? goldColor : grayColor));
         }
     }
 

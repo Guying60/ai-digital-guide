@@ -244,11 +244,12 @@ public class HistoryActivity extends AppCompatActivity {
             });
         }
 
-        // ── 评分标签 (点击高亮切换) ──
+        // ── 评分标签 (点击高亮切换，同时填充到输入框) ──
         int[] tagIds = {
                 R.id.tag_professional, R.id.tag_rich, R.id.tag_fun,
                 R.id.tag_clear, R.id.tag_knowledgeable, R.id.tag_excellent
         };
+        EditText editFeedback = view.findViewById(R.id.edit_feedback);
         for (int id : tagIds) {
             TextView tag = view.findViewById(id);
             tag.setOnClickListener(v -> {
@@ -260,11 +261,34 @@ public class HistoryActivity extends AppCompatActivity {
                 tag.setTextColor(getColor(isSelected
                         ? R.color.profile_primary
                         : R.color.profile_on_primary));
+
+                // 自动填写/移除标签文字到输入框
+                String tagText = tag.getText().toString();
+                String currentText = editFeedback.getText().toString();
+                if (!isSelected) {
+                    // 选中：追加标签文字
+                    if (!currentText.isEmpty() && !currentText.endsWith("，")) {
+                        currentText += "，";
+                    }
+                    editFeedback.setText(currentText + tagText);
+                } else {
+                    // 取消选中：移除标签文字
+                    // 处理 "讲解专业" 或 "讲解专业，" 两种情况
+                    String cleaned = currentText.replace(tagText + "，", "")
+                                                .replace("，" + tagText, "")
+                                                .replace(tagText, "");
+                    // 清理多余逗号
+                    cleaned = cleaned.replaceAll("，，", "，")
+                                     .replaceAll("^，", "")
+                                     .replaceAll("，$", "");
+                    editFeedback.setText(cleaned);
+                }
+                // 光标移到末尾
+                editFeedback.setSelection(editFeedback.getText().length());
             });
         }
 
         // ── 评论文本 + 字数统计 ──
-        EditText editFeedback = view.findViewById(R.id.edit_feedback);
         TextView tvCharCount = view.findViewById(R.id.tv_char_count);
         editFeedback.addTextChangedListener(new TextWatcher() {
             @Override
@@ -298,7 +322,7 @@ public class HistoryActivity extends AppCompatActivity {
     private void updateStars(ImageView[] stars, int score) {
         for (int i = 0; i < stars.length; i++) {
             stars[i].setImageTintList(ColorStateList.valueOf(getColor(
-                    i < score ? R.color.profile_primary : R.color.profile_outline_variant
+                    i < score ? R.color.profile_star_yellow : R.color.profile_outline_variant
             )));
         }
     }
@@ -391,11 +415,24 @@ public class HistoryActivity extends AppCompatActivity {
 
     private void setupSearchButton(){
         View btnSearch=findViewById(R.id.btn_search);
-            btnSearch.setOnClickListener(v->{
-                String keyword=etSearch.getText().toString().trim();
-                currentKeyWord= TextUtils.isEmpty(keyword) ? null:keyword;
+        btnSearch.setOnClickListener(v->{
+            String keyword=etSearch.getText().toString().trim();
+            currentKeyWord= TextUtils.isEmpty(keyword) ? null:keyword;
+            resetAndLoad();
+        });
+
+        // 键盘回车键触发搜索
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                    || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                String keyword = etSearch.getText().toString().trim();
+                currentKeyWord = TextUtils.isEmpty(keyword) ? null : keyword;
                 resetAndLoad();
-            });
+                return true;
+            }
+            return false;
+        });
     }
 
     private void resetAndLoad() {
@@ -567,10 +604,12 @@ public class HistoryActivity extends AppCompatActivity {
             });
         }
 
-        // "全部"标签——清除城市筛选
+        // "全部"标签——清除城市筛选和关键词搜索，回到全部显示
         TextView tagAll = findViewById(R.id.tag_all);
         tagAll.setOnClickListener(v -> {
             currentCity = null;
+            currentKeyWord = null;
+            etSearch.setText("");
             tagAll.setSelected(true);
             for (TextView tv : cityTagViews) tv.setSelected(false);
             resetAndLoad();

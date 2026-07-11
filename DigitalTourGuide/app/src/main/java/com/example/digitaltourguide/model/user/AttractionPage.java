@@ -1,11 +1,16 @@
 package com.example.digitaltourguide.model.user;
 
+import com.google.gson.annotations.SerializedName;
 import java.util.List;
 
 public class AttractionPage {
+    @SerializedName("list")
     private List<ScenicSpot> list;
+    @SerializedName("nextLastId")
     private String nextLastId;
+    @SerializedName("nextDistance")
     private Double nextDistance;
+    @SerializedName("hasMore")
     private boolean hasMore;
 
     public List<ScenicSpot> getList() {

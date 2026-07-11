@@ -109,7 +109,7 @@
                             android:contentDescription="@string/edit_avatar"
                             android:padding="6dp"
                             android:scaleType="centerInside"
-                            android:src="@drawable/ic_camera" />
+                            android:src="@drawable/ic_camera_info" />
 
                     </com.google.android.material.card.MaterialCardView>
 
@@ -140,12 +140,7 @@
                             android:textColor="@color/profile_on_surface"
                             tools:text="Alex Wanderer" />
 
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:layout_marginStart="8dp"
-                            android:contentDescription="@string/edit"
-                            android:src="@drawable/ic_edit_small" />
+
 
                     </LinearLayout>
 
