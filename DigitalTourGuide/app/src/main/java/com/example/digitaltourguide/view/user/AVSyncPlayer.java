@@ -37,10 +37,14 @@ public class AVSyncPlayer {
     private static final long FRAME_INTERVAL_MS = 40;
     // ★ P2.2 音频主时钟门控参数（videoFeedLoop 按音频真实播放头择时呈现视频帧 → 真 lip-sync）
     private static final long SYNC_LEAD_TOL_MS = 25;     // 视频可超前音频 ≤25ms 再渲染（>10ms 越过 getPlaybackHeadPosition 量化噪声）
-    private static final long SYNC_DROP_TOL_MS = 100;    // 视频滞后音频 >100ms 则丢帧追赶
+    private static final long SYNC_DROP_TOL_MS = 100;    // 视频滞后音频 >100ms 则丢帧追赶（仅当视频供给充足时）
+    /** 视频队列低于该水位时视为供给不足：禁止 DROP（音频已先到、视频仍被 pacer 滴送时丢帧只会更卡） */
+    private static final int SYNC_DROP_MIN_VQ = 3;
     private static final long SYNC_PROJECT_CAP_MS = 200; // 两次音频更新间最多向前投影 200ms（超出视为停滞、冻结视频）
     private static final long SYNC_WAIT_SLICE_MS = 20;   // 单次睡眠片，循环复检 released/generation/surface，不做一次性长睡
     private static final long SYNC_MAX_WAIT_MS = 700;    // 安全阀：单帧累计等待上限，防音频线程意外死亡导致永久冻结
+    /** 音频时钟超过该墙钟未更新 → 视为停滞，视频降级为 40ms 墙钟（禁止 700ms 慢放） */
+    private static final long AUDIO_STALE_MS = 500;
     // Data format (type byte NO LONGER stripped by ChatActivity — B1 optimization):
     // Audio: [typeFlag:1B][sentenceId:2B][ptsMs:4B][PCM:N]  → header = 7 bytes
     // Video: [typeFlag:1B][sentenceId:2B][ptsMs:4B][keyFrame:1B][H.264:N] → header = 8 bytes
@@ -112,7 +116,6 @@ public class AVSyncPlayer {
     private final java.util.concurrent.atomic.AtomicBoolean startPlaybackRunning =
             new java.util.concurrent.atomic.AtomicBoolean(false);  // 防重复启动（Bug 2）
 
-    private final byte[] silenceFrame;  // 预分配的静音帧，用于填充缓冲区空隙
     private final int audioBufSize;     // AudioTrack 缓冲区大小（字节）
 
     public AVSyncPlayer(TextureView textureView) {
@@ -131,8 +134,6 @@ public class AVSyncPlayer {
                         .setEncoding(AUDIO_FORMAT)
                         .build(),
                 audioBufSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE);
-        // 预分配 40ms 静音帧（16000Hz × 2B × 40ms = 1280B）
-        silenceFrame = new byte[AUDIO_SAMPLE_RATE * 2 / 25]; // 25fps → 40ms
     }
 
     // ====================== PUBLIC API (called by ChatActivity) ======================
@@ -487,10 +488,7 @@ public class AVSyncPlayer {
             if (audioTrack.getPlayState() != AudioTrack.PLAYSTATE_PLAYING) {
                 try { audioTrack.stop(); } catch (Exception ignored) {}
             }
-            // 预填充 2 帧静音（80ms），防止启动瞬间 underrun 产生电流声，同时不过度阻塞后续真实音频写入
-            for (int i = 0; i < 2; i++) {
-                audioTrack.write(silenceFrame, 0, silenceFrame.length);
-            }
+            // 不再预填静音：静音 PCM 会污染采样/口型时钟；有真实音频再 write()+play()
             audioTrack.play();
         } catch (IllegalStateException e) {
             Log.e(TAG, "startPlayback: AudioTrack write/play failed", e);
@@ -533,32 +531,19 @@ public class AVSyncPlayer {
         final long myGen = generation;  // ★ 记录当前代际，gen 变化时退出
         if (LOG) Log.i(TAG, "audioPlayLoop: started gen=" + myGen);
         int audioWriteCount = 0;
-        long audioTotalSamples = 0;     // 累计写入采样数，用于计算预期播放时长
+        long audioTotalSamples = 0;     // 累计写入真实 PCM 采样数，用于 AudioTrack 缓冲深度
+        // ★ 内容时间线游标：口型门控只跟真实 PCM
+        long contentCursorMs = 0;
+        boolean contentCursorInit = false;
         long audioStartWallMs = System.currentTimeMillis();
         while (!released && generation == myGen) {  // ★ gen 变化立即退出
             byte[] pkt = audioQueue.poll();
             if (pkt == null) {
                 if (released) break;
                 try {
-                    // ★ 只在 AudioTrack 缓冲区不足 80ms 时才补静音帧
-                    // 否则仅 sleep 等待，避免填满缓冲区导致后续真实音频 write() 长时间阻塞
-                    long headPos = audioTrack.getPlaybackHeadPosition();
-                    long bufferedSamples = audioTotalSamples - headPos;
-                    // 初始阶段 bufferedSamples 可能为负（startPlayback 中的预填充静音未计入），夹到 >=0
-                    long bufferedMs = Math.max(0, bufferedSamples) * 1000 / AUDIO_SAMPLE_RATE;
-                    if (bufferedMs < 80) {
-                        audioTrack.write(silenceFrame, 0, silenceFrame.length);
-                        audioTotalSamples += silenceFrame.length / 2;
-                    }
+                    // 队列空：只 sleep 等待，绝不补静音（静音会推进底层播放头、搞乱口型门控）
                     Thread.sleep(FRAME_INTERVAL_MS);
-                } catch (IllegalStateException e) {
-                    if (LOG) Log.w(TAG, "audioPlayLoop: silence write failed: " + e.getMessage());
-                    break;
                 } catch (InterruptedException e) {
-                    break;
-                } catch (Exception e) {
-                    // 防御性捕获所有异常，避免 native crash
-                    if (LOG) Log.w(TAG, "audioPlayLoop: silence write exception: " + e.getMessage());
                     break;
                 }
                 continue;
@@ -584,6 +569,28 @@ public class AVSyncPlayer {
                 int preQ = audioQueue.size();
                 long pcmDurationMs = pcm.length * 1000L / (AUDIO_SAMPLE_RATE * 2);
 
+                // ★ 内容时钟锚定：
+                // - hdr pts>0 且不回退：信任后端全局 PTS（句间断档后与视频对齐）
+                // - hdr pts=0 或 pts 回退/重叠（句末静音常从句中某处重标）：承接 contentCursor
+                //   禁止把 clock 从 10923 打回 9240 这类回退（会放大后续音画错位）
+                long packetBaseMs;
+                if (audioPtsMs > 0 && (!contentCursorInit || audioPtsMs + 80 >= contentCursorMs)) {
+                    packetBaseMs = audioPtsMs;
+                    if (LOG && contentCursorInit && audioPtsMs > contentCursorMs + 500) {
+                        Log.w(TAG, "AUDIO-CLOCK-REANCHOR: cursor=" + contentCursorMs
+                                + "ms → hdrPts=" + audioPtsMs + "ms");
+                    }
+                } else if (contentCursorInit) {
+                    packetBaseMs = contentCursorMs;
+                    if (LOG && audioPtsMs > 0 && audioPtsMs + 80 < contentCursorMs) {
+                        Log.w(TAG, "AUDIO-CLOCK-NO-REWIND: hdrPts=" + audioPtsMs
+                                + "ms < cursor=" + contentCursorMs + "ms, keep cursor");
+                    }
+                } else {
+                    packetBaseMs = 0;
+                }
+                contentCursorInit = true;
+
                 long tWrite = System.currentTimeMillis();
                 try {
                     // ★ 分块写入，每块 40ms（1280B@16kHz），防止大音频包阻塞 write() 整个时长（Bug 3）
@@ -591,23 +598,28 @@ public class AVSyncPlayer {
                     int chunkSize = AUDIO_SAMPLE_RATE * 2 / 25; // 1280B = 40ms
                     int offset = 0;
                     int written = 0; // 移到 try 块作用域
+                    long samplesInPacket = 0;
                     while (offset < pcm.length && !released && generation == myGen) {
                         int toWrite = Math.min(chunkSize, pcm.length - offset);
                         int w = audioTrack.write(pcm, offset, toWrite);
                         if (w <= 0) break;
                         offset += w;
                         written += w;
-                        // 每写一个 chunk 就更新音频时钟估计，让 videoFeedLoop 实时感知
                         audioTotalSamples += w / 2;
+                        samplesInPacket += w / 2;
                         long headPos = audioTrack.getPlaybackHeadPosition();
                         long bufferedSamples = audioTotalSamples - headPos;
                         long bufferedMs = Math.max(0, bufferedSamples) * 1000 / AUDIO_SAMPLE_RATE;
-                        // 当前音频播放位置 ≈ 已写入部分的末尾 PTS - 缓冲时长
-                        long writtenEndPtsMs = audioPtsMs + pcmDurationMs * offset / pcm.length;
+                        long writtenContentMs = samplesInPacket * 1000L / AUDIO_SAMPLE_RATE;
+                        // 内容播放头 = 包起点 + 包内已写时长 − min(轨缓冲, 已写)，避免句间静音把时钟抬到墙钟
+                        long newHead = packetBaseMs + writtenContentMs - Math.min(bufferedMs, writtenContentMs);
                         // ★ P2.2: 先发布墙钟、再发布 pts（读端按 pts→wall 顺序读，保证投影偏保守，避免视频超前）
-                        long newHead = writtenEndPtsMs - bufferedMs;
                         audioPlaybackWallMs = System.currentTimeMillis();
                         audioPlaybackPtsMs = newHead;
+                    }
+                    // 包写完后推进内容游标（按标称时长，供后续 pts=0 大包承接）
+                    if (written > 0) {
+                        contentCursorMs = packetBaseMs + written * 1000L / (AUDIO_SAMPLE_RATE * 2L);
                     }
                     long writeCost = System.currentTimeMillis() - tWrite;
                     if (written > 0) {
@@ -615,7 +627,8 @@ public class AVSyncPlayer {
                         // 标记音频已启动（Bug 1：videoFeedLoop 启动阶段检查此标志）
                         if (!audioStarted) {
                             audioStarted = true;
-                            if (LOG) Log.i(TAG, "♫ audioStarted=true at pts=" + audioPtsMs + " writeCount=" + audioWriteCount);
+                            if (LOG) Log.i(TAG, "♫ audioStarted=true at pts=" + audioPtsMs
+                                    + " base=" + packetBaseMs + " writeCount=" + audioWriteCount);
                         }
                     }
 
@@ -632,6 +645,9 @@ public class AVSyncPlayer {
                         long postBufferedMs = postExpectedMs - postPlayedMs;
                         long wallElapsed = System.currentTimeMillis() - audioStartWallMs;
                         Log.w(TAG, "♫ AUDIO: pts=" + audioPtsMs
+                            + " (hdr) clock=" + audioPlaybackPtsMs + "ms"
+                            + " base=" + packetBaseMs + "ms"
+                            + " cursor=" + contentCursorMs + "ms"
                             + " pcmDur=" + pcmDurationMs + "ms"
                             + " preBuf=" + preBufferedMs + "ms→postBuf=" + postBufferedMs + "ms"
                             + " q=" + preQ + "→" + audioQueue.size()
@@ -657,7 +673,7 @@ public class AVSyncPlayer {
      * ★ P2.2: 估计「此刻」音频真实播放头 PTS（ms）。
      * 以 audioPlayLoop 每 chunk 更新的 audioPlaybackPtsMs 为基准，按距上次更新的墙钟时长向前实时投影
      * （音频 1.0× 实时播放），最多投影 SYNC_PROJECT_CAP_MS，避免两次更新之间读到陈旧值导致视频门控抖动；
-     * 超过上限即视为音频停滞，不再投影（videoFeedLoop 据此冻结视频以保持同步）。
+     * 超过上限即视为音频停滞，不再投影（videoFeedLoop 据此降级为墙钟节拍，而非 700ms 慢放）。
      */
     private long projectedAudioHeadMs() {
         long pts = audioPlaybackPtsMs;          // 先读 pts（配合发布顺序：audioPlayLoop 先写 wall 后写 pts）
@@ -667,6 +683,13 @@ public class AVSyncPlayer {
         if (elapsed < 0) elapsed = 0;
         if (elapsed > SYNC_PROJECT_CAP_MS) elapsed = SYNC_PROJECT_CAP_MS;
         return pts + elapsed;
+    }
+
+    /** 音频时钟是否已停滞（超过 AUDIO_STALE_MS 未更新）。 */
+    private boolean isAudioClockStale() {
+        long wall = audioPlaybackWallMs;
+        if (wall == 0) return true;
+        return System.currentTimeMillis() - wall > AUDIO_STALE_MS;
     }
 
     // ====================== VIDEO DECODE & RENDER ======================
@@ -810,17 +833,40 @@ public class AVSyncPlayer {
                     c.releaseOutputBuffer(outIdx, false);
                 } else {
                     // ★ P2.2 音频主时钟门控：首帧立即渲染；之后按音频真实播放头择时呈现 → 真 lip-sync
+                    // ★ 音频停滞时降级为墙钟 40ms，禁止每帧打满 SYNC_MAX_WAIT_MS(700) 导致有帧仍慢放
                     long framePtsMs = outInfo.presentationTimeUs / 1000;  // us→ms（后端全局 PTS）
                     boolean drop = false;
                     if (!firstFrameRendered) {
                         // 首帧立即渲染：数字人尽快出画面，避免起播长时间持有解码 buffer / 黑屏
-                    } else if (audioStarted) {
+                    } else if (audioStarted && !isAudioClockStale()) {
                         // 以音频真实播放头为基准：视频超前则等待，滞后过多则丢帧追赶
                         long waited = 0;
                         while (!released && myGen == generation && surface != null) {
+                            // 等待期间若音频变停滞，立即跳出改走墙钟，避免继续睡满 700ms
+                            if (isAudioClockStale()) {
+                                if (LOG) {
+                                    long stale = audioPlaybackWallMs == 0 ? -1
+                                            : (System.currentTimeMillis() - audioPlaybackWallMs);
+                                    Log.w(TAG, "AUDIO-STALE-FALLBACK: mid-wait stale=" + stale
+                                            + "ms vQ=" + videoQueueSize.get()
+                                            + " framePts=" + framePtsMs
+                                            + " audioHead=" + audioPlaybackPtsMs);
+                                }
+                                break;
+                            }
                             long diff = framePtsMs - projectedAudioHeadMs();  // >0 视频超前；<0 视频滞后
                             if (diff <= SYNC_LEAD_TOL_MS) {
-                                if (diff < -SYNC_DROP_TOL_MS) drop = true;     // 滞后过多 → 丢帧追赶
+                                // 滞后过多：仅当视频队列充足时才 DROP 追赶。
+                                // vQ 很低说明是供给慢（pacer/网络），不是解码积压——再丢只会 VQ-DRAINED + 更卡。
+                                if (diff < -SYNC_DROP_TOL_MS
+                                        && videoQueueSize.get() >= SYNC_DROP_MIN_VQ) {
+                                    drop = true;
+                                } else if (LOG && diff < -SYNC_DROP_TOL_MS
+                                        && videoRenderCount % 25 == 0) {
+                                    Log.w(TAG, "VIDEO-STARVE-KEEP: pts=" + framePtsMs
+                                            + " behind by " + (-diff) + "ms vQ="
+                                            + videoQueueSize.get() + " (no drop)");
+                                }
                                 break;
                             }
                             if (waited >= SYNC_MAX_WAIT_MS) break;             // 安全阀：音频疑似停滞，强制呈现
@@ -830,8 +876,23 @@ public class AVSyncPlayer {
                             waited += slice;
                         }
                         if (released || myGen != generation) return;
+                        // 若因 stale 跳出：补一段墙钟节拍，避免与下一帧粘连
+                        if (isAudioClockStale()) {
+                            long elapsed = System.currentTimeMillis() - lastRenderTime;
+                            if (elapsed < FRAME_INTERVAL_MS) {
+                                try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }
+                            }
+                        }
                     } else {
-                        // 音频尚未启动（极短起播窗口）：退化为墙钟 40ms 节拍，保证有画面
+                        // 音频尚未启动，或音频时钟已停滞：退化为墙钟 40ms 节拍，保证有画面且不慢放
+                        if (LOG && audioStarted && videoRenderCount % 25 == 0) {
+                            long stale = audioPlaybackWallMs == 0 ? -1
+                                    : (System.currentTimeMillis() - audioPlaybackWallMs);
+                            Log.w(TAG, "AUDIO-STALE-FALLBACK: stale=" + stale
+                                    + "ms vQ=" + videoQueueSize.get()
+                                    + " framePts=" + framePtsMs
+                                    + " audioHead=" + audioPlaybackPtsMs);
+                        }
                         long elapsed = System.currentTimeMillis() - lastRenderTime;
                         if (elapsed < FRAME_INTERVAL_MS) {
                             try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }

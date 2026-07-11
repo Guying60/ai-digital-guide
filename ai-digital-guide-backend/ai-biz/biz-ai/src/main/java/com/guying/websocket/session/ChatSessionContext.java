@@ -28,13 +28,25 @@ public class ChatSessionContext {
     private final AudioFrameBuffer audioBuffer = new AudioFrameBuffer();
     private final PtsTracker ptsTracker = new PtsTracker();
 
-    // ════ E2E 延迟追踪（ms，System.currentTimeMillis()）════
+    // ════ E2E 延迟追踪（ms，System.currentTimeMillis()；每轮用户输入时清零下游时间戳）════
     private volatile long e2eUserInputTime;
     private volatile long e2eAfterPromptTime;
     private volatile long e2eLlmFirstTokenTime;
     private volatile long e2eFirstAudioTime;
     private volatile long e2eFirstVideoTime;
-    public void markE2eUserInput()     { this.e2eUserInputTime = System.currentTimeMillis(); }
+    private final AtomicInteger e2eLlmLogged = new AtomicInteger(0);
+    private final AtomicInteger e2eCompleteLogged = new AtomicInteger(0);
+
+    /** 新一轮用户输入：记录 T0，并清零本轮下游时间戳与打点闸门，避免多轮串值。 */
+    public void markE2eUserInput() {
+        this.e2eUserInputTime = System.currentTimeMillis();
+        this.e2eAfterPromptTime = 0;
+        this.e2eLlmFirstTokenTime = 0;
+        this.e2eFirstAudioTime = 0;
+        this.e2eFirstVideoTime = 0;
+        this.e2eLlmLogged.set(0);
+        this.e2eCompleteLogged.set(0);
+    }
     public void markE2eAfterPrompt()   { this.e2eAfterPromptTime = System.currentTimeMillis(); }
     public void markE2eLlmFirstToken() { this.e2eLlmFirstTokenTime = System.currentTimeMillis(); }
     public void markE2eFirstAudio()    { this.e2eFirstAudioTime = System.currentTimeMillis(); }
@@ -44,14 +56,17 @@ public class ChatSessionContext {
     public long getE2eLlmFirstTokenTime() { return e2eLlmFirstTokenTime; }
     public long getE2eFirstAudioTime()    { return e2eFirstAudioTime; }
     public long getE2eFirstVideoTime()    { return e2eFirstVideoTime; }
+    /** @return true 表示本轮首次获得 LLM 阶段打点权 */
+    public boolean tryClaimE2eLlmLog() {
+        return e2eLlmLogged.compareAndSet(0, 1);
+    }
+    /** @return true 表示本轮首次获得完整链路打点权 */
+    public boolean tryClaimE2eCompleteLog() {
+        return e2eCompleteLogged.compareAndSet(0, 1);
+    }
     private volatile int lastAudioGlobalPtsMs;
     public void setLastAudioGlobalPts(int ptsMs) { this.lastAudioGlobalPtsMs = ptsMs; }
     public int getLastAudioGlobalPtsMs()          { return lastAudioGlobalPtsMs; }
-
-    /** 本轮对话的句子总数（responseDone 时由 AiChatService 写入；-1 表示进行中/未知）。 */
-    private final AtomicInteger roundSentenceTotal = new AtomicInteger(-1);
-    /** 本轮已收到 chunk_end 的句子计数（CosyVoiceConnector 递增），用于判定"最后一句"补静音收口。 */
-    private final AtomicInteger roundChunkEndCount = new AtomicInteger(0);
 
     /** 会话建立时刻（毫秒），用于断开时判定"连接时间是否 ≥30s"是否落库。final，仅内存比较，不落库。 */
     private final long connectTime;
@@ -96,12 +111,6 @@ public class ChatSessionContext {
 
     public void touchActive() {
         this.lastActiveTime = System.currentTimeMillis();
-    }
-
-    /** 新一轮对话开始 / 打断时复位句末补静音的轮次计数。 */
-    public void resetRound() {
-        roundSentenceTotal.set(-1);
-        roundChunkEndCount.set(0);
     }
 
     // ★ 删除了 recordSentenceAudioOrigin 和 getSentenceAudioOrigin 两个方法

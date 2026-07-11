@@ -3,6 +3,7 @@ package com.guying.websocket.musetalk;
 import org.springframework.web.socket.CloseStatus;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import com.guying.websocket.metrics.E2eMetricsLogger;
 import com.guying.websocket.protocol.WsMessageSender;
 import com.guying.websocket.session.ChatSessionContext;
 import jakarta.websocket.ContainerProvider;
@@ -31,6 +32,9 @@ public class MuseTalkConnector {
 
     @Autowired
     private WsMessageSender sender;
+
+    @Autowired
+    private E2eMetricsLogger e2eMetricsLogger;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<String, MuseTalkHandler> handlers = new ConcurrentHashMap<>();
@@ -88,6 +92,10 @@ public class MuseTalkConnector {
         // ★ AV sync 追踪
         private int pyVideoCount = 0;
         private int videoMaxPtsMs = 0;
+        // ★ 收帧诊断：区分 Python 慢发 vs pacer put 反压
+        private long lastPyVideoTime = 0;
+        private long pySentenceMaxEnqueueCostMs = 0;
+        private int pySentenceMaxQueueDepth = 0;
 
         MuseTalkHandler(ChatSessionContext ctx) {
             this.ctx = ctx;
@@ -119,20 +127,23 @@ public class MuseTalkConnector {
                     long sentenceWallMs = pySentenceStartWallMs > 0 ? doneWallMs - pySentenceStartWallMs : 0;
                     long effectiveThroughput = sentenceWallMs > 0 ? pySentenceBytes * 1000 / sentenceWallMs : 0;
                     long sendSpan = pySentenceLastSendMs > 0 ? pySentenceLastSendMs - pySentenceFirstSendMs : 0;
-                    log.info("[Python WS] 句子完毕 sentence_id={} frames={} bytes={} pyRecv→doneWall={}ms sendSpan={}ms effectiveThroughput={}B/s",
+                    com.guying.websocket.session.OutboundPacer pacerForDiag = ctx.getOutboundPacer();
+                    long pacerMaxBlock = pacerForDiag != null ? pacerForDiag.maxPutBlockMs() : -1;
+                    int pacerMaxDepth = pacerForDiag != null ? pacerForDiag.maxQueueDepth() : -1;
+                    log.info("[Python WS] 句子完毕 sentence_id={} frames={} bytes={} pyRecv→doneWall={}ms sendSpan={}ms effectiveThroughput={}B/s maxEnqueueCostMs={} maxQueueDepth={} pacerMaxBlockMs={} pacerMaxDepth={}",
                             sentenceId, pySentenceFrameCount, pySentenceBytes,
-                            sentenceWallMs, sendSpan, effectiveThroughput);
+                            sentenceWallMs, sendSpan, effectiveThroughput,
+                            pySentenceMaxEnqueueCostMs, pySentenceMaxQueueDepth,
+                            pacerMaxBlock, pacerMaxDepth);
 
-                    // ═══ METRICS: 数字人首帧延迟 ═══
-                    long firstFrameDelay = ctx.getE2eFirstVideoTime() > 0 && ctx.getE2eLlmFirstTokenTime() > 0
-                            ? ctx.getE2eFirstVideoTime() - ctx.getE2eLlmFirstTokenTime() : -1;
-                    log.info("═══ [METRICS] DIGITAL-HUMAN | sentenceId={} | firstFrameDelay={}ms | totalFrames={} | totalBytes={} | wallTime={}ms ═══",
-                            sentenceId, firstFrameDelay, pySentenceFrameCount, pySentenceBytes, sentenceWallMs);
+                    // 句级生成耗时（首帧延迟见 event=firstFrame，避免每句重复同一轮首帧值）
+                    log.info("═══ [METRICS] DIGITAL-HUMAN | sentenceId={} | totalFrames={} | totalBytes={} | wallTime={}ms ═══",
+                            sentenceId, pySentenceFrameCount, pySentenceBytes, sentenceWallMs);
 
-                    // ═══ METRICS: 后端音画同步误差 ═══
+                    // 句末音/视频全局 PTS 差（非端上口型误差；口型对齐在客户端 AVSyncPlayer）
                     int audioPts = ctx.getLastAudioGlobalPtsMs();
-                    int backendDelta = audioPts > 0 ? videoMaxPtsMs - audioPts : 0;
-                    log.info("═══ [METRICS] AV-SYNC | sentenceId={} | audioMaxPts={}ms | videoMaxPts={}ms | backendDelta={}ms ═══",
+                    int backendDelta = audioPts > 0 ? videoMaxPtsMs - audioPts : -1;
+                    log.info("═══ [METRICS] AV-SYNC | note=sentenceEndPtsDelta | sentenceId={} | audioMaxPts={}ms | videoMaxPts={}ms | backendDelta={}ms ═══",
                             sentenceId, audioPts, videoMaxPtsMs, backendDelta);
                     videoMaxPtsMs = 0;
 
@@ -167,6 +178,8 @@ public class MuseTalkConnector {
                     | ((raw[4] & 0xFF) << 8) | (raw[5] & 0xFF);
 
             long pyNow = System.currentTimeMillis();
+            long pyInterval = lastPyVideoTime == 0 ? 0 : pyNow - lastPyVideoTime;
+            lastPyVideoTime = pyNow;
             pyVideoCount++;
 
             // 句级诊断：检测句子切换
@@ -177,6 +190,8 @@ public class MuseTalkConnector {
                 pySentenceFrameCount = 0;
                 pySentenceFirstSendMs = 0;
                 pySentenceLastSendMs = 0;
+                pySentenceMaxEnqueueCostMs = 0;
+                pySentenceMaxQueueDepth = 0;
             }
             pySentenceBytes += raw.length;
             pySentenceFrameCount++;
@@ -192,15 +207,32 @@ public class MuseTalkConnector {
             System.arraycopy(raw, 0, androidPayload, 1, raw.length);
 
             com.guying.websocket.session.OutboundPacer pacer = ctx.getOutboundPacer();
+            int qDepthBefore = pacer != null ? pacer.queueDepth() : -1;
+            long tEnq = System.currentTimeMillis();
             if (pacer != null) {
                 pacer.enqueueVideo(globalPtsMs, new BinaryMessage(androidPayload));
             } else {
                 sender.send(ctx, new BinaryMessage(androidPayload));
             }
+            long enqueueCostMs = System.currentTimeMillis() - tEnq;
+            int qDepthAfter = pacer != null ? pacer.queueDepth() : -1;
+            long putBlockMs = pacer != null ? pacer.lastPutBlockMs() : 0;
+            if (enqueueCostMs > pySentenceMaxEnqueueCostMs) pySentenceMaxEnqueueCostMs = enqueueCostMs;
+            if (qDepthAfter > pySentenceMaxQueueDepth) pySentenceMaxQueueDepth = qDepthAfter;
+            if (qDepthBefore > pySentenceMaxQueueDepth) pySentenceMaxQueueDepth = qDepthBefore;
+
+            // 抽样 PY-RECV：前 30 帧全打；之后 interval>100 或每 25 帧
+            if (pyVideoCount <= 30 || pyInterval > 100 || pyVideoCount % 25 == 0) {
+                log.info("[Python WS] ⇩ PY-RECV: interval={}ms localPts={} globalPts={} sid={} len={} qDepth={}->{} enqueueCostMs={} putBlockMs={} total={}",
+                        pyInterval, localPtsMs, globalPtsMs, sentenceId, raw.length,
+                        qDepthBefore, qDepthAfter, enqueueCostMs, putBlockMs, pyVideoCount);
+            }
 
             // T4: 首个视频帧
             if (ctx.getE2eFirstVideoTime() == 0) {
                 ctx.markE2eFirstVideo();
+                e2eMetricsLogger.logDigitalHumanFirstFrame(ctx);
+                e2eMetricsLogger.tryLogAvStage(ctx);
             }
             if (globalPtsMs > videoMaxPtsMs) videoMaxPtsMs = globalPtsMs;
 

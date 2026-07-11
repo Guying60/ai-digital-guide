@@ -6,6 +6,7 @@ import org.springframework.web.socket.WebSocketMessage;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
@@ -55,12 +56,38 @@ public class OutboundPacer {
     // ↓ 仅入队线程（MuseTalk reader）读写：用于给控制消息排到末帧之后
     private int lastVideoGlobalPts = 0;
 
+    // ↓ 诊断：入队阻塞 / 队列深度 / 释放节拍（跨线程读，Atomic）
+    private final AtomicInteger releaseCount = new AtomicInteger(0);
+    private final AtomicInteger maxQueueDepth = new AtomicInteger(0);
+    private final AtomicLong maxPutBlockMs = new AtomicLong(0);
+    private final AtomicLong lastPutBlockMs = new AtomicLong(0);
+
     public OutboundPacer(String sid, Consumer<WebSocketMessage<?>> sink) {
         this.sid = sid;
         this.sink = sink;
         this.worker = new Thread(this::run, "outbound-pacer-" + sid);
         this.worker.setDaemon(true);
         this.worker.start();
+    }
+
+    /** 当前队列深度（诊断用）。 */
+    public int queueDepth() {
+        return queue.size();
+    }
+
+    /** 本会话观测到的最大队列深度。 */
+    public int maxQueueDepth() {
+        return maxQueueDepth.get();
+    }
+
+    /** 最近一次 put 阻塞毫秒数。 */
+    public long lastPutBlockMs() {
+        return lastPutBlockMs.get();
+    }
+
+    /** 本会话观测到的最大 put 阻塞毫秒数。 */
+    public long maxPutBlockMs() {
+        return maxPutBlockMs.get();
     }
 
     /** 入队一帧视频，按其全局 PTS 节流释放。队列满时阻塞，从而反压上游。 */
@@ -75,10 +102,27 @@ public class OutboundPacer {
     }
 
     private void put(Item it) {
+        int depthBefore = queue.size();
+        if (depthBefore > maxQueueDepth.get()) {
+            maxQueueDepth.updateAndGet(prev -> Math.max(prev, depthBefore));
+        }
+        long t0 = System.currentTimeMillis();
         try {
-            queue.put(it);
+            // 先尝试非阻塞入队；满则回退阻塞 put，并统计阻塞时长
+            if (!queue.offer(it)) {
+                queue.put(it);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+        long blockMs = System.currentTimeMillis() - t0;
+        lastPutBlockMs.set(blockMs);
+        if (blockMs > maxPutBlockMs.get()) {
+            maxPutBlockMs.updateAndGet(prev -> Math.max(prev, blockMs));
+        }
+        if (blockMs > 0 || depthBefore >= QUEUE_CAPACITY - 8) {
+            log.info("[OutboundPacer] PUT sid={} pts={} depthBefore={} blockMs={} maxDepth={} maxBlockMs={}",
+                    sid, it.globalPtsMs(), depthBefore, blockMs, maxQueueDepth.get(), maxPutBlockMs.get());
         }
     }
 
@@ -87,6 +131,10 @@ public class OutboundPacer {
         epoch.incrementAndGet();
         queue.clear();
         reanchor = true;
+        releaseCount.set(0);
+        maxQueueDepth.set(0);
+        maxPutBlockMs.set(0);
+        lastPutBlockMs.set(0);
         worker.interrupt();
     }
 
@@ -132,6 +180,14 @@ public class OutboundPacer {
                 sink.accept(it.msg());
             } catch (Exception e) {
                 log.warn("[OutboundPacer] 发送失败 sid={}", sid, e);
+            }
+
+            int n = releaseCount.incrementAndGet();
+            int depthAfter = queue.size();
+            long slept = Math.max(0, sleep);
+            if (n <= 30 || slept > 100 || n % 25 == 0) {
+                log.info("[OutboundPacer] RELEASE sid={} pts={} sleep={}ms depthAfter={} #{}",
+                        sid, it.globalPtsMs(), slept, depthAfter, n);
             }
         }
         log.info("[OutboundPacer] worker 退出 sid={}", sid);

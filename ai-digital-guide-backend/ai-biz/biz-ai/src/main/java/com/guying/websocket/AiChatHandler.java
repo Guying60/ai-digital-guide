@@ -257,7 +257,6 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
         ctx.getPtsTracker().onInterrupt();
-        ctx.resetRound();  // 复位句末补静音计数，避免被打断的旧轮残留触发误补
         OutboundPacer pacer = ctx.getOutboundPacer();
         if (pacer != null) {
             pacer.reset();
