@@ -35,7 +35,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.AttractionPickerAdapter;
 import com.example.digitaltourguide.model.LocationManager;
-import com.example.digitaltourguide.model.user.AttractionListResponse;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.network.RetrofitClient;
@@ -274,21 +273,20 @@ public class AttractionPickerDialog extends DialogFragment {
         String token= SpUtils.getUserToken(getContext());
          RetrofitClient.getApiService()
                 .getAttractions(userCity, userLng, userLat, kw, null, lastId, PAGE_SIZE)
-                 .enqueue(new Callback<AttractionListResponse>() {
+                 .enqueue(new Callback<AttractionPage>() {
                      @Override
-                     public void onResponse(Call<AttractionListResponse> call, Response<AttractionListResponse> response) {
+                     public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
                          isLoading=false;
                          Log.d("AttractionPicker", "HTTP code: " + response.code());
                          if(!response.isSuccessful()){
                              Toast.makeText(getContext(), "网络错误: HTTP " + response.code(), Toast.LENGTH_LONG).show();
                              return;
                          }
-                         AttractionListResponse wrapper = response.body();
-                         if(wrapper == null || wrapper.getData() == null){
+                         AttractionPage page = response.body();
+                         if(page == null){
                              Toast.makeText(getContext(), "服务器返回空数据", Toast.LENGTH_LONG).show();
                              return;
                          }
-                         AttractionPage page = wrapper.getData();
                          List<ScenicSpot> newSpots=page.getList();
                          if(newSpots==null) newSpots=new ArrayList<>();
 
@@ -303,7 +301,7 @@ public class AttractionPickerDialog extends DialogFragment {
                          hasMore=page.isHasMore();
                      }
                      @Override
-                     public void onFailure(Call<AttractionListResponse> call, Throwable t) {
+                     public void onFailure(Call<AttractionPage> call, Throwable t) {
                             isLoading=false;
                             Toast.makeText(getContext(),"网络错误："+t.getMessage(),Toast.LENGTH_SHORT).show();
                      }

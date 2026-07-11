@@ -15,9 +15,11 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Interceptor;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -47,14 +49,22 @@ public class RetrofitClient {
                     @Override
                     public Response intercept(Chain chain) throws IOException {
                         Request request = chain.request();
-                        // 只对景点接口打日志
                         if (request.url().toString().contains("/attractions")) {
                             Log.d("API_LOG", "--> " + request.method() + " " + request.url());
                         }
                         Response response = chain.proceed(request);
                         if (request.url().toString().contains("/attractions")) {
-                            String body = response.peekBody(Long.MAX_VALUE).string();
-                            Log.d("API_LOG", "<-- " + response.code() + " " + body);
+                            ResponseBody body = response.body();
+                            if (body != null) {
+                                String bodyString = body.string();
+                                Log.d("API_LOG", "<-- " + response.code() + " " + bodyString);
+                                // 重新构建 response，因为 body.string() 会消费掉原始 body
+                                response = response.newBuilder()
+                                        .body(ResponseBody.create(body.contentType(), bodyString))
+                                        .build();
+                            } else {
+                                Log.d("API_LOG", "<-- " + response.code() + " [empty body]");
+                            }
                         }
                         return response;
                     }

@@ -19,7 +19,6 @@ import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.LocationManager;
-import com.example.digitaltourguide.model.user.AttractionListResponse;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.network.ApiService;
@@ -162,11 +161,11 @@ public class NearbyMapActivity extends AppCompatActivity {
     private void loadNearbyAttractions(String city, Double userLongitude, Double userLatitude) {
         ApiService api = RetrofitClient.getApiService();
         api.getAttractions(city, userLongitude, userLatitude, null, null, null, 50)
-                .enqueue(new Callback<AttractionListResponse>() {
+                .enqueue(new Callback<AttractionPage>() {
                     @Override
-                    public void onResponse(Call<AttractionListResponse> call, Response<AttractionListResponse> response) {
-                        if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
-                            List<ScenicSpot> list = response.body().getData().getList();
+                    public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<ScenicSpot> list = response.body().getList();
                             if (list != null && !list.isEmpty()) {
                                 spotList.clear();
                                 spotList.addAll(list);
@@ -180,7 +179,7 @@ public class NearbyMapActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onFailure(Call<AttractionListResponse> call, Throwable t) {
+                    public void onFailure(Call<AttractionPage> call, Throwable t) {
                         Log.e(TAG, "网络错误: " + t.getMessage(), t);
                     }
                 });

@@ -24,7 +24,6 @@ import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.AttractionAdapter;
 
 import com.example.digitaltourguide.model.LocationManager;
-import com.example.digitaltourguide.model.user.AttractionListResponse;
 import com.example.digitaltourguide.model.user.AttractionPage;
 import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.network.RetrofitClient;
@@ -242,22 +241,21 @@ public class AttractionActivity extends AppCompatActivity {
         String token = SpUtils.getUserToken(this);
         RetrofitClient.getApiService()
                 .getAttractions(userCity, userLng, userLat, kw, null, lastId, PAGE_SIZE)
-                .enqueue(new Callback<AttractionListResponse>() {
+                .enqueue(new Callback<AttractionPage>() {
                     @Override
-                    public void onResponse(Call<AttractionListResponse> call, Response<AttractionListResponse> response) {
+                    public void onResponse(Call<AttractionPage> call, Response<AttractionPage> response) {
                         isLoading = false;
                         if (!response.isSuccessful()) {
                             Toast.makeText(AttractionActivity.this,
                                     "网络错误: HTTP " + response.code(), Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        AttractionListResponse wrapper = response.body();
-                        if (wrapper == null || wrapper.getData() == null) {
+                        AttractionPage page = response.body();
+                        if (page == null) {
                             Toast.makeText(AttractionActivity.this,
                                     "服务器返回空数据", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        AttractionPage page = wrapper.getData();
                         List<ScenicSpot> newSpots = page.getList();
                         if (newSpots == null) newSpots = new ArrayList<>();
 
@@ -273,7 +271,7 @@ public class AttractionActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onFailure(Call<AttractionListResponse> call, Throwable t) {
+                    public void onFailure(Call<AttractionPage> call, Throwable t) {
                         isLoading = false;
                         Toast.makeText(AttractionActivity.this,
                                 "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
