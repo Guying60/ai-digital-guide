@@ -119,50 +119,54 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
 
         // ── 对话统计（示例数据，按位置变化） ──
         int messageCount = 38 + (position % 13) * 4 + (int)(spot.getId().hashCode() & 0x7FFFFFFF) % 15;
-        holder.tvMessageCount.setText(messageCount + "条对话记录");
+        holder.tvMessageCount.setText(messageCount + " 条对话");
         holder.tvMessageCount.setVisibility(View.VISIBLE);
 
         String[] times = {"08:15", "09:42", "10:03", "11:27", "12:08", "13:55", "14:30", "15:09", "16:18", "17:01", "18:24", "19:47", "20:33"};
         String time = times[position % times.length];
-        holder.tvLastTime.setText("上次对话时间：" + time);
+        holder.tvLastTime.setText("· " + time);
         holder.tvLastTime.setVisibility(View.VISIBLE);
 
 
         // 根据是否已评价（或已结束）决定显示哪个按钮布局
-        if (isRated || spot.isEnded()) {
+        if (isRated) {
+            // 已评价：只保留导航区，隐藏操作区
+            holder.layoutActionZone.setVisibility(View.GONE);
+        } else if (spot.isEnded()) {
+            holder.layoutActionZone.setVisibility(View.VISIBLE);
             holder.layoutDualButtons.setVisibility(View.GONE);
             holder.layoutSingleButton.setVisibility(View.VISIBLE);
-            // 如果已经评价过，可以禁用评价按钮或改变文字
-            if (isRated) {
-                holder.btnRate.setText("已评价");
-                holder.btnRate.setEnabled(false);
-                holder.btnRate.setAlpha(0.5f);
-            } else {
-                holder.btnRate.setText("评价景点");
-                holder.btnRate.setEnabled(true);
-                holder.btnRate.setAlpha(1f);
-            }
+            holder.btnRate.setText(R.string.history_rate_attraction);
+            holder.btnRate.setEnabled(true);
+            holder.btnRate.setAlpha(1f);
         } else {
+            holder.layoutActionZone.setVisibility(View.VISIBLE);
             holder.layoutDualButtons.setVisibility(View.VISIBLE);
             holder.layoutSingleButton.setVisibility(View.GONE);
         }
 
-        // 整张卡片点击 → 查看聊天记录
-        holder.itemView.setOnClickListener(v -> {
+        // 导航区点击 → 查看聊天记录（与底部操作按钮分离）
+        View.OnClickListener openHistory = v -> {
             if (listener != null) {
                 listener.onItemClick(spot);
             } else {
-                // 默认行为：跳转到聊天历史页面
                 Intent intent = new Intent(context, ChatHistoryActivity.class);
                 intent.putExtra("conversationId", spot.getConversationId());
                 context.startActivity(intent);
             }
-        });
+        };
+        holder.layoutNavZone.setOnClickListener(openHistory);
 
-        // 长按删除
+        // 长按删除（挂在导航区，避免与操作按钮冲突）
+        holder.layoutNavZone.setOnLongClickListener(v -> {
+            if (listener != null) {
+                listener.onItemLongClick(spot, holder.getBindingAdapterPosition());
+            }
+            return true;
+        });
         holder.itemView.setOnLongClickListener(v -> {
             if (listener != null) {
-                listener.onItemLongClick(spot, holder.getAdapterPosition());
+                listener.onItemLongClick(spot, holder.getBindingAdapterPosition());
             }
             return true;
         });
@@ -174,7 +178,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             }
             // 更新本地状态并刷新UI
             spot.setEnded(true);
-            notifyItemChanged(holder.getAdapterPosition());
+            notifyItemChanged(holder.getBindingAdapterPosition());
         });
 
         // 继续对话按钮
@@ -211,7 +215,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         TextView tvTitle,tvStopChat, tvContinueChat,btnRate;
         TextView tvStatus, tvCategory, tvMessageCount, tvLastTime;
         ImageView ivCover;
-        View layoutDualButtons,layoutSingleButton;
+        View layoutDualButtons, layoutSingleButton, layoutNavZone, layoutActionZone;
 
         public ScenicHolder(@NonNull View itemView) {
 
@@ -223,6 +227,8 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             btnRate = itemView.findViewById(R.id.btn_rate);
             layoutDualButtons = itemView.findViewById(R.id.layout_dual_buttons);
             layoutSingleButton = itemView.findViewById(R.id.layout_single_button);
+            layoutNavZone = itemView.findViewById(R.id.layout_nav_zone);
+            layoutActionZone = itemView.findViewById(R.id.layout_action_zone);
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvCategory = itemView.findViewById(R.id.tv_category);
             tvMessageCount = itemView.findViewById(R.id.tv_message_count);

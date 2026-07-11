@@ -1,6 +1,5 @@
 package com.example.digitaltourguide.adapter;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,8 +19,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import android.util.SparseBooleanArray;
 
 public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAdapter.ViewHolder>{
     //管理员景点列表
@@ -83,15 +80,19 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
 
         // 评分 & 评论数（控制整行显隐）
         if (item.getRating() != null && item.getReviewCount() != null) {
+            holder.tvRating.setVisibility(View.VISIBLE);
+            holder.tvReviewCount.setVisibility(View.VISIBLE);
             holder.tvRating.setText(String.format("%.1f分", item.getRating()));
             holder.tvReviewCount.setText(String.format("%d 条评论", item.getReviewCount()));
             holder.layoutRatingInfo.setVisibility(View.VISIBLE);
         } else if (item.getRating() != null) {
-            holder.tvRating.setText(String.format("%.1f分", item.getRating()));
+            holder.tvRating.setVisibility(View.VISIBLE);
             holder.tvReviewCount.setVisibility(View.GONE);
+            holder.tvRating.setText(String.format("%.1f分", item.getRating()));
             holder.layoutRatingInfo.setVisibility(View.VISIBLE);
         } else if (item.getReviewCount() != null && item.getReviewCount() > 0) {
             holder.tvRating.setVisibility(View.GONE);
+            holder.tvReviewCount.setVisibility(View.VISIBLE);
             holder.tvReviewCount.setText(String.format("%d 条评论", item.getReviewCount()));
             holder.layoutRatingInfo.setVisibility(View.VISIBLE);
         } else {
@@ -106,16 +107,6 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             holder.tvOpenHours.setVisibility(View.GONE);
         }
 
-        //整个卡片点击
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onItemClick(item);
-        });
-        holder.tvEdit.setOnClickListener(v -> {
-            if (listener != null) listener.onEditClick(item);
-        });
-        holder.tvDelete.setOnClickListener(v -> {
-            if (listener != null) listener.onDeleteClick(item);
-        });
         // 加载封面
         if (item.getCoverUrl() != null && !item.getCoverUrl().isEmpty()) {
             Glide.with(holder.itemView.getContext())
@@ -131,20 +122,26 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             holder.checkBox.setVisibility(View.VISIBLE);
             holder.checkBox.setChecked(selectedIds.contains(item.getId()));
             holder.checkBox.setOnClickListener(v -> toggleSelection(position));
-            holder.itemView.setOnClickListener(null);
-            // 编辑和删除按钮在多选模式下隐藏或禁用
-            holder.tvEdit.setVisibility(View.GONE);
-            holder.tvDelete.setVisibility(View.GONE);
+            holder.layoutNavZone.setOnClickListener(v -> toggleSelection(position));
+            holder.layoutActionButtons.setVisibility(View.GONE);
+            holder.dividerActions.setVisibility(View.GONE);
+            holder.layoutAnalyticsCue.setVisibility(View.GONE);
         } else {
             holder.checkBox.setVisibility(View.GONE);
-            // 恢复正常的点击事件
-            holder.itemView.setOnClickListener(v -> {
+            holder.layoutActionButtons.setVisibility(View.VISIBLE);
+            holder.dividerActions.setVisibility(View.VISIBLE);
+            holder.layoutAnalyticsCue.setVisibility(View.VISIBLE);
+
+            // 导航区 → 数据分析；编辑/删除独立，互不抢点击
+            holder.layoutNavZone.setOnClickListener(v -> {
                 if (listener != null) listener.onItemClick(item);
             });
-            holder.tvEdit.setVisibility(View.VISIBLE);
-            holder.tvDelete.setVisibility(View.VISIBLE);
-            holder.tvEdit.setOnClickListener(v -> listener.onEditClick(item));
-            holder.tvDelete.setOnClickListener(v -> listener.onDeleteClick(item));
+            holder.tvEdit.setOnClickListener(v -> {
+                if (listener != null) listener.onEditClick(item);
+            });
+            holder.tvDelete.setOnClickListener(v -> {
+                if (listener != null) listener.onDeleteClick(item);
+            });
         }
     }
 
@@ -154,10 +151,12 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvType, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours;
+        TextView tvName, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours, tvViewAnalytics;
         ImageView ivCover;
         CheckBox checkBox;
         LinearLayout layoutRatingInfo;
+        View layoutNavZone, layoutActionButtons, dividerActions, layoutAnalyticsCue;
+
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tv_name);
@@ -169,12 +168,11 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             tvReviewCount = itemView.findViewById(R.id.tv_review_count);
             tvOpenHours = itemView.findViewById(R.id.tv_open_hours);
             layoutRatingInfo = itemView.findViewById(R.id.layout_rating_info);
+            layoutNavZone = itemView.findViewById(R.id.layout_nav_zone);
+            layoutActionButtons = itemView.findViewById(R.id.layout_action_buttons);
+            dividerActions = itemView.findViewById(R.id.divider_actions);
+            layoutAnalyticsCue = itemView.findViewById(R.id.layout_analytics_cue);
+            tvViewAnalytics = itemView.findViewById(R.id.tv_view_analytics);
         }
-    }
-
-    private String getTypeName(int type) {
-        String[] types = {"主题乐园", "博物馆与展馆", "自然公园", "风景名胜与休闲度假",
-                "历史文化", "古镇水乡", "动植物园与水族馆", "现代地标"};
-        return type >= 0 && type < types.length ? types[type] : "未知";
     }
 }

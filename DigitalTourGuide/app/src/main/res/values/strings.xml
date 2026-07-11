@@ -92,6 +92,10 @@
     <string name="history_tag_ally">古镇水乡</string>
     <string name="history_tag_zoo">动植物园与水族馆</string>
     <string name="history_tag_morden">现代地标</string>
+    <string name="history_view_chat">查看对话记录</string>
+    <string name="history_end_chat">结束</string>
+    <string name="history_continue_chat">继续对话</string>
+    <string name="history_rate_attraction">评价景点</string>
 
     <style name="BottomDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
         <item name="windowNoTitle">true</item>
@@ -135,6 +139,9 @@
     <string name="pm_add">新增景点</string>
     <string name="pm_open_hours_prefix">开放时间：</string>
     <string name="pm_settings">设置</string>
+    <string name="pm_view_analytics">查看运营数据</string>
+    <string name="pm_edit">编辑</string>
+    <string name="pm_delete">删除</string>
 
     <!-- ScenicEdit strings -->
     <string name="se_back">返回</string>
