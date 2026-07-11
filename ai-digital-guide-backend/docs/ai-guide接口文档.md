@@ -208,9 +208,13 @@ GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.1
 | list[].attractionName | String  | 景点名称                                |
 | list[].coverUrl   | String  | 封面图片地址                                |
 | list[].distance   | Double  | 距用户的距离（米）                          |
+| list[].rating     | Double  | 景点平均分（全量口径 `ROUND(AVG(rating),1)`，1.0–5.0），无评论时为 `null` |
+| list[].reviewCount | Integer | 评论数（全量口径），无评论时为 `0`           |
 | nextLastId        | String  | 下一页二级游标，为 null 表示无更多数据       |
 | nextDistance      | Double  | 下一页距离游标（米），翻页时回传，无更多为 null |
 | hasMore           | Boolean | 是否还有更多数据                            |
+
+> `rating`/`reviewCount` 仅统计 `status=1`（已评价）且 `rating` 非空且未删除的评论，按页一次性聚合，无时间窗口。
 
 **响应示例：**
 
@@ -223,7 +227,9 @@ GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.1
         "id": "1234567890",
         "attractionName": "故宫博物院",
         "coverUrl": "https://oss.example.com/cover/xxx.jpg",
-        "distance": 845.2
+        "distance": 845.2,
+        "rating": 4.7,
+        "reviewCount": 128
       }
     ],
     "nextLastId": "1234567890123456789",
@@ -1137,6 +1143,22 @@ GET /admins/attractions?city=北京市&pageSize=6
 GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 ```
 
+**响应参数说明：**
+
+| 字段              | 类型    | 说明                                        |
+| ----------------- | ------- | ------------------------------------------- |
+| list[].id         | String  | 景点 ID                                     |
+| list[].attractionName | String  | 景点名称                                |
+| list[].coverUrl   | String  | 封面图片地址                                |
+| list[].type       | Integer | 景点类型                                    |
+| list[].city       | String  | 所在城市                                    |
+| list[].rating     | Double  | 景点平均分（全量口径 `ROUND(AVG(rating),1)`，1.0–5.0），无评论时为 `null` |
+| list[].reviewCount | Integer | 评论数（全量口径），无评论时为 `0`           |
+| nextLastId        | String  | 下一页游标，为 null 表示无更多数据           |
+| hasMore           | Boolean | 是否还有更多数据                            |
+
+> `rating`/`reviewCount` 仅统计 `status=1`（已评价）且 `rating` 非空且未删除的评论，按页一次性聚合，无时间窗口。
+
 **响应示例：**
 
 ```json
@@ -1149,7 +1171,9 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
         "attractionName": "故宫博物院",
         "coverUrl": "https://oss.example.com/cover/xxx.jpg",
         "type": 1,
-        "city": "北京市"
+        "city": "北京市",
+        "rating": 4.7,
+        "reviewCount": 128
       }
     ],
     "nextLastId": "2044359968888639490",
