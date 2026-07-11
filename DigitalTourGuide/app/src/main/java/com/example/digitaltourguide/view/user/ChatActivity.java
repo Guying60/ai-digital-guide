@@ -192,6 +192,7 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         btnSend.setOnClickListener(v->{
+            if (aiIsReplying) return; // AI回复中不允许发送
             String text=etMessage.getText().toString().trim();
             if(text.isEmpty()){
                 Toast.makeText(this,"请输入文本",Toast.LENGTH_SHORT).show();
@@ -308,8 +309,29 @@ public class ChatActivity extends AppCompatActivity {
             Log.d("MYTEST","发送文本信息："+text);
             addUserMessage(text);//字幕
             captureEmotionFrame();  // 事件触发：发文字时抓表情
+            // 发送后立刻显示等待图标
+            runOnUiThread(() -> setSendButtonLoading(true));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /** 发送按钮切换：AI回复中显示 ic_ing，否则显示"发送" */
+    private void setSendButtonLoading(boolean loading) {
+        if (loading) {
+            btnSend.setText("");
+            btnSend.setEnabled(false);
+            android.graphics.drawable.Drawable ing = ContextCompat.getDrawable(this, R.drawable.ic_ing);
+            if (ing != null) {
+                int size = (int) (24 * getResources().getDisplayMetrics().density);
+                ing.setBounds(0, 0, size, size);
+                btnSend.setCompoundDrawables(ing, null, null, null);
+            }
+            btnSend.setCompoundDrawablePadding(0);
+        } else {
+            btnSend.setText("发送");
+            btnSend.setEnabled(true);
+            btnSend.setCompoundDrawables(null, null, null, null);
         }
     }
 
@@ -792,6 +814,7 @@ public class ChatActivity extends AppCompatActivity {
                         aiRoundTextDone = true;
                         runOnUiThread(() -> {
                             aiIsReplying = false;
+                            setSendButtonLoading(false);
                             // 输出完成后停留在最后一行
                             tvSubtitle.post(() -> scrollSubtitleToBottom());
                         });
@@ -836,8 +859,10 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "收到 allDone，后端已就绪");
                         // 清空队列，准备下一次对话
                         if (avSyncPlayer != null) avSyncPlayer.onConversationEnd();
+                        aiIsReplying = false;
                         // 麦克风默认关闭，用户手动点击按钮开启
                         runOnUiThread(() -> {
+                            setSendButtonLoading(false);
                             sendMicStatus(false);  // 告知后端麦克风关闭
                         });
                     }else if ("done".equals(type)) {

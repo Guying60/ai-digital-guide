@@ -141,12 +141,15 @@ public class RecordVideoActivity extends AppCompatActivity {
     private void bindCameraUseCases() {
         if (cameraProvider == null) return;
 
-        Preview preview = new Preview.Builder().build();
+        Preview preview = new Preview.Builder()
+                .setTargetAspectRatio(androidx.camera.core.AspectRatio.RATIO_16_9)
+                .build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
         Recorder recorder = new Recorder.Builder()
+                .setAspectRatio(androidx.camera.core.AspectRatio.RATIO_16_9)
                 .setQualitySelector(QualitySelector.from(
-                        Quality.HD, androidx.camera.video.FallbackStrategy.higherQualityOrLowerThan(Quality.SD)))
+                        Quality.HIGHEST, androidx.camera.video.FallbackStrategy.higherQualityOrLowerThan(Quality.HD)))
                 .build();
         videoCapture = VideoCapture.withOutput(recorder);
 

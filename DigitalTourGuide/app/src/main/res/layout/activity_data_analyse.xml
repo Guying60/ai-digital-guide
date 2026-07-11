@@ -167,13 +167,19 @@
                             android:paddingHorizontal="12dp" />
                     </RelativeLayout>
 
-                    <!-- 柱状图自定义 View -->
-                    <com.example.digitaltourguide.utils.HotFaqBarChart
-                        android:id="@+id/hot_faq_bar_chart"
+                    <!-- 柱状图自定义 View（横向滚动） -->
+                    <HorizontalScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="280dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:visibility="visible" />
+                        android:scrollbars="none">
+
+                        <com.example.digitaltourguide.utils.HotFaqBarChart
+                            android:id="@+id/hot_faq_bar_chart"
+                            android:layout_width="wrap_content"
+                            android:layout_height="280dp"
+                            android:visibility="visible" />
+                    </HorizontalScrollView>
 
                     <TextView
                         android:id="@+id/tv_empty_qa"
