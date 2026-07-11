@@ -1,9 +1,12 @@
 package com.example.digitaltourguide.view.admin;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -12,7 +15,10 @@ import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
+import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -277,19 +283,39 @@ public class ScenicEditActivity extends AppCompatActivity {
     //删除后恢复ui
     private void resetFileUI(int fileIndex) {
         // 弹窗确认删除
-        new AlertDialog.Builder(this)
-                .setTitle("确认删除")
-                .setMessage("确定要删除这个文件吗？")
-                .setPositiveButton("确定", (dialog, which) -> {
-                            String fileId=fileIdMap.get(fileIndex);
-                            if(fileId!=null && !fileId.isEmpty()){
-                                deleteFileFromServer(fileId,fileIndex);
-                            }else{
-                                removeLocalFile(fileIndex);
-                            }
-        })
-                .setNegativeButton("取消", null)
-                .show();
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_delete_confirm, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView tvMessage = view.findViewById(R.id.tv_delete_message);
+        if (tvMessage != null) {
+            tvMessage.setText("确定要删除这个文件吗？");
+        }
+
+        view.findViewById(R.id.btn_cancel_delete).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_confirm_delete).setOnClickListener(v -> {
+            dialog.dismiss();
+            String fileId = fileIdMap.get(fileIndex);
+            if (fileId != null && !fileId.isEmpty()) {
+                deleteFileFromServer(fileId, fileIndex);
+            } else {
+                removeLocalFile(fileIndex);
+            }
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
     private void deleteFileFromServer(String fileId,int fileIndex){
         RetrofitClient.getAdminApiService()
