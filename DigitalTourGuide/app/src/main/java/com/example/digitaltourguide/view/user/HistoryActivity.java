@@ -391,11 +391,24 @@ public class HistoryActivity extends AppCompatActivity {
 
     private void setupSearchButton(){
         View btnSearch=findViewById(R.id.btn_search);
-            btnSearch.setOnClickListener(v->{
-                String keyword=etSearch.getText().toString().trim();
-                currentKeyWord= TextUtils.isEmpty(keyword) ? null:keyword;
+        btnSearch.setOnClickListener(v->{
+            String keyword=etSearch.getText().toString().trim();
+            currentKeyWord= TextUtils.isEmpty(keyword) ? null:keyword;
+            resetAndLoad();
+        });
+
+        // 键盘回车键触发搜索
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                    || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                String keyword = etSearch.getText().toString().trim();
+                currentKeyWord = TextUtils.isEmpty(keyword) ? null : keyword;
                 resetAndLoad();
-            });
+                return true;
+            }
+            return false;
+        });
     }
 
     private void resetAndLoad() {
@@ -567,10 +580,12 @@ public class HistoryActivity extends AppCompatActivity {
             });
         }
 
-        // "全部"标签——清除城市筛选
+        // "全部"标签——清除城市筛选和关键词搜索，回到全部显示
         TextView tagAll = findViewById(R.id.tag_all);
         tagAll.setOnClickListener(v -> {
             currentCity = null;
+            currentKeyWord = null;
+            etSearch.setText("");
             tagAll.setSelected(true);
             for (TextView tv : cityTagViews) tv.setSelected(false);
             resetAndLoad();
