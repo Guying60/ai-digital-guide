@@ -76,14 +76,24 @@
             android:visibility="gone"
             />
 
-        <!-- Row 3: Last Conversation Time -->
+        <!-- Row 3: Chat stats -->
+        <TextView
+            android:id="@+id/tv_message_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:visibility="gone"
+            />
+
         <TextView
             android:id="@+id/tv_last_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="11sp"
-            android:textColor="#787586"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:textColor="#999999"
             android:visibility="gone"
             />
 
@@ -106,7 +116,7 @@
             <LinearLayout
                 android:id="@+id/layout_dual_buttons"
                 android:layout_width="match_parent"
-                android:layout_height="30dp"
+                android:layout_height="26dp"
                 android:orientation="horizontal"
                 android:gravity="center"
                 android:clipChildren="false"
@@ -145,7 +155,7 @@
             <LinearLayout
                 android:id="@+id/layout_single_button"
                 android:layout_width="match_parent"
-                android:layout_height="30dp"
+                android:layout_height="26dp"
                 android:gravity="center"
                 android:visibility="gone"
                 android:clipChildren="false">
