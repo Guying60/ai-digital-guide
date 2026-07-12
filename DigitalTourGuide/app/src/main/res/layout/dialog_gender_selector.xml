@@ -3,62 +3,96 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_dialog_bottom">
+    android:background="@drawable/bg_dialog_bottom"
+    android:paddingBottom="16dp">
 
     <!-- 顶部拖动条 -->
     <View
-        android:layout_width="80dp"
+        android:layout_width="48dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="8dp"
-        android:background="@color/outline"
-        android:radius="2dp"/>
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_drag_handle" />
+
+    <!-- 标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择性别"
+        android:textSize="16sp"
+        android:textColor="@color/profile_on_surface_variant"
+        android:gravity="center"
+        android:paddingVertical="12dp"
+        android:layout_marginBottom="4dp" />
 
     <!-- 选项列表 -->
-    <TextView
-        android:id="@+id/tv_gender_male"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="男"
-        android:textSize="18sp"
-        android:textColor="@color/on_surface"
-        android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:clickable="true"
-        android:background="?attr/selectableItemBackground"/>
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="1dp"
+        app:cardBackgroundColor="@color/profile_surface"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/profile_outline_variant"
+        app:strokeWidth="1dp">
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:background="@color/surface_variant"/>
+        <TextView
+            android:id="@+id/tv_gender_male"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="男"
+            android:textSize="16sp"
+            android:textColor="@color/profile_on_surface"
+            android:gravity="center"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+    </com.google.android.material.card.MaterialCardView>
 
-    <TextView
-        android:id="@+id/tv_gender_female"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="女"
-        android:textSize="18sp"
-        android:textColor="@color/on_surface"
-        android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:clickable="true"
-        android:background="?attr/selectableItemBackground"/>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:background="@color/surface_variant"/>
-
-    <TextView
-        android:id="@+id/tv_gender_secret"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="保密"
-        android:textSize="18sp"
-        android:textColor="@color/on_surface"
-        android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:clickable="true"
-        android:background="?attr/selectableItemBackground"/>
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="1dp"
+        app:cardBackgroundColor="@color/profile_surface"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/profile_outline_variant"
+        app:strokeWidth="1dp">
+
+        <TextView
+            android:id="@+id/tv_gender_female"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="女"
+            android:textSize="16sp"
+            android:textColor="@color/profile_on_surface"
+            android:gravity="center"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="16dp"
+        app:cardBackgroundColor="@color/profile_surface"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/profile_outline_variant"
+        app:strokeWidth="1dp">
+
+        <TextView
+            android:id="@+id/tv_gender_secret"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="保密"
+            android:textSize="16sp"
+            android:textColor="@color/profile_on_surface"
+            android:gravity="center"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

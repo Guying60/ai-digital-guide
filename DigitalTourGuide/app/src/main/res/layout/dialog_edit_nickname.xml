@@ -3,55 +3,76 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="20dp"
-  >
+    android:background="@drawable/bg_dialog_rounded">
 
-    <!-- 标题 -->
-    <TextView
+    <!-- 淡蓝标题栏 -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="修改昵称"
-        android:textSize="18sp"
-        android:textColor="@color/on_surface"
-        android:layout_marginBottom="16dp"/>
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:background="@color/profile_primary_container">
 
-    <!-- 输入框 -->
-    <EditText
-        android:id="@+id/et_nickname_dialog"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="请输入昵称"
-        android:maxLength="20"
-        android:textSize="16sp"
-        android:padding="12dp"
-        />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="修改昵称"
+            android:textSize="18sp"
+            android:textColor="@color/profile_on_primary_container"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-    <!-- 按钮区域 -->
+    <!-- 输入区域 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="20dp"
-        android:gravity="end">
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <TextView
-            android:id="@+id/tv_cancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="取消"
+        <EditText
+            android:id="@+id/et_nickname_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="请输入昵称"
+            android:maxLength="20"
             android:textSize="16sp"
-            android:textColor="@color/on_surface_variant"
-            android:padding="10dp"
-            android:layout_marginEnd="16dp"/>
+            android:gravity="center"
+            android:background="@drawable/bg_input_rounded"
+            android:paddingHorizontal="16dp"
+            android:textColor="@color/profile_on_surface"
+            android:textColorHint="@color/profile_outline" />
 
-        <TextView
-            android:id="@+id/tv_confirm"
-            android:layout_width="wrap_content"
+        <!-- 按钮区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="确认"
-            android:textSize="16sp"
-            android:textColor="@color/primary"
-            android:padding="10dp"/>
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp"
+            android:gravity="center">
 
+            <TextView
+                android:id="@+id/tv_cancel"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:text="取消"
+                android:textSize="16sp"
+                android:textColor="@color/profile_on_surface_variant"
+                android:background="@drawable/bg_btn_outline" />
+
+            <TextView
+                android:id="@+id/tv_confirm"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:gravity="center"
+                android:text="确认"
+                android:textSize="16sp"
+                android:textColor="@color/profile_on_primary_container"
+                android:textStyle="bold"
+                android:background="@drawable/bg_btn_primary" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

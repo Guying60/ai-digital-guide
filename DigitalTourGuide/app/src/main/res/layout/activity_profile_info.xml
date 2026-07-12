@@ -289,7 +289,7 @@
                 <Button
                     android:id="@+id/btnSignOut"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="55dp"
                     android:layout_marginTop="32dp"
                     android:layout_marginBottom="24dp"
                     android:backgroundTint="@color/profile_error_container"
@@ -298,7 +298,6 @@
                     android:textSize="16sp"
                     android:textStyle="bold"
                     app:cornerRadius="16dp"
-                    app:icon="@drawable/ic_logout"
                     app:iconGravity="textStart"
                     app:iconSize="20dp"
                     app:iconTint="@color/profile_on_error_container"
