@@ -22,11 +22,9 @@ import com.example.digitaltourguide.utils.SpUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.ScenicHolder> {
     //用户主页列表
@@ -225,7 +223,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
     }
 
     /**
-     * 格式化上次对话时间：今天显示 HH:mm，昨天显示「昨天 HH:mm」，更早显示 MM-dd。
+     * 格式化为年月日。出游记录以「哪天」为主，比相对时刻更清晰。
      */
     private static String formatLastChatTime(String raw) {
         if (raw == null || raw.isEmpty()) {
@@ -237,32 +235,10 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             if (date == null) {
                 return null;
             }
-            Calendar target = Calendar.getInstance();
-            target.setTime(date);
-            Calendar today = Calendar.getInstance();
-            clearTime(today);
-            Calendar targetDay = (Calendar) target.clone();
-            clearTime(targetDay);
-
-            long dayDiff = TimeUnit.MILLISECONDS.toDays(today.getTimeInMillis() - targetDay.getTimeInMillis());
-            String hm = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(date);
-            if (dayDiff == 0) {
-                return hm;
-            }
-            if (dayDiff == 1) {
-                return "昨天 " + hm;
-            }
-            return new SimpleDateFormat("MM-dd", Locale.getDefault()).format(date);
+            return new SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(date);
         } catch (ParseException e) {
-            return raw.length() >= 16 ? raw.substring(11, 16) : raw;
+            return raw.length() >= 10 ? raw.substring(0, 10) : raw;
         }
-    }
-
-    private static void clearTime(Calendar cal) {
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
     }
 
     public static class ScenicHolder extends RecyclerView.ViewHolder{
