@@ -128,11 +128,11 @@
                     android:id="@+id/tag_all"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_chip_selected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_all"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -140,11 +140,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_theme_park"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -152,11 +152,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_museum"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -164,11 +164,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_nature_park"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -176,11 +176,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_scenic"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -188,11 +188,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_history"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -200,11 +200,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_ally"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -212,11 +212,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_zoo"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
 
                 <TextView
@@ -224,11 +224,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_chip_unselected"
+                    android:background="@drawable/bg_chip_selector"
                     android:paddingHorizontal="16dp"
                     android:paddingVertical="6dp"
                     android:text="@string/history_tag_morden"
-                    android:textColor="#666666"
+                    android:textColor="@color/color_chip_text"
                     android:textSize="13sp" />
             </LinearLayout>
         </HorizontalScrollView>
@@ -246,7 +246,7 @@
             android:paddingHorizontal="4dp"
             android:paddingVertical="6dp"
             android:text="@string/pm_sort_desc"
-            android:textColor="#666666"
+            android:textColor="@color/color_chip_text"
             android:textSize="12sp"
             app:drawableEndCompat="@drawable/ic_expand_more" />
     </LinearLayout>
@@ -307,7 +307,7 @@
             android:background="@drawable/bg_btn_outline"
             android:gravity="center"
             android:text="@string/pm_cancel"
-            android:textColor="#666666"
+            android:textColor="@color/color_chip_text"
             android:textSize="15sp"
             android:textStyle="bold"
             android:visibility="gone" />

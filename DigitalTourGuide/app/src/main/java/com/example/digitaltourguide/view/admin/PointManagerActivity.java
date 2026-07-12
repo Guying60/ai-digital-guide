@@ -330,6 +330,8 @@ public class PointManagerActivity extends AppCompatActivity {
         for (int id : tagIds) {
             TextView tag = findViewById(id);
             tag.setOnClickListener(v -> {
+                // 取消所有标签的选中（包括"全部"）
+                tagAll.setSelected(false);
                 for (int i : tagIds) {
                     findViewById(i).setSelected(false);
                 }
