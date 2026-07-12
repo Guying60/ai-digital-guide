@@ -238,19 +238,25 @@
         android:layout_height="1dp"
         android:background="#E8E5F3" />
 
-    <!-- ==================== RecyclerView（仅此区域滚动） ==================== -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_scenic"
+    <!-- ==================== SwipeRefreshLayout + RecyclerView ==================== -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:clipToPadding="false"
-        android:scrollbars="none"
-        android:overScrollMode="always" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_scenic"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false"
+            android:scrollbars="none"
+            android:overScrollMode="always" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- ==================== Bottom Navigation Bar (Floating Pill) ==================== -->
     <com.google.android.material.card.MaterialCardView

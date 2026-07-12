@@ -29,6 +29,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.adapter.UserScenicAdapter;
@@ -55,6 +56,7 @@ public class HistoryActivity extends AppCompatActivity {
     /** AttractionPickerDialog 启动 ChatActivity 用的请求码，用于 onActivityResult 刷新 */
     public static final int REQUEST_CHAT = 200;
     private EditText etSearch;
+    private SwipeRefreshLayout swipeRefresh;
     private RecyclerView rvScenic;
     private UserScenicAdapter adapter;
     private List<ScenicSpot> dataList = new ArrayList<>();
@@ -452,6 +454,7 @@ public class HistoryActivity extends AppCompatActivity {
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
 
                         isLoading = false;
+                        swipeRefresh.setRefreshing(false);
                         if (response.isSuccessful() && response.body() != null && response.body().code == 1) {
                             String bodyJson = new Gson().toJson(response.body());
                             Log.d("HistoryActivity", "响应体 JSON: " + bodyJson);
@@ -508,6 +511,7 @@ public class HistoryActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<HistoryResponse> call, Throwable t) {
                         isLoading = false;
+                        swipeRefresh.setRefreshing(false);
                         Log.e("HistoryActivity", "网络请求失败: " + t.getMessage(), t);
                         Toast.makeText(HistoryActivity.this,"网络错误",Toast.LENGTH_SHORT).show();
                     }
@@ -570,6 +574,7 @@ public class HistoryActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<HistoryResponse> call, Throwable t) {
                         isLoading = false;
+                        swipeRefresh.setRefreshing(false);
                     }
                 });
     }
@@ -669,8 +674,25 @@ public class HistoryActivity extends AppCompatActivity {
         tvHistory=findViewById(R.id.tv_history);
         tvMine=findViewById(R.id.tv_mine);
         // 活跃标签指示器已在布局 XML 中通过 bg_nav_active 设置
+        swipeRefresh = findViewById(R.id.swipe_refresh);
         rvScenic = findViewById(R.id.rv_scenic);
         etSearch = findViewById(R.id.et_search);
+
+        // 下拉刷新
+        swipeRefresh.setColorSchemeResources(
+                R.color.profile_primary,
+                R.color.login_on_primary,
+                R.color.profile_star_yellow
+        );
+        swipeRefresh.setOnRefreshListener(() -> {
+            // 下拉时清空筛选条件，重新加载
+            currentKeyWord = null;
+            currentCity = null;
+            etSearch.setText("");
+            findViewById(R.id.tag_all).setSelected(true);
+            for (TextView tv : cityTagViews) tv.setSelected(false);
+            resetAndLoad();
+        });
 
         tvHistory.setOnClickListener(v -> {
            Toast.makeText(this,"当前已是旅游历史页面",Toast.LENGTH_SHORT).show();

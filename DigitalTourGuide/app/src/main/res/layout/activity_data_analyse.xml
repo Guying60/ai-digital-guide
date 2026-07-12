@@ -125,7 +125,7 @@
             </androidx.cardview.widget.CardView>
 
             <!-- ═══════════════════════════════════════════ -->
-            <!-- FAQ 统计 (热门问题TOP10)                   -->
+            <!-- 热门问题 TOP10                           -->
             <!-- ═══════════════════════════════════════════ -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -151,7 +151,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_centerVertical="true"
-                            android:text="FAQ统计 (热门问题TOP10)"
+                            android:text="热门问题"
                             android:textColor="#1F2937"
                             android:textSize="16sp"
                             android:textStyle="normal" />
@@ -167,19 +167,13 @@
                             android:paddingHorizontal="12dp" />
                     </RelativeLayout>
 
-                    <!-- 柱状图自定义 View（横向滚动） -->
-                    <HorizontalScrollView
+                    <!-- 热门问题分布图 -->
+                    <com.example.digitaltourguide.utils.HotFaqBarChart
+                        android:id="@+id/hot_faq_bar_chart"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:scrollbars="none">
-
-                        <com.example.digitaltourguide.utils.HotFaqBarChart
-                            android:id="@+id/hot_faq_bar_chart"
-                            android:layout_width="wrap_content"
-                            android:layout_height="280dp"
-                            android:visibility="visible" />
-                    </HorizontalScrollView>
+                        android:minHeight="200dp"
+                        android:visibility="visible" />
 
                     <TextView
                         android:id="@+id/tv_empty_qa"

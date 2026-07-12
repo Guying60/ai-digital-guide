@@ -5,7 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -13,7 +12,6 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 
 import com.example.digitaltourguide.model.admin.HotFaqItem;
 
@@ -21,16 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 热门问题 TOP 10 横向条形图 — 高级专业风格。
+ * 热门问题统计图 — 兴趣分布风格。
  *
  * 设计要点：
- * - 统一的翠绿色阶（排名越靠前颜色越深），和谐不刺眼
- * - 圆角条柱（5dp）+ 水平渐变
- * - 浅灰行分隔线，无厚重轴线
- * - 排名编号 + 问题文本（超长自动截断）+ 数值标签
- * - 点击任一行弹出 AlertDialog 查看完整问题，按下时有高亮反馈
- * - 底部数值刻度
- * - dp 单位自适应，避免硬编码 px
+ * - 问题文本在上方完整展示，下方为蓝色细线，长短代表问题数量
+ * - 蓝色渐变（排名越靠前颜色越深），统一品牌感
+ * - 灰色背景轨道辅助对比，数值标签在细线末端
+ * - 排名编号 + 点击弹窗查看完整问题
+ * - dp 单位自适应
  */
 public class HotFaqBarChart extends View {
 
@@ -38,31 +34,30 @@ public class HotFaqBarChart extends View {
     private float maxCount = 0f;
 
     // 画笔
-    private Paint barPaint;
-    private Paint textQuestion;
-    private Paint textValue;
-    private Paint textRank;
-    private Paint lineGrid;
-    private Paint highlightOverlay;  // 点击高亮半透明层
+    private Paint linePaint;          // 蓝色比例细线
+    private Paint bgTrackPaint;       // 灰色背景轨道
+    private Paint textQuestion;       // 问题文本
+    private Paint textValue;          // 次数数值
+    private Paint textRank;           // 排名编号
+    private Paint lineGrid;           // 行分隔线
+    private Paint highlightOverlay;   // 点击高亮蒙层
 
     // 触摸状态
-    private int highlightIndex = -1;       // 当前按下的行，-1 表示无
+    private int highlightIndex = -1;
 
-    // 缓存：根据数据动态计算的左/右边距，确保数值标签不被裁剪
+    // 缓存的布局参数
     private float dynamicLeftM, dynamicRightM;
-
-    // 缓存的布局参数（onDraw 时更新，onTouchEvent 复用以定位点击行）
-    private float cachedTopM, cachedRowH, cachedGap, cachedStartY;
+    private float cachedStartY, cachedRowH;
     private int   cachedItemCount;
 
-    // --------------- 翠绿色阶（排名 1→3 逐级变浅，其余最浅） ---------------
-    private static final int[][] RANK_GRADIENT = {
-        { 0xFF059669, 0xFF047857 },   // TOP 1  深翠绿 → 更深
-        { 0xFF10B981, 0xFF059669 },   // TOP 2  标准翠绿 → 深
-        { 0xFF34D399, 0xFF10B981 },   // TOP 3  浅翠绿 → 标准
+    // --------------- 蓝色色阶（TOP 1→3 由深到浅，其余统一浅蓝） ---------------
+    private static final int[][] RANK_BLUE = {
+        { 0xFF1E3A8A, 0xFF3B82F6 },   // TOP 1  藏蓝 → 亮蓝
+        { 0xFF1D4ED8, 0xFF60A5FA },   // TOP 2  深蓝 → 中蓝
+        { 0xFF2563EB, 0xFF93C5FD },   // TOP 3  标准蓝 → 浅蓝
     };
-    private static final int FALLBACK_START = 0xFF6EE7B7;  // 4+ 最浅翠绿
-    private static final int FALLBACK_END   = 0xFF34D399;
+    private static final int FALLBACK_START = 0xFF3B82F6;   // 4+ 统一亮蓝
+    private static final int FALLBACK_END   = 0xFF60A5FA;
 
     public HotFaqBarChart(Context context) {
         super(context);
@@ -80,23 +75,29 @@ public class HotFaqBarChart extends View {
                 getResources().getDisplayMetrics());
     }
 
-    // --------------- 初始化 ---------------
+    // --------------- 初始化画笔 ---------------
     private void init() {
-        barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        barPaint.setStyle(Paint.Style.FILL);
+        linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        linePaint.setStyle(Paint.Style.FILL);
+        linePaint.setStrokeCap(Paint.Cap.ROUND);
+
+        bgTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bgTrackPaint.setStyle(Paint.Style.FILL);
+        bgTrackPaint.setColor(Color.parseColor("#E5E7EB"));
 
         textQuestion = new Paint(Paint.ANTI_ALIAS_FLAG);
         textQuestion.setColor(Color.parseColor("#1F2937"));
         textQuestion.setTextSize(dp(13));
 
         textValue = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textValue.setColor(Color.parseColor("#374151"));
+        textValue.setColor(Color.parseColor("#2563EB"));
         textValue.setTextSize(dp(12));
         textValue.setFakeBoldText(true);
 
         textRank = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textRank.setColor(Color.parseColor("#9CA3AF"));
-        textRank.setTextSize(dp(11));
+        textRank.setColor(Color.parseColor("#6B7280"));
+        textRank.setTextSize(dp(12));
+        textRank.setFakeBoldText(true);
 
         lineGrid = new Paint(Paint.ANTI_ALIAS_FLAG);
         lineGrid.setColor(Color.parseColor("#F3F4F6"));
@@ -104,7 +105,6 @@ public class HotFaqBarChart extends View {
 
         highlightOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);
         highlightOverlay.setStyle(Paint.Style.FILL);
-        highlightOverlay.setColor(0x33FFFFFF);   // 20% 白色蒙层
 
         setClickable(true);
     }
@@ -129,28 +129,35 @@ public class HotFaqBarChart extends View {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
-        // 根据数据计算动态边距
-        computeDynamicMargins();
-        int contentW = (int) (dynamicLeftM + dp(80) + dynamicRightM);
-        int minW = MeasureSpec.getSize(widthMeasureSpec);
-        // HorizontalScrollView 传入 UNSPECIFIED，此时用 contentW；否则取较大值
-        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) {
-            setMeasuredDimension(contentW, getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+
+        int contentH = (int) (dp(14) + dp(48) * dataList.size() + dp(14));
+
+        int w = MeasureSpec.getSize(widthMeasureSpec);
+        int h;
+        if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+            h = contentH;
         } else {
-            setMeasuredDimension(Math.max(minW, contentW), getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+            h = Math.max(MeasureSpec.getSize(heightMeasureSpec), contentH);
         }
+
+        setMeasuredDimension(w, h);
     }
 
-    /** 根据数据动态计算左/右边距，确保问题文本和数值均不被裁剪 */
+    /** 根据数据动态计算左/右边距 */
     private void computeDynamicMargins() {
         float maxTextW = 0;
-        for (HotFaqItem item : dataList) {
-            float tw = textQuestion.measureText(item.getQuestion());
+        float maxRankW = 0;
+        for (int i = 0; i < dataList.size(); i++) {
+            float tw = textQuestion.measureText(dataList.get(i).getQuestion());
             if (tw > maxTextW) maxTextW = tw;
+            float rw = textRank.measureText(String.valueOf(i + 1));
+            if (rw > maxRankW) maxRankW = rw;
         }
-        float maxValW = textValue.measureText(String.valueOf((int) maxCount));
-        dynamicLeftM  = dp(20) + dp(6) + maxTextW + dp(6);   // 排名 + 问题文本
-        dynamicRightM = dp(16) + maxValW + dp(16);            // 条柱后数值 + 缓冲
+        float maxValW = textValue.measureText(String.valueOf((int) maxCount) + "次");
+        // 左边距 = leftPad + rank + gap + questionText
+        dynamicLeftM  = dp(16) + maxRankW + dp(8) + maxTextW;
+        // 右边距 = 数值文本 + 缓冲
+        dynamicRightM = dp(8) + maxValW + dp(16);
     }
 
     // --------------- 绘制 ---------------
@@ -164,88 +171,112 @@ public class HotFaqBarChart extends View {
         if (w <= 0 || h <= 0) return;
 
         computeDynamicMargins();
-        float leftM  = dynamicLeftM;
-        float rightM = dynamicRightM;
-        float topM   = dp(12);
-        float botM   = dp(12);
 
-        float chartW = w - leftM - rightM;
-        float chartH = h - topM - botM;
+        float leftPad  = dp(16);
+        float rightPad = dp(16);
+        float topM     = dp(14);
+        float botM     = dp(14);
 
         int n = dataList.size();
-        // 每行最大高度不超过 44dp，防止只有一条数据时条柱过高占满整个卡片
-        float maxRowH = dp(44);
-        float rawRowH = chartH / n;
-        float rowH   = Math.min(rawRowH, maxRowH);
-        float gap    = rowH * 0.26f;
-        float barH   = rowH - gap;
-        float cornerR = dp(5);
-        // 垂直居中：总内容高度 < chartH 时顶部留空
-        float totalContentH = rowH * n;
-        float y = topM + gap / 2f + (chartH - totalContentH) / 2f;
 
-        // 缓存布局参数供 onTouchEvent 定位点击行
-        cachedTopM      = topM;
+        // ---- 行布局参数 ----
+        float rowH         = dp(48);            // 每行总高度
+        float textTopOff   = dp(4);             // 文字顶部偏移
+        float gapTextLine  = dp(6);             // 文字与细线间距
+        float lineH        = dp(3);             // 细线高度
+        float lineRadius   = dp(1.5f);          // 细线圆角
+
+        // 排名宽度（取最大）
+        float rankW = 0;
+        for (int i = 0; i < n; i++) {
+            float rw = textRank.measureText(String.valueOf(i + 1));
+            if (rw > rankW) rankW = rw;
+        }
+
+        // 水平布局关键坐标
+        float rankX       = leftPad;
+        float questionX   = rankX + rankW + dp(8);        // 问题起始 X
+        // 问题文本区域受限视图宽度，右侧预留数字空间
+        float maxValW     = textValue.measureText(String.valueOf((int) maxCount) + "次");
+        float valEndX     = w - rightPad;                  // 数字右对齐基线
+        float lineEndX    = valEndX - maxValW - dp(12);    // 细线结束 X（数字左侧）
+        float textEndX    = Math.min(dynamicLeftM, lineEndX - dp(60));
+        float lineStartX  = questionX;                     // 细线起始 X（问题文本正下方）
+        float maxLineW    = Math.max(dp(40), lineEndX - lineStartX); // 细线可用最大宽度
+
+        // 垂直居中
+        float totalH = rowH * n;
+        float startY = topM + Math.max(0, (h - topM - botM - totalH) / 2f);
+
+        // 缓存供触摸事件使用
+        cachedStartY    = startY;
         cachedRowH      = rowH;
-        cachedGap       = gap;
-        cachedStartY    = y;  // 垂直居中后的实际起始 Y
         cachedItemCount = n;
 
         for (int i = 0; i < n; i++) {
             HotFaqItem item = dataList.get(i);
-            float barW = (item.getCount() / maxCount) * chartW;
-            if (barW < dp(4)) barW = dp(4);
+            float rowTop = startY + i * rowH;
 
-            float barT = y;
-            float barR = leftM + barW;
-            float barB = y + barH;
+            // ========== 上半部分：排名 + 问题文本 ==========
+            float textBaseY = rowTop + textTopOff + textQuestion.getTextSize();
+            float rankBaseY = rowTop + textTopOff + textRank.getTextSize();
 
-            // ---- 颜色：翠绿色阶，越靠前越深 ----
+            // 排名
+            String rank = String.valueOf(i + 1);
+            canvas.drawText(rank, rankX, rankBaseY, textRank);
+
+            // 问题文本（可能截断，点击弹窗看完整）
+            float qMaxW = textEndX - questionX;
+            String displayQ = clipText(item.getQuestion(), textQuestion, qMaxW);
+            canvas.drawText(displayQ, questionX, textBaseY, textQuestion);
+
+            // ========== 下半部分：细线 + 数值 ==========
+            float lineTop = rowTop + textTopOff + textQuestion.getTextSize() + gapTextLine;
+
+            // 背景轨道（浅灰，占满可用宽度）
+            canvas.drawRoundRect(lineStartX, lineTop, lineEndX, lineTop + lineH,
+                    lineRadius, lineRadius, bgTrackPaint);
+
+            // 蓝色比例细线
+            float lineW = (item.getCount() / maxCount) * maxLineW;
+            if (lineW < dp(24)) lineW = dp(24);   // 最小值保证可见 + 能放下数字
+
             int startColor, endColor;
-            if (i < RANK_GRADIENT.length) {
-                startColor = RANK_GRADIENT[i][0];
-                endColor   = RANK_GRADIENT[i][1];
+            if (i < RANK_BLUE.length) {
+                startColor = RANK_BLUE[i][0];
+                endColor   = RANK_BLUE[i][1];
             } else {
                 startColor = FALLBACK_START;
                 endColor   = FALLBACK_END;
             }
 
-            barPaint.setShader(new LinearGradient(leftM, 0, barR, 0,
+            linePaint.setShader(new LinearGradient(lineStartX, 0, lineStartX + lineW, 0,
                     startColor, endColor, Shader.TileMode.CLAMP));
+            canvas.drawRoundRect(lineStartX, lineTop, lineStartX + lineW, lineTop + lineH,
+                    lineRadius, lineRadius, linePaint);
 
-            // 圆角条柱
-            canvas.drawRoundRect(new RectF(leftM, barT, barR, barB), cornerR, cornerR, barPaint);
+            // 数值标签（蓝色粗体，右侧固定竖线对齐）
+            String valStr = item.getCount() + "次";
+            float valW = textValue.measureText(valStr);
+            float valX = valEndX - valW;
+            float valY = lineTop + lineH / 2f + textValue.getTextSize() / 3f;
+            canvas.drawText(valStr, valX, valY, textValue);
 
-            // 点击高亮：白色半透明蒙层
+            // 点击高亮
             if (i == highlightIndex) {
-                canvas.drawRoundRect(new RectF(leftM, barT, barR, barB), cornerR, cornerR, highlightOverlay);
+                highlightOverlay.setColor(0x0D2563EB);   // 5% 蓝色蒙层
+                canvas.drawRect(leftPad, rowTop, w - rightPad, rowTop + rowH, highlightOverlay);
             }
 
-            // ---- 行分隔线 ----
-            float sepY = y + rowH;
+            // 行分隔线
             if (i < n - 1) {
-                canvas.drawLine(dp(12), sepY, w - rightM, sepY, lineGrid);
+                float sepY = rowTop + rowH;
+                canvas.drawLine(leftPad, sepY, w - rightPad, sepY, lineGrid);
             }
-
-            float textBaseY = barT + barH / 2f + textQuestion.getTextSize() / 3f;
-
-            // ---- 排名（左对齐）----
-            String rank = String.valueOf(i + 1);
-            float rankX = dp(20);
-            canvas.drawText(rank, rankX, textBaseY, textRank);
-
-            // ---- 问题文本（完整显示，不截断）----
-            String q = item.getQuestion();
-            float qx = rankX + textRank.measureText(rank) + dp(6);
-            canvas.drawText(q, qx, textBaseY, textQuestion);
-
-            // ---- 数值（条柱右侧）----
-            String valStr = String.valueOf(item.getCount());
-            canvas.drawText(valStr, barR + dp(8), textBaseY, textValue);
-
-            y += rowH;
         }
 
+        // 清除 shader 避免后续绘制异常
+        linePaint.setShader(null);
     }
 
     // --------------- 触摸：点击弹窗看完整问题 ---------------
@@ -287,11 +318,9 @@ public class HotFaqBarChart extends View {
         return super.performClick();
     }
 
-    /**
-     * 根据触摸 Y 坐标定位行索引，-1 表示未命中。
-     */
+    /** 根据触摸 Y 坐标定位行索引 */
     private int hitTest(float touchY) {
-        float y = cachedStartY - cachedGap / 2f;
+        float y = cachedStartY;
         for (int i = 0; i < cachedItemCount; i++) {
             if (touchY >= y && touchY < y + cachedRowH) {
                 return i;
@@ -301,20 +330,35 @@ public class HotFaqBarChart extends View {
         return -1;
     }
 
-    /**
-     * 弹出 AlertDialog 显示完整问题内容。
-     */
+    /** 弹出美化弹窗显示完整问题内容 */
     private void showQuestionDialog(int index) {
         String question = dataList.get(index).getQuestion();
         int rank = index + 1;
         int countVal = dataList.get(index).getCount();
-        String title = "TOP " + rank + " · " + countVal + " 次";
 
-        new AlertDialog.Builder(getContext())
-                .setTitle(title)
-                .setMessage(question)
-                .setPositiveButton("关闭", null)
-                .show();
+        android.app.Dialog dialog = new android.app.Dialog(getContext());
+        android.view.View view = android.view.LayoutInflater.from(getContext())
+                .inflate(com.example.digitaltourguide.R.layout.dialog_faq_detail, null);
+
+        android.widget.TextView tvRank = view.findViewById(com.example.digitaltourguide.R.id.tv_dialog_rank);
+        android.widget.TextView tvCount = view.findViewById(com.example.digitaltourguide.R.id.tv_dialog_count);
+        android.widget.TextView tvQuestion = view.findViewById(com.example.digitaltourguide.R.id.tv_dialog_question);
+        android.widget.Button btnClose = view.findViewById(com.example.digitaltourguide.R.id.btn_dialog_close);
+
+        tvRank.setText("TOP " + rank);
+        tvCount.setText("被提问 " + countVal + " 次");
+        tvQuestion.setText(question);
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.setContentView(view);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            // 固定弹窗宽度，保持统一
+            int screenW = getResources().getDisplayMetrics().widthPixels;
+            dialog.getWindow().setLayout((int) (screenW * 0.8f), android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        dialog.show();
     }
 
     // --------------- 文本截断 ---------------
@@ -322,7 +366,7 @@ public class HotFaqBarChart extends View {
         if (text == null || text.isEmpty()) return "";
         if (paint.measureText(text) <= maxWidth) return text;
         for (int i = text.length() - 1; i > 0; i--) {
-            String c = text.substring(0, i) + "…";   // …（省略号）
+            String c = text.substring(0, i) + "…";
             if (paint.measureText(c) <= maxWidth) return c;
         }
         return "…";
