@@ -58,7 +58,7 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- ======================== 视频封面区域 ======================== -->
+            <!-- ======================== 视频封面区域（9:16 竖屏） ======================== -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -70,40 +70,56 @@
                 app:cardUseCompatPadding="true"
                 app:contentPadding="0dp">
 
-                <FrameLayout
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:foreground="?attr/selectableItemBackground">
+                    android:layout_height="wrap_content"
+                    android:background="#E8F1FB"
+                    android:paddingTop="20dp"
+                    android:paddingBottom="20dp">
 
-                    <ImageView
-                        android:id="@+id/iv_cover"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerInside"
-                        android:contentDescription="数字人形象"
-                        android:background="#F3F4F6"
-                        android:src="@drawable/ic_aihuman_video" />
+                    <FrameLayout
+                        android:id="@+id/cover_frame"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:elevation="4dp"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintDimensionRatio="9:16"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintWidth_percent="0.48">
 
-                    <!-- 更换数字人形象按钮 -->
-                    <TextView
-                        android:id="@+id/tv_upsert"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|end"
-                        android:layout_marginEnd="12dp"
-                        android:layout_marginBottom="12dp"
-                        android:background="@drawable/bg_search"
-                        android:elevation="2dp"
-                        android:paddingHorizontal="14dp"
-                        android:paddingVertical="8dp"
-                        android:text="更换数字人形象"
-                        android:textColor="#333333"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true" />
+                        <ImageView
+                            android:id="@+id/iv_cover"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="#F3F4F6"
+                            android:contentDescription="数字人形象"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_aihuman_video" />
 
-                </FrameLayout>
+                        <!-- 更换数字人形象按钮 -->
+                        <TextView
+                            android:id="@+id/tv_upsert"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|center_horizontal"
+                            android:layout_marginBottom="12dp"
+                            android:background="@drawable/bg_search"
+                            android:clickable="true"
+                            android:elevation="2dp"
+                            android:focusable="true"
+                            android:paddingHorizontal="14dp"
+                            android:paddingVertical="8dp"
+                            android:text="更换数字人形象"
+                            android:textColor="#333333"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                    </FrameLayout>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
 
             </androidx.cardview.widget.CardView>
 
@@ -128,11 +144,11 @@
                     android:textSize="13sp"
                     android:textColor="#999999" />
 
-                <!-- ===== 朗读文本要求 Section ===== -->
+                <!-- ===== 视频录制要求 Section ===== -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="朗读文本要求"
+                    android:text="视频录制要求"
                     android:textColor="#666666"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -144,13 +160,13 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="(朗读以下文本进行录制)"
+                    android:text="无需说话，录制一段静态画面即可"
                     android:textSize="14sp"
                     android:textColor="#999999"
                     android:layout_marginBottom="12dp"
                     android:layout_marginStart="4dp" />
 
-                <!-- 朗读文本卡片 -->
+                <!-- 录制要求卡片 -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -166,70 +182,28 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <!-- 引号图标 -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="#8B5CF6"
-                            android:textSize="28sp"
-                            android:textStyle="bold"
-                            android:alpha="0.6"
-                            android:layout_marginBottom="4dp"
-                            android:text="“" />
-
-                        <TextView
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="欢迎来到本景区，我是您的专属导游。\n这里山水秀丽，历史底蕴深厚，\n每一处风景都值得细细品味。\n希望今天的游览能给您留下美好的记忆。"
-                            android:textSize="14sp"
-                            android:textColor="#444444"
-                            android:lineSpacingExtra="4dp"
-                            android:paddingStart="4dp" />
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="12dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="#8B5CF6"
-                            android:textSize="28sp"
-                            android:textStyle="bold"
-                            android:alpha="0.6"
-                            android:layout_marginTop="4dp"
-                            android:layout_gravity="end"
-                            android:text="&#8221;" />
-                    </LinearLayout>
+                            <View
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/bg_chip_selected"
+                                android:alpha="0.7" />
 
-                </androidx.cardview.widget.CardView>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:text="竖屏录制，画幅 9:16"
+                                android:textSize="14sp"
+                                android:textColor="#444444" />
+                        </LinearLayout>
 
-                <!-- ===== 视频录制要求 Section ===== -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="视频录制要求"
-                    android:textColor="#666666"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.05"
-                    android:layout_marginBottom="12dp"
-                    android:layout_marginStart="4dp" />
-
-                <!-- 录制要求卡片 -->
-                <androidx.cardview.widget.CardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#FFFFFF"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="2dp"
-                    app:cardUseCompatPadding="true">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <!-- 要求项 -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -291,7 +265,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="10dp"
-                                android:text="自然语速朗读，不要刻意放慢"
+                                android:text="保持静止姿态，不必开口讲话"
                                 android:textSize="14sp"
                                 android:textColor="#444444" />
                         </LinearLayout>
@@ -312,11 +286,82 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="10dp"
-                                android:text="录制时长建议 15 ~ 30 秒"
+                                android:text="录制时长建议 5 ~ 8 秒"
                                 android:textSize="14sp"
                                 android:textColor="#444444" />
                         </LinearLayout>
 
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- ===== 音频文案要求 Section ===== -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="音频文案要求"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="4dp"
+                    android:layout_marginStart="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="请录制或上传与以下文案一致的音频"
+                    android:textSize="14sp"
+                    android:textColor="#999999"
+                    android:layout_marginBottom="12dp"
+                    android:layout_marginStart="4dp" />
+
+                <!-- 音频文案卡片 -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="#3B82F6"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:alpha="0.6"
+                            android:layout_marginBottom="4dp"
+                            android:text="“" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="你好，我是数字人导游，欢迎来到灵山胜境景区"
+                            android:textSize="14sp"
+                            android:textColor="#444444"
+                            android:lineSpacingExtra="4dp"
+                            android:paddingStart="4dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="#3B82F6"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:alpha="0.6"
+                            android:layout_marginTop="4dp"
+                            android:layout_gravity="end"
+                            android:text="&#8221;" />
                     </LinearLayout>
 
                 </androidx.cardview.widget.CardView>

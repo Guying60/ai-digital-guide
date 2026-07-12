@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Tour Guide · 用户端预览 v0.2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* Sky Travel v0.3 — 浅蓝主色，轻旅行 */
+      --primary: #3B82F6;
+      --on-primary: #FFFFFF;
+      --primary-container: #DBEAFE;
+      --on-primary-container: #1E40AF;
+      --secondary: #38BDF8;
+      --on-secondary: #0C4A6E;
+      --secondary-container: #E0F2FE;
+      --on-secondary-container: #0369A1;
+      --accent: #F59E0B;
+      --bg: #F5F9FE;
+      --surface: #FFFFFF;
+      --surface-variant: #E8F1FB;
+      --outline: #94A3B8;
+      --outline-variant: #D7E3F2;
+      --on-surface: #1E293B;
+      --on-surface-variant: #64748B;
+      --muted: #94A3B8;
+      --success: #22C55E;
+      --error: #EF4444;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 999px;
+      --shadow-card: 0 1px 3px rgba(59, 130, 246, 0.06), 0 4px 14px rgba(30, 41, 59, 0.05);
+      --shadow-nav: 0 8px 28px rgba(59, 130, 246, 0.12);
+      --font: "Noto Sans SC", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background:
+        radial-gradient(ellipse 70% 40% at 10% 0%, #dbeafe 0%, transparent 55%),
+        radial-gradient(ellipse 50% 35% at 100% 5%, #e0f2fe 0%, transparent 50%),
+        #eef3f9;
+      color: var(--on-surface);
+      min-height: 100vh;
+      padding: 28px 20px 48px;
+    }
+
+    .page-head {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .page-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .page-head p { margin-top: 6px; font-size: 13px; color: var(--on-surface-variant); max-width: 520px; }
+    .swatches { display: flex; gap: 8px; }
+    .swatch {
+      width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid rgba(21,32,51,.08);
+    }
+
+    .tabs {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      appearance: none;
+      border: 1px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface-variant);
+      font: 500 13px/1 var(--font);
+      padding: 10px 16px;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: .2s;
+    }
+    .tab:hover { border-color: var(--primary); color: var(--primary); }
+    .tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .stage { display: flex; justify-content: center; }
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: #1a1f28;
+      border-radius: 40px;
+      padding: 12px;
+      box-shadow: 0 24px 64px rgba(21, 32, 51, 0.28);
+      position: relative;
+    }
+    .phone-notch {
+      position: absolute;
+      top: 18px; left: 50%;
+      transform: translateX(-50%);
+      width: 120px; height: 28px;
+      background: #1a1f28;
+      border-radius: 0 0 16px 16px;
+      z-index: 20;
+    }
+    .screen {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      border-radius: 30px;
+      overflow: hidden;
+      position: relative;
+    }
+    .screen-page {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+      position: absolute;
+      inset: 0;
+      animation: fadeIn .22s ease;
+    }
+    .screen-page.active { display: flex; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .status-bar {
+      height: 44px;
+      padding: 14px 22px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--on-surface);
+      flex-shrink: 0;
+    }
+    .status-bar.light { color: #fff; }
+
+    .icon {
+      width: 22px; height: 22px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .icon-sm { width: 16px; height: 16px; }
+
+    .bottom-nav {
+      position: absolute;
+      left: 16px; right: 16px; bottom: 16px;
+      background: var(--surface);
+      border-radius: 24px;
+      box-shadow: var(--shadow-nav);
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      z-index: 10;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 4px;
+      border-radius: 16px;
+      color: var(--outline);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: var(--font);
+      transition: .2s;
+    }
+    .nav-item.active {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .nav-add {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--on-primary);
+      display: grid;
+      place-items: center;
+      margin: 0 8px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
+    }
+
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 96px;
+      scrollbar-width: none;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* —— Home —— */
+    .home-top { padding: 8px 16px 10px; background: var(--bg); }
+    .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .search {
+      flex: 1; height: 46px;
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .btn-search {
+      height: 46px; padding: 0 16px;
+      border: none; border-radius: var(--radius-md);
+      background: var(--primary); color: var(--on-primary);
+      font: 500 14px var(--font); cursor: pointer;
+    }
+    .chips-sort-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chips {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0; height: 30px; padding: 0 14px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface-variant);
+      font-size: 12px;
+      display: grid; place-items: center;
+      cursor: pointer;
+    }
+    .chip.on {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--on-primary);
+    }
+    .sort-btn {
+      flex-shrink: 0;
+      height: 30px;
+      padding: 0 10px;
+      border: none;
+      background: transparent;
+      color: var(--outline);
+      font: 500 12px var(--font);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    /* 卡片结构对齐 Android：上半导航区点进记录，下半操作区 */
+    .spot-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .spot-nav {
+      display: flex;
+      gap: 12px;
+      padding: 12px 12px 10px;
+      cursor: pointer;
+      transition: background .15s;
+      border: none;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      font-family: var(--font);
+      color: inherit;
+    }
+    .spot-nav:active { background: var(--bg); }
+    .spot-cover {
+      width: 64px; height: 64px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background: var(--surface-variant);
+      flex-shrink: 0;
+    }
+    .spot-cover.ph {
+      display: grid; place-items: center;
+      font-size: 9px; color: var(--muted);
+      text-align: center; padding: 4px;
+      line-height: 1.3;
+    }
+    .spot-body { flex: 1; min-width: 0; }
+    .spot-title-row { display: flex; align-items: center; gap: 8px; }
+    .spot-title {
+      font-size: 16px; font-weight: 700; flex: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--on-surface);
+    }
+    .pill {
+      font-size: 11px; font-weight: 600;
+      padding: 3px 10px; border-radius: var(--radius-full);
+      background: var(--secondary-container);
+      color: var(--on-secondary-container);
+    }
+    .pill.done {
+      background: var(--surface-variant);
+      color: var(--outline);
+    }
+    .spot-meta {
+      margin-top: 8px;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+    }
+    .spot-view-link {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .spot-actions {
+      padding: 0 12px 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-end {
+      flex: 1; height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(239, 68, 68, 0.28);
+      background: #FEE2E2;
+      color: var(--error);
+      font: 500 13px var(--font);
+      cursor: pointer;
+    }
+    .btn-continue, .btn-rate {
+      flex: 1.2; height: 36px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--primary);
+      color: var(--on-primary);
+      font: 500 14px var(--font);
+      cursor: pointer;
+    }
+    .btn-rate { flex: 1; }
+
+    /* —— Profile —— */
+    .profile-header {
+      position: relative;
+      padding: 8px 20px 36px;
+      color: #fff;
+      min-height: 220px;
+      background: linear-gradient(160deg, #60A5FA 0%, #3B82F6 45%, #38BDF8 100%);
+      overflow: hidden;
+    }
+    .profile-header-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0;
+    }
+    .profile-header-img[src]:not([src=""]) { opacity: 1; }
+    .profile-header::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(59,130,246,.25) 0%, rgba(30,64,175,.45) 100%);
+      pointer-events: none;
+    }
+    .profile-header > * { position: relative; z-index: 1; }
+    .profile-ph-hint {
+      position: absolute;
+      right: 12px; bottom: 12px;
+      z-index: 2;
+      font-size: 9px;
+      color: rgba(255,255,255,.55);
+      background: rgba(0,0,0,.25);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .gear {
+      position: absolute;
+      top: 48px; right: 12px;
+      width: 40px; height: 40px;
+      border: none; background: transparent;
+      color: #fff; cursor: pointer;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      z-index: 2;
+    }
+    .avatar {
+      width: 86px; height: 86px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.9);
+      object-fit: cover;
+      background: var(--primary-container);
+      margin-top: 12px;
+    }
+    .avatar.ph {
+      display: grid; place-items: center;
+      font-size: 10px; color: var(--on-primary-container);
+      text-align: center; padding: 8px;
+    }
+    .profile-name { margin-top: 14px; font-size: 22px; font-weight: 700; }
+    .profile-id { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.78); }
+
+    .service-card, .list-card {
+      margin: 12px 16px 0;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+    .service-card {
+      display: flex;
+      margin-top: -16px;
+      position: relative;
+      z-index: 2;
+    }
+    .service-item {
+      flex: 1; padding: 18px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; border: none; background: transparent;
+      font-family: var(--font);
+    }
+    .service-item + .service-item { border-left: 1px solid var(--outline-variant); }
+    .service-icon {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      background: var(--primary-container);
+      color: var(--primary);
+      display: grid; place-items: center;
+    }
+    .service-item strong { font-size: 14px; color: var(--on-surface); }
+    .service-item span { font-size: 11px; color: var(--outline); }
+    .list-row {
+      display: flex; align-items: center; gap: 14px;
+      height: 56px; padding: 0 16px;
+      cursor: pointer; font-size: 15px; color: var(--on-surface);
+    }
+    .list-row + .list-row { border-top: 1px solid var(--outline-variant); }
+    .list-row .grow { flex: 1; }
+    .list-row .meta { color: var(--outline); font-size: 13px; }
+    .list-row svg { color: var(--outline); }
+    .logout-card {
+      margin: 12px 16px 24px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+    .logout-btn {
+      width: 100%; height: 56px; border: none; background: transparent;
+      color: var(--error); font: 500 15px var(--font);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      cursor: pointer;
+    }
+
+    /* —— Prefs —— */
+    .toolbar {
+      height: 56px; padding: 0 8px 0 4px;
+      display: flex; align-items: center;
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline-variant);
+      flex-shrink: 0;
+    }
+    .toolbar button {
+      width: 44px; height: 44px; border: none; background: transparent;
+      color: var(--on-surface); display: grid; place-items: center;
+      cursor: pointer; border-radius: 50%;
+    }
+    .toolbar h2 { flex: 1; font-size: 18px; font-weight: 700; padding-left: 4px; }
+    .toolbar .link {
+      border: none; background: transparent; color: var(--primary);
+      font: 500 14px var(--font); padding: 8px 12px; cursor: pointer;
+    }
+    .prefs-intro {
+      text-align: center; font-size: 14px;
+      color: var(--on-surface-variant);
+      padding: 16px 20px 8px;
+    }
+    .section { padding: 16px 20px 0; }
+    .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .section-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: var(--primary-container); color: var(--primary);
+      display: grid; place-items: center;
+    }
+    .section-head h3 { font-size: 17px; font-weight: 700; }
+    .section-head p { font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .opt {
+      position: relative;
+      background: var(--surface);
+      border: 1.5px solid var(--outline-variant);
+      border-radius: var(--radius-md);
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: .2s;
+    }
+    .opt.on {
+      border-color: var(--primary);
+      background: var(--primary-container);
+    }
+    .opt .check {
+      position: absolute; top: 6px; right: 6px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: none; place-items: center;
+    }
+    .opt.on .check { display: grid; }
+    .opt strong {
+      display: block; margin-top: 6px;
+      font-size: 12px; font-weight: 500; color: var(--on-surface);
+    }
+    .opt-icon {
+      width: 36px; height: 36px; margin: 0 auto;
+      color: var(--primary); display: grid; place-items: center;
+    }
+    .tag-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+    .tag {
+      padding: 8px 16px; border-radius: var(--radius-full);
+      border: 1px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface-variant);
+      font-size: 12px; cursor: pointer;
+      font-family: var(--font);
+    }
+    .tag.on {
+      background: var(--secondary-container);
+      border-color: var(--secondary);
+      color: var(--on-secondary-container);
+    }
+    .req-box {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-md);
+      padding: 14px; min-height: 88px;
+      color: var(--muted); font-size: 14px; margin-top: 8px;
+    }
+    .suggest {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 8px; align-items: center;
+    }
+    .suggest span { font-size: 12px; color: var(--on-surface-variant); }
+    .suggest button {
+      border: none; background: var(--primary); color: var(--on-primary);
+      font: 500 12px var(--font); padding: 6px 12px;
+      border-radius: var(--radius-full); cursor: pointer;
+    }
+    .save-bar {
+      flex-shrink: 0; background: var(--surface);
+      border-top: 1px solid var(--outline-variant);
+      padding: 12px 20px 20px;
+    }
+    .save-bar p {
+      text-align: center; font-size: 12px;
+      color: var(--outline); margin-bottom: 12px;
+    }
+    .btn-primary {
+      width: 100%; height: 52px; border: none;
+      border-radius: var(--radius-md);
+      background: var(--primary); color: var(--on-primary);
+      font: 700 16px var(--font); cursor: pointer;
+    }
+
+    /* —— Chat: light chrome —— */
+    .chat-page { background: var(--bg); }
+    .chat-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 12px 8px; color: var(--on-surface); z-index: 5;
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .chat-top .side {
+      width: 44px; height: 44px; border: none;
+      background: var(--primary-container); color: var(--primary);
+      border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+    }
+    .chat-end {
+      height: 36px; padding: 0 16px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(239,68,68,.35);
+      background: #FEE2E2;
+      color: #B91C1C;
+      font: 500 13px var(--font); cursor: pointer;
+    }
+    .chat-stage {
+      flex: 1; position: relative; min-height: 0;
+      background: linear-gradient(180deg, #BFDBFE 0%, #93C5FD 40%, #60A5FA 100%);
+      overflow: hidden;
+    }
+    .dh-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0;
+    }
+    .dh-bg[src]:not([src=""]) { opacity: 1; }
+    .dh-fallback {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      color: rgba(30,64,175,.55);
+      font-size: 12px;
+      text-align: center;
+      padding: 24px;
+      pointer-events: none;
+    }
+    .dh-fallback-box {
+      width: 140px; height: 200px;
+      border-radius: 70px 70px 20px 20px;
+      background: linear-gradient(180deg, #DBEAFE, #3B82F6);
+      opacity: .85;
+      box-shadow: 0 12px 32px rgba(59,130,246,.3);
+    }
+
+    /* —— 路线灵动岛（顶部中央，前置摄像头/刘海位） —— */
+    .route-island {
+      position: absolute;
+      left: 50%;
+      top: 12px;
+      transform: translateX(-50%);
+      z-index: 6;
+      max-width: calc(100% - 28px);
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      font-family: var(--font);
+      background: rgba(15, 40, 80, 0.82);
+      backdrop-filter: blur(18px) saturate(1.4);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      box-shadow:
+        0 8px 28px rgba(15, 40, 80, 0.28),
+        inset 0 0 0 1px rgba(255,255,255,.12);
+      overflow: hidden;
+      transition:
+        width .42s cubic-bezier(.32,.72,0,1),
+        height .42s cubic-bezier(.32,.72,0,1),
+        border-radius .42s cubic-bezier(.32,.72,0,1),
+        padding .35s cubic-bezier(.32,.72,0,1);
+      width: 168px;
+      height: 36px;
+      border-radius: 20px;
+      padding: 0 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+    }
+    .route-island:not(.expanded):active { transform: translateX(-50%) scale(0.98); }
+    .route-island.expanded {
+      width: 320px;
+      max-width: calc(100% - 28px);
+      height: 112px;
+      border-radius: 28px;
+      padding: 12px 14px 14px;
+      cursor: default;
+    }
+    .route-island-compact {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      height: 36px;
+      opacity: 1;
+      transition: opacity .2s;
+    }
+    .route-island.expanded .route-island-compact {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      overflow: hidden;
+    }
+    .route-island-pulse {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #60A5FA;
+      box-shadow: 0 0 0 0 rgba(96,165,250,.55);
+      animation: island-pulse 1.8s ease-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes island-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(96,165,250,.5); }
+      70% { box-shadow: 0 0 0 8px rgba(96,165,250,0); }
+      100% { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+    }
+    .route-island-compact .progress {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,.65);
+    }
+    .route-island-compact .now {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .route-island-compact .chev {
+      margin-left: auto;
+      width: 14px; height: 14px;
+      opacity: .7;
+      flex-shrink: 0;
+    }
+
+    .route-island-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    .route-island.expanded .route-island-panel {
+      display: flex;
+      animation: island-in .35s cubic-bezier(.32,.72,0,1) .05s both;
+    }
+    @keyframes island-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    .route-island-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .route-island-head strong {
+      font-size: 13px;
+      font-weight: 700;
+      flex: 1;
+      text-align: left;
+    }
+    .route-island-head .meta {
+      font-size: 11px;
+      color: rgba(255,255,255,.6);
+    }
+    .route-island-close {
+      width: 28px; height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .route-island-close:active { transform: scale(0.94); }
+    .route-island-track {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0;
+      padding: 0 2px;
+    }
+    .route-island-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,.45);
+      font-family: var(--font);
+      cursor: pointer;
+      padding: 0;
+      min-width: 0;
+    }
+    .route-island-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: calc(50% + 8px);
+      right: calc(-50% + 8px);
+      height: 2px;
+      background: rgba(255,255,255,.18);
+      border-radius: 1px;
+    }
+    .route-island-step.done { color: #86EFAC; }
+    .route-island-step.done:not(:last-child)::after { background: #4ADE80; }
+    .route-island-step.on { color: #fff; }
+    .route-island-step.on:not(:last-child)::after {
+      background: linear-gradient(90deg, #60A5FA, rgba(255,255,255,.18));
+    }
+    .route-island-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      border: 2px solid rgba(255,255,255,.35);
+      position: relative;
+      z-index: 1;
+      transition: transform .2s, background .2s, box-shadow .2s;
+    }
+    .route-island-step.done .route-island-dot {
+      background: #22C55E;
+      border-color: #86EFAC;
+    }
+    .route-island-step.on .route-island-dot {
+      background: #3B82F6;
+      border-color: #BFDBFE;
+      box-shadow: 0 0 0 4px rgba(59,130,246,.35);
+      transform: scale(1.15);
+    }
+    .route-island-step span {
+      font-size: 11px;
+      font-weight: 500;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .route-island-step.on span { font-weight: 700; }
+    .route-island-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .route-island-actions button {
+      flex: 1;
+      height: 30px;
+      border: none;
+      border-radius: 999px;
+      font: 600 12px var(--font);
+      cursor: pointer;
+      transition: transform .15s, opacity .15s;
+      background: #3B82F6;
+      color: #fff;
+    }
+    .route-island-actions button:active { transform: scale(0.97); }
+
+    .subtitle {
+      background: var(--surface);
+      color: var(--on-surface);
+      font-size: 15px; line-height: 1.55; text-align: center;
+      padding: 12px 20px 16px; min-height: 88px; flex-shrink: 0;
+      border-top: 1px solid var(--outline-variant);
+    }
+    .subtitle em { font-style: normal; color: var(--primary); }
+    .chat-input-row {
+      display: flex; gap: 8px; padding: 8px 12px;
+      background: var(--surface); flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1; height: 44px; border-radius: var(--radius-md);
+      border: 1px solid var(--outline-variant); background: var(--surface-variant);
+      color: var(--on-surface); padding: 0 14px;
+      font: 400 14px var(--font);
+      display: flex; align-items: center;
+    }
+    .chat-input span { color: var(--muted); }
+    .btn-send {
+      height: 44px; padding: 0 18px; border: none;
+      border-radius: var(--radius-md);
+      background: var(--primary); color: var(--on-primary);
+      font: 600 14px var(--font); cursor: pointer;
+    }
+    .chat-tools {
+      display: flex; align-items: center; justify-content: center;
+      gap: 48px; padding: 14px 12px 24px;
+      background: var(--surface); flex-shrink: 0;
+      border-top: 1px solid var(--outline-variant);
+    }
+    .tool-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .tool-btn {
+      width: 64px; height: 64px; border-radius: 50%; border: none;
+      background: var(--primary-container); color: var(--primary);
+      display: grid; place-items: center; cursor: pointer;
+      position: relative;
+      transition: transform .15s, background .2s, color .2s, box-shadow .2s;
+    }
+    .tool-btn:active { transform: scale(0.94); }
+    .tool-btn .icon {
+      width: 26px; height: 26px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .tool-btn .icon-off { display: none; }
+    .tool-btn.is-off .icon-on { display: none; }
+    .tool-btn.is-off .icon-off { display: block; }
+    .tool-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--on-surface-variant);
+    }
+    /* 麦克风开：高亮 + 声纹；关：浅底静音图标 */
+    .tool-btn.mic-on:not(.is-off) {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(59,130,246,.4);
+    }
+    .tool-btn.mic-on:not(.is-off)::before,
+    .tool-btn.mic-on:not(.is-off)::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid rgba(59,130,246,.45);
+      animation: mic-ring 1.4s ease-out infinite;
+      pointer-events: none;
+    }
+    .tool-btn.mic-on:not(.is-off)::after { animation-delay: .45s; }
+    @keyframes mic-ring {
+      0% { transform: scale(1); opacity: .7; }
+      100% { transform: scale(1.45); opacity: 0; }
+    }
+    .tool-wrap.mic-active .tool-label { color: var(--primary); font-weight: 600; }
+    .mic-bars {
+      display: none;
+      align-items: flex-end;
+      gap: 3px;
+      height: 14px;
+      margin-top: -2px;
+    }
+    .tool-wrap.mic-active .mic-bars { display: flex; }
+    .mic-bars i {
+      width: 3px;
+      border-radius: 2px;
+      background: var(--primary);
+      animation: mic-bar .8s ease-in-out infinite;
+    }
+    .mic-bars i:nth-child(1) { height: 6px; animation-delay: 0s; }
+    .mic-bars i:nth-child(2) { height: 12px; animation-delay: .15s; }
+    .mic-bars i:nth-child(3) { height: 8px; animation-delay: .3s; }
+    .mic-bars i:nth-child(4) { height: 14px; animation-delay: .1s; }
+    .mic-bars i:nth-child(5) { height: 7px; animation-delay: .25s; }
+    @keyframes mic-bar {
+      0%, 100% { transform: scaleY(.45); opacity: .55; }
+      50% { transform: scaleY(1); opacity: 1; }
+    }
+    /* 相机开/关 */
+    .tool-btn.cam-on:not(.is-off) {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(59,130,246,.4);
+    }
+    .tool-wrap.cam-active .tool-label { color: var(--primary); font-weight: 600; }
+    .camera-pip {
+      position: absolute; right: 12px; bottom: 12px;
+      width: 88px; height: 118px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,.85);
+      background:
+        linear-gradient(160deg, #94A3B8 0%, #64748B 100%);
+      z-index: 2;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(30,41,59,.18);
+      transition: opacity .25s, transform .25s;
+    }
+    .camera-pip.off {
+      opacity: 0;
+      transform: scale(.92) translateY(6px);
+      pointer-events: none;
+    }
+    .camera-pip .pip-face {
+      position: absolute;
+      inset: 22px 16px 28px;
+      border-radius: 50% 50% 42% 42%;
+      background: linear-gradient(180deg, #FDE68A, #F59E0B 40%, #D97706);
+      opacity: .55;
+    }
+    .camera-pip .pip-hint {
+      position: absolute; bottom: 8px; left: 0; right: 0;
+      text-align: center;
+      font-size: 10px; color: rgba(255,255,255,.9);
+      font-weight: 500;
+    }
+    .chat-toast {
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(30,41,59,.88);
+      color: #fff;
+      font-size: 12px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 5;
+      white-space: nowrap;
+    }
+    .chat-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hint {
+      max-width: 640px; margin: 20px auto 0;
+      font-size: 12px; color: var(--on-surface-variant);
+      text-align: center; line-height: 1.6;
+    }
+    .hint a { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <div>
+      <h1>用户端预览 · Sky Travel</h1>
+      <p>浅蓝主色旅行风；筛选标签与时间排序同一行；点卡片进对话记录。避免商务深色。</p>
+    </div>
+    <div class="swatches">
+      <div class="swatch" style="background:#3B82F6" title="primary"></div>
+      <div class="swatch" style="background:#38BDF8" title="secondary"></div>
+      <div class="swatch" style="background:#F59E0B" title="accent"></div>
+      <div class="swatch" style="background:#DBEAFE" title="bg"></div>
+      <div class="swatch" style="background:#F5F9FE" title="ink"></div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-page="home" type="button">主页 · 出游记录</button>
+    <button class="tab" data-page="mine" type="button">我的</button>
+    <button class="tab" data-page="prefs" type="button">偏好设置</button>
+    <button class="tab" data-page="chat" type="button">AI 数字人对话</button>
+  </nav>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="screen">
+
+        <!-- 主页 -->
+        <section class="screen-page active" id="page-home">
+          <div class="status-bar"><span>9:41</span><span>5G · 100%</span></div>
+          <div class="home-top">
+            <div class="search-row">
+              <div class="search">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                搜索景点名称
+              </div>
+              <button class="btn-search" type="button">搜索</button>
+            </div>
+            <div class="chips-sort-row">
+              <div class="chips">
+                <div class="chip on">全部</div>
+                <div class="chip">主题乐园</div>
+                <div class="chip">博物馆</div>
+                <div class="chip">自然公园</div>
+                <div class="chip">风景名胜</div>
+                <div class="chip">历史文化</div>
+              </div>
+              <button class="sort-btn" type="button" id="sort-btn">对话时间 · 最新 ▾</button>
+            </div>
+          </div>
+          <div class="scroll">
+            <!-- 进行中：上半点进记录，下半 结束+继续 -->
+            <article class="spot-card">
+              <button class="spot-nav" type="button" title="点击查看对话记录">
+                <div class="spot-cover ph" id="ph-cover-1">cover-forbidden-city</div>
+                <img class="spot-cover" id="img-cover-1" alt="" hidden data-src="preview-assets/cover-forbidden-city.jpg" />
+                <div class="spot-body">
+                  <div class="spot-title-row">
+                    <div class="spot-title">故宫博物院</div>
+                    <span class="pill">进行中</span>
+                  </div>
+                  <div class="spot-meta">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    12 条对话 · 今天 10:24
+                  </div>
+                  <div class="spot-view-link">
+                    查看对话记录
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                  </div>
+                </div>
+              </button>
+              <div class="spot-actions">
+                <button class="btn-end" type="button">结束</button>
+                <button class="btn-continue" type="button" onclick="showPage('chat')">继续对话</button>
+              </div>
+            </article>
+
+            <!-- 已结束：上半点进记录，下半仅评价 -->
+            <article class="spot-card">
+              <button class="spot-nav" type="button" title="点击查看对话记录">
+                <div class="spot-cover ph" id="ph-cover-2">cover-west-lake</div>
+                <img class="spot-cover" id="img-cover-2" alt="" hidden data-src="preview-assets/cover-west-lake.jpg" />
+                <div class="spot-body">
+                  <div class="spot-title-row">
+                    <div class="spot-title">西湖风景名胜区</div>
+                    <span class="pill done">已结束</span>
+                  </div>
+                  <div class="spot-meta">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    28 条对话 · 昨天 16:02
+                  </div>
+                  <div class="spot-view-link">
+                    查看对话记录
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                  </div>
+                </div>
+              </button>
+              <div class="spot-actions">
+                <button class="btn-rate" type="button">评价景点</button>
+              </div>
+            </article>
+
+            <article class="spot-card">
+              <button class="spot-nav" type="button" title="点击查看对话记录">
+                <div class="spot-cover ph" id="ph-cover-3">cover-terracotta</div>
+                <img class="spot-cover" id="img-cover-3" alt="" hidden data-src="preview-assets/cover-terracotta.jpg" />
+                <div class="spot-body">
+                  <div class="spot-title-row">
+                    <div class="spot-title">兵马俑博物馆</div>
+                    <span class="pill done">已结束</span>
+                  </div>
+                  <div class="spot-meta">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    9 条对话 · 7月8日
+                  </div>
+                  <div class="spot-view-link">
+                    查看对话记录
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                  </div>
+                </div>
+              </button>
+              <div class="spot-actions">
+                <button class="btn-rate" type="button">评价景点</button>
+              </div>
+            </article>
+          </div>
+          <nav class="bottom-nav">
+            <button class="nav-item active" type="button">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              出游记录
+            </button>
+            <button class="nav-add" type="button" onclick="showPage('chat')">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="nav-item" type="button" onclick="showPage('mine')">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              我的
+            </button>
+          </nav>
+        </section>
+
+        <!-- 我的 -->
+        <section class="screen-page" id="page-mine">
+          <div class="scroll" style="padding-bottom:100px">
+            <div class="profile-header">
+              <img class="profile-header-img" id="img-profile-header" alt="" data-src="preview-assets/profile-header.jpg" />
+              <div class="status-bar light" style="padding-left:0;padding-right:0"><span>9:41</span><span>5G · 100%</span></div>
+              <button class="gear" type="button" aria-label="设置">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+              </button>
+              <div class="avatar ph" id="ph-avatar">avatar-user</div>
+              <img class="avatar" id="img-avatar" alt="" hidden data-src="preview-assets/avatar-user.jpg" />
+              <div class="profile-name">旅行小达人</div>
+              <div class="profile-id">ID: 12345678</div>
+              <div class="profile-ph-hint">待放：profile-header.jpg</div>
+            </div>
+
+            <div class="service-card">
+              <button class="service-item" type="button">
+                <div class="service-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>
+                </div>
+                <strong>我的评价</strong>
+                <span>查看全部评价</span>
+              </button>
+              <button class="service-item" type="button" onclick="showPage('prefs')">
+                <div class="service-icon" style="background:var(--secondary-container);color:var(--secondary)">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                </div>
+                <strong>偏好设置</strong>
+                <span>定制专属体验</span>
+              </button>
+            </div>
+
+            <div class="list-card" style="margin-top:12px">
+              <div class="list-row">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span class="grow">景点地图</span>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="list-row">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="grow">账号管理</span>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="list-row">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                <span class="grow">清除缓存</span>
+                <span class="meta">128MB</span>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="list-row">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span class="grow">隐私政策</span>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="list-row">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span class="grow">关于我们</span>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            </div>
+
+            <div class="logout-card">
+              <button class="logout-btn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                退出登录
+              </button>
+            </div>
+          </div>
+          <nav class="bottom-nav">
+            <button class="nav-item" type="button" onclick="showPage('home')">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              出游记录
+            </button>
+            <button class="nav-add" type="button" onclick="showPage('chat')">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="nav-item active" type="button">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              我的
+            </button>
+          </nav>
+        </section>
+
+        <!-- 偏好（结构未改，仅换色） -->
+        <section class="screen-page" id="page-prefs">
+          <div class="status-bar"><span>9:41</span><span>5G · 100%</span></div>
+          <div class="toolbar">
+            <button type="button" onclick="showPage('mine')" aria-label="返回">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h2>旅游偏好</h2>
+            <button class="link" type="button">重置</button>
+          </div>
+          <div class="scroll" style="padding-bottom:12px">
+            <p class="prefs-intro">告诉 AI 你的旅行习惯，获得更符合你的专属讲解</p>
+            <div class="section">
+              <div class="section-head">
+                <div class="section-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+                <div><h3>讲解风格</h3><p>选择你喜欢的讲解风格</p></div>
+              </div>
+              <div class="grid-2">
+                <button class="opt on" type="button" data-group="style"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><strong>专业讲解</strong></button>
+                <button class="opt" type="button" data-group="style"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><strong>故事化讲解</strong></button>
+                <button class="opt" type="button" data-group="style"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></div><strong>轻松幽默</strong></button>
+                <button class="opt" type="button" data-group="style"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3c-2 3-4 5-4 8a4 4 0 0 0 8 0c0-3-2-5-4-8z"/></svg></div><strong>儿童模式</strong></button>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-head">
+                <div class="section-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
+                <div><h3>讲解深度</h3><p>选择详细程度</p></div>
+              </div>
+              <div class="grid-3">
+                <button class="opt" type="button" data-group="depth"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h8"/></svg></div><strong>简洁速览</strong></button>
+                <button class="opt on" type="button" data-group="depth"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div><strong>标准导览</strong></button>
+                <button class="opt" type="button" data-group="depth"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><strong>深度文化</strong></button>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-head">
+                <div class="section-icon" style="background:var(--secondary-container);color:var(--secondary)"><svg class="icon" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></div>
+                <div><h3>兴趣偏好</h3><p>可多选</p></div>
+              </div>
+              <div class="tag-wrap">
+                <button class="tag on" type="button">历史文化</button>
+                <button class="tag on" type="button">建筑艺术</button>
+                <button class="tag" type="button">皇家故事</button>
+                <button class="tag" type="button">自然生态</button>
+                <button class="tag on" type="button">摄影打卡</button>
+                <button class="tag" type="button">神话传说</button>
+                <button class="tag" type="button">民俗风情</button>
+                <button class="tag" type="button">美食文化</button>
+                <button class="tag" type="button">非遗文化</button>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-head">
+                <div class="section-icon"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.5 14.5 7.8 16.2 9.5 9.5"/></svg></div>
+                <div><h3>出游目的</h3><p>选择出游目的</p></div>
+              </div>
+              <div class="grid-2">
+                <button class="opt on" type="button" data-group="purpose"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><strong>学习知识</strong></button>
+                <button class="opt" type="button" data-group="purpose"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><strong>亲子陪伴</strong></button>
+                <button class="opt" type="button" data-group="purpose"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><strong>拍照打卡</strong></button>
+                <button class="opt" type="button" data-group="purpose"><span class="check"><svg style="width:12px;height:12px;stroke:#fff" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><div class="opt-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg></div><strong>休闲放松</strong></button>
+              </div>
+            </div>
+            <div class="section" style="padding-bottom:20px">
+              <div class="section-head">
+                <div class="section-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+                <div style="flex:1"><h3>我的特殊要求</h3><p>告诉 AI 特别需求</p></div>
+                <span style="font-size:12px;color:var(--outline)">0/100</span>
+              </div>
+              <div class="req-box">请输入你的偏好，支持智能优化…</div>
+              <div class="suggest">
+                <span>推荐示例:</span>
+                <button type="button">多讲历史故事</button>
+                <button type="button">语言生动有趣</button>
+                <button type="button">适合孩子理解</button>
+                <button type="button">节奏慢一点</button>
+              </div>
+            </div>
+          </div>
+          <div class="save-bar">
+            <p>偏好将帮助 AI 提供更个性化讲解，可随时修改</p>
+            <button class="btn-primary" type="button">保存偏好</button>
+          </div>
+        </section>
+
+        <!-- 对话 -->
+        <section class="screen-page chat-page" id="page-chat">
+          <div class="status-bar"><span>9:41</span><span>5G · 100%</span></div>
+          <div class="chat-top">
+            <button class="side" type="button" onclick="showPage('home')" aria-label="返回">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="chat-end" type="button">结束对话</button>
+            <button class="side" type="button" aria-label="字幕">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 12h4M14 12h4M6 16h8"/></svg>
+            </button>
+          </div>
+          <div class="chat-stage">
+            <img class="dh-bg" id="img-dh" alt="" data-src="preview-assets/digital-human-idle.jpg" />
+            <div class="dh-fallback" id="dh-fallback">
+              <div class="dh-fallback-box"></div>
+              <div>待放：digital-human-idle.jpg<br/>竖屏 9:16 数字人待机帧</div>
+            </div>
+            <div class="camera-pip" id="camera-pip">
+              <div class="pip-face"></div>
+              <div class="pip-hint">前置预览</div>
+            </div>
+            <div class="chat-toast" id="chat-toast"></div>
+
+            <!-- 路线灵动岛：顶部中央（前置摄像头位） -->
+            <div class="route-island" id="route-island" role="button" tabindex="0" aria-expanded="false" aria-label="路线，点击展开">
+              <div class="route-island-compact">
+                <span class="route-island-pulse" aria-hidden="true"></span>
+                <span class="progress">2/4</span>
+                <span class="now" id="route-now-label">太和殿</span>
+                <svg class="chev icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" style="stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"/></svg>
+              </div>
+              <div class="route-island-panel">
+                <div class="route-island-head">
+                  <strong>推荐路线</strong>
+                  <span class="meta">进行中 · 2/4</span>
+                  <button class="route-island-close" type="button" id="route-island-close" aria-label="收起">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"/></svg>
+                  </button>
+                </div>
+                <div class="route-island-track" id="route-island-track">
+                  <button class="route-island-step done" type="button" data-stop="午门"><div class="route-island-dot"></div><span>午门</span></button>
+                  <button class="route-island-step on" type="button" data-stop="太和殿"><div class="route-island-dot"></div><span>太和殿</span></button>
+                  <button class="route-island-step" type="button" data-stop="乾清宫"><div class="route-island-dot"></div><span>乾清宫</span></button>
+                  <button class="route-island-step" type="button" data-stop="御花园"><div class="route-island-dot"></div><span>御花园</span></button>
+                </div>
+                <div class="route-island-actions">
+                  <button type="button" id="route-arrive-btn">确认到达</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="subtitle" id="chat-subtitle">
+            欢迎来到<em>太和殿</em>。这里是明清两代举行重大典礼的地方，殿内金砖墁地，绘以金龙和玺彩画……
+          </div>
+          <div class="chat-input-row">
+            <div class="chat-input"><span>输入文本进行对话</span></div>
+            <button class="btn-send" type="button">发送</button>
+          </div>
+          <div class="chat-tools">
+            <div class="tool-wrap mic-active" id="mic-wrap">
+              <button class="tool-btn mic-on" type="button" id="btn-mic" aria-label="麦克风开关" aria-pressed="true" title="点击开关麦克风">
+                <!-- 开：麦克风 -->
+                <svg class="icon icon-on" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="2" width="6" height="11" rx="3"/>
+                  <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+                  <line x1="12" y1="18" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+                <!-- 关：麦克风 + 斜杠（干净单层） -->
+                <svg class="icon icon-off" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="2" width="6" height="11" rx="3"/>
+                  <path d="M5 10v1a7 7 0 0 0 11.4 4.1"/>
+                  <path d="M19 10v1a7 7 0 0 1-.4 2.3"/>
+                  <line x1="12" y1="18" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                  <line x1="4" y1="4" x2="20" y2="20"/>
+                </svg>
+              </button>
+              <div class="mic-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+              <span class="tool-label" id="mic-label">麦克风开</span>
+            </div>
+            <div class="tool-wrap cam-active" id="cam-wrap">
+              <button class="tool-btn cam-on" type="button" id="btn-cam" aria-label="相机开关" aria-pressed="true" title="点击开关情绪识别相机">
+                <svg class="icon icon-on" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="2" y="6" width="14" height="12" rx="2"/>
+                  <path d="M16 10l6-3v10l-6-3z"/>
+                </svg>
+                <svg class="icon icon-off" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="2" y="6" width="14" height="12" rx="2"/>
+                  <path d="M16 10l6-3v10l-6-3z"/>
+                  <line x1="3" y1="3" x2="21" y2="21"/>
+                </svg>
+              </button>
+              <span class="tool-label" id="cam-label">情绪识别开</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">
+    配图提示词见 <a href="image-prompts.md">image-prompts.md</a> ·
+    生成后放入 <code>preview-assets/</code>，刷新本页会自动尝试加载 ·
+    灰块处是待替换位
+  </p>
+
+  <script>
+    function showPage(id) {
+      document.querySelectorAll('.screen-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === id));
+      const el = document.getElementById('page-' + id);
+      if (el) el.classList.add('active');
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => showPage(tab.dataset.page));
+    });
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+        chip.classList.add('on');
+      });
+    });
+
+    document.querySelectorAll('.opt[data-group]').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.opt[data-group="' + opt.dataset.group + '"]').forEach(o => o.classList.remove('on'));
+        opt.classList.add('on');
+      });
+    });
+
+    document.querySelectorAll('.tag').forEach(tag => {
+      tag.addEventListener('click', () => tag.classList.toggle('on'));
+    });
+
+    let sortAsc = false;
+    const sortBtn = document.getElementById('sort-btn');
+    if (sortBtn) {
+      sortBtn.addEventListener('click', () => {
+        sortAsc = !sortAsc;
+        sortBtn.textContent = sortAsc ? '对话时间 · 最早 ▴' : '对话时间 · 最新 ▾';
+      });
+    }
+
+    function showChatToast(text) {
+      const toast = document.getElementById('chat-toast');
+      if (!toast) return;
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(showChatToast._t);
+      showChatToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    // 麦克风：点击开关（不是按住说话）
+    let micOn = true;
+    const btnMic = document.getElementById('btn-mic');
+    const micWrap = document.getElementById('mic-wrap');
+    const micLabel = document.getElementById('mic-label');
+    const subtitleEl = document.getElementById('chat-subtitle');
+    const subtitleDefault = subtitleEl ? subtitleEl.innerHTML : '';
+
+    function setMic(on) {
+      micOn = on;
+      btnMic.classList.toggle('is-off', !on);
+      btnMic.setAttribute('aria-pressed', on ? 'true' : 'false');
+      micWrap.classList.toggle('mic-active', on);
+      micLabel.textContent = on ? '麦克风开' : '麦克风关';
+      if (subtitleEl) {
+        subtitleEl.innerHTML = on
+          ? subtitleDefault
+          : '麦克风已关闭。再次点击麦克风即可重新开启。';
+      }
+      showChatToast(on ? '麦克风已开启' : '麦克风已关闭');
+    }
+
+    if (btnMic) {
+      btnMic.addEventListener('click', () => setMic(!micOn));
+    }
+
+    // 相机：点击开关情绪识别
+    let camOn = true;
+    const btnCam = document.getElementById('btn-cam');
+    const camWrap = document.getElementById('cam-wrap');
+    const camLabel = document.getElementById('cam-label');
+    const cameraPip = document.getElementById('camera-pip');
+
+    function setCam(on) {
+      camOn = on;
+      btnCam.classList.toggle('is-off', !on);
+      btnCam.setAttribute('aria-pressed', on ? 'true' : 'false');
+      camWrap.classList.toggle('cam-active', on);
+      camLabel.textContent = on ? '情绪识别开' : '情绪识别关';
+      if (cameraPip) cameraPip.classList.toggle('off', !on);
+      showChatToast(on ? '情绪识别已开启' : '情绪识别已关闭');
+    }
+
+    if (btnCam) {
+      btnCam.addEventListener('click', () => setCam(!camOn));
+    }
+
+    // 路线灵动岛：收起 / 展开
+    const routeIsland = document.getElementById('route-island');
+    const routeClose = document.getElementById('route-island-close');
+    const routeNowLabel = document.getElementById('route-now-label');
+
+    function setRouteExpanded(open) {
+      if (!routeIsland) return;
+      routeIsland.classList.toggle('expanded', open);
+      routeIsland.setAttribute('aria-expanded', open ? 'true' : 'false');
+      routeIsland.setAttribute('role', open ? 'dialog' : 'button');
+    }
+
+    if (routeIsland) {
+      routeIsland.addEventListener('click', (e) => {
+        if (routeIsland.classList.contains('expanded')) return;
+        if (e.target.closest('button')) return;
+        setRouteExpanded(true);
+      });
+      routeIsland.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !routeIsland.classList.contains('expanded')) {
+          e.preventDefault();
+          setRouteExpanded(true);
+        }
+      });
+    }
+    if (routeClose) {
+      routeClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setRouteExpanded(false);
+      });
+    }
+
+    document.getElementById('route-island-track')?.querySelectorAll('.route-island-step').forEach(step => {
+      step.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = step.dataset.stop;
+        document.querySelectorAll('.route-island-step').forEach(s => s.classList.remove('on'));
+        step.classList.add('on');
+        if (routeNowLabel) routeNowLabel.textContent = name;
+        if (subtitleEl) {
+          subtitleEl.innerHTML = `正在前往<em>${name}</em>。点击「确认到达」可更新当前站点。`;
+        }
+        showChatToast('当前站：' + name);
+      });
+    });
+
+    document.getElementById('route-arrive-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const current = document.querySelector('.route-island-step.on');
+      if (!current) return;
+      current.classList.remove('on');
+      current.classList.add('done');
+      const next = current.nextElementSibling;
+      if (next && next.classList.contains('route-island-step')) {
+        next.classList.add('on');
+        const name = next.dataset.stop;
+        if (routeNowLabel) routeNowLabel.textContent = name;
+        showChatToast('已到达，下一站：' + name);
+        if (subtitleEl) subtitleEl.innerHTML = `欢迎来到<em>${name}</em>。`;
+      } else {
+        if (routeNowLabel) routeNowLabel.textContent = '已完成';
+        showChatToast('本路线已全部走完');
+        setRouteExpanded(false);
+      }
+    });
+
+    // 若 preview-assets 里已有对应文件，自动替换占位
+    function tryLoad(imgId, phId, hideFallback) {
+      const img = document.getElementById(imgId);
+      if (!img || !img.dataset.src) return;
+      const probe = new Image();
+      probe.onload = () => {
+        img.src = img.dataset.src;
+        img.hidden = false;
+        if (phId) {
+          const ph = document.getElementById(phId);
+          if (ph) ph.style.display = 'none';
+        }
+        if (hideFallback) {
+          const fb = document.getElementById(hideFallback);
+          if (fb) fb.style.display = 'none';
+        }
+      };
+      probe.src = img.dataset.src;
+    }
+
+    tryLoad('img-cover-1', 'ph-cover-1');
+    tryLoad('img-cover-2', 'ph-cover-2');
+    tryLoad('img-cover-3', 'ph-cover-3');
+    tryLoad('img-avatar', 'ph-avatar');
+    tryLoad('img-profile-header', null);
+    tryLoad('img-dh', null, 'dh-fallback');
+  </script>
+</body>
+</html>
