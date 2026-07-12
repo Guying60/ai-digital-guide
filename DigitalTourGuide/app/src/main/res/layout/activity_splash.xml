@@ -65,37 +65,29 @@
             android:textAllCaps="true"
             android:textColor="@color/splash_muted"
             android:textSize="11sp" />
+
+        <!-- 假进度条：60% 蓝 + 40% 白 -->
+        <LinearLayout
+            android:layout_width="200dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="20dp"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="6"
+                android:background="@color/primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="4"
+                android:background="@color/surface" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- ========== 底部:极简加载 ========== -->
-    <LinearLayout
-        android:id="@+id/bottom_section"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="56dp"
-        android:gravity="center"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
 
-        <ProgressBar
-            android:id="@+id/loading_progress"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:indeterminateTint="@color/splash_accent" />
-
-        <TextView
-            android:id="@+id/status_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:fontFamily="sans-serif"
-            android:letterSpacing="0.08"
-            android:text="@string/splash_loading_status"
-            android:textColor="@color/splash_muted"
-            android:textSize="12sp" />
-    </LinearLayout>
 
     <!-- ========== 动画占位(保留 Java 引用的 ID,避免空指针) ========== -->
     <View
