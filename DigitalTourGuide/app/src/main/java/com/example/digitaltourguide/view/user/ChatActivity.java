@@ -107,7 +107,7 @@ public class ChatActivity extends AppCompatActivity {
     private int bufferSize;
     private EditText etMessage;
     private Button btnSend;
-    private TextView btnEndChat;
+    private ImageView btnEndChat;
     private ImageView ivMic,ivCapture,ivSubtitleBtn,ivCamera;
     private ImageCapture imageCapture;
     private PreviewView previewView;
@@ -1181,8 +1181,11 @@ public class ChatActivity extends AppCompatActivity {
         ivCamera = findViewById(R.id.btn_camera);
         ivCamera.setOnClickListener(v -> toggleCamera());
 
+        // 红色电话挂断按钮 → 结束对话
+        ivCapture.setOnClickListener(v -> endChatAndGoBack());
+
         // 结束对话按钮
-        btnEndChat = findViewById(R.id.btn_end_chat);
+        btnEndChat = findViewById(R.id.btn_capture);
         btnEndChat.setOnClickListener(v -> endChatAndGoBack());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);

@@ -101,7 +101,7 @@
     <color name="login_surface_container_lowest">@color/surface</color>
     <color name="login_on_surface">@color/on_surface</color>
     <color name="login_on_surface_variant">@color/on_surface_variant</color>
-    <color name="login_outline">@color/outline</color>
+    <color name="login_outline">@color/chart_line_primary</color>
     <color name="login_outline_variant">@color/outline_variant</color>
     <color name="login_error">@color/error</color>
     <color name="login_error_container">@color/error_container</color>
