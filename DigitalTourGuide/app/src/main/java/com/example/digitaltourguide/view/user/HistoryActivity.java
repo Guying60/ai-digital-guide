@@ -468,15 +468,11 @@ public class HistoryActivity extends AppCompatActivity {
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
-<<<<<<< HEAD
-
                         isLoading = false;
                         swipeRefresh.setRefreshing(false);
-=======
                         if (seq != loadSeq) {
                             return;
                         }
->>>>>>> d3f88a32d4116f051a29663f21c6c9e0ab7804ca
                         if (response.isSuccessful() && response.body() != null && response.body().code == 1) {
                             String bodyJson = new Gson().toJson(response.body());
                             Log.d("HistoryActivity", "响应体 JSON: " + bodyJson);

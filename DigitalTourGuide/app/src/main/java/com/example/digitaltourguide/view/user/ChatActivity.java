@@ -192,7 +192,11 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         btnSend.setOnClickListener(v->{
-            if (aiIsReplying) return; // AI回复中不允许发送
+            if (aiIsReplying) {
+                sendInterrupt();
+                setSendButtonLoading(false);
+                return;
+            }
             String text=etMessage.getText().toString().trim();
             if(text.isEmpty()){
                 Toast.makeText(this,"请输入文本",Toast.LENGTH_SHORT).show();
@@ -316,18 +320,12 @@ public class ChatActivity extends AppCompatActivity {
         }
     }
 
-    /** 发送按钮切换：AI回复中显示 ic_ing，否则显示"发送" */
+    /** 发送按钮切换：AI回复中显示"打断"，否则显示"发送" */
     private void setSendButtonLoading(boolean loading) {
         if (loading) {
-            btnSend.setText("");
-            btnSend.setEnabled(false);
-            android.graphics.drawable.Drawable ing = ContextCompat.getDrawable(this, R.drawable.ic_ing);
-            if (ing != null) {
-                int size = (int) (24 * getResources().getDisplayMetrics().density);
-                ing.setBounds(0, 0, size, size);
-                btnSend.setCompoundDrawables(ing, null, null, null);
-            }
-            btnSend.setCompoundDrawablePadding(0);
+            btnSend.setText("打断");
+            btnSend.setEnabled(true);
+            btnSend.setCompoundDrawables(null, null, null, null);
         } else {
             btnSend.setText("发送");
             btnSend.setEnabled(true);
