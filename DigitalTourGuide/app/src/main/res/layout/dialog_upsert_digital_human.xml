@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  dialog_upsert_digital_human.xml — 上传/更换数字人弹窗
-  Material 风格，分组布局 + 品牌色按钮
--->
+<!-- dialog_upsert_digital_human.xml — 更换数字人形象弹窗 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -21,34 +18,39 @@
         android:paddingTop="20dp"
         android:paddingBottom="12dp">
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="@null"
-            android:importantForAccessibility="no"
-            android:src="@drawable/ic_person_filled"
-            app:tint="@color/profile_primary" />
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_circle_faq">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_person_filled"
+                app:tint="@color/primary" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
             android:text="数字人管理"
-            android:textColor="@color/profile_on_surface"
-            android:textSize="18sp" />
+            android:textColor="@color/on_surface"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_attraction_id"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_nav_active"
-            android:fontFamily="sans-serif"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:background="@drawable/bg_chip_selector"
             android:paddingHorizontal="10dp"
-            android:paddingVertical="4dp"
-            android:textColor="@color/profile_primary"
-            android:textSize="12sp" />
+            android:textColor="@color/primary"
+            android:textSize="11sp" />
     </LinearLayout>
 
     <!-- ========== 分隔线 ========== -->
@@ -56,8 +58,8 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginHorizontal="20dp"
-        android:alpha="0.4"
-        android:background="@color/profile_surface_variant" />
+        android:alpha="0.7"
+        android:background="@color/outline_variant" />
 
     <!-- ========== 视频素材区域 ========== -->
     <LinearLayout
@@ -65,9 +67,9 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="16dp"
-        android:background="@drawable/bg_search_rounded"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="14dp"
+        android:background="@color/background">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -79,18 +81,17 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:contentDescription="@null"
-                android:importantForAccessibility="no"
                 android:src="@drawable/ic_video"
-                app:tint="@color/profile_primary" />
+                app:tint="@color/primary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:fontFamily="sans-serif-medium"
                 android:text="视频素材"
-                android:textColor="@color/profile_on_surface"
-                android:textSize="14sp" />
+                android:textColor="@color/on_surface"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
@@ -98,10 +99,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:fontFamily="sans-serif"
             android:text="未选择任何视频"
-            android:textColor="@color/profile_outline"
+            android:textColor="@color/muted"
             android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="竖屏 9:16 · 静默静态画面 · 5~8 秒 · 无需说话"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:lineSpacingExtra="2dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -118,10 +127,10 @@
                 android:text="选择视频"
                 android:textSize="13sp"
                 app:cornerRadius="20dp"
-                app:strokeColor="@color/profile_primary"
+                app:strokeColor="@color/primary"
                 app:strokeWidth="1dp"
-                android:textColor="@color/profile_primary"
-                app:rippleColor="@color/profile_surface_container" />
+                android:textColor="@color/primary"
+                app:rippleColor="@color/primary_container" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_record_video"
@@ -133,10 +142,10 @@
                 android:text="录制视频"
                 android:textSize="13sp"
                 app:cornerRadius="20dp"
-                app:strokeColor="@color/profile_outline"
+                app:strokeColor="@color/outline"
                 app:strokeWidth="1dp"
-                android:textColor="@color/profile_on_surface_variant"
-                app:rippleColor="@color/profile_surface_container" />
+                android:textColor="@color/on_surface_variant"
+                app:rippleColor="@color/primary_container" />
         </LinearLayout>
     </LinearLayout>
 
@@ -146,9 +155,9 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_search_rounded"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="14dp"
+        android:background="@color/background">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -160,18 +169,17 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:contentDescription="@null"
-                android:importantForAccessibility="no"
                 android:src="@drawable/ic_mico"
-                app:tint="@color/profile_preference_green" />
+                app:tint="@color/secondary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:fontFamily="sans-serif-medium"
                 android:text="音频素材"
-                android:textColor="@color/profile_on_surface"
-                android:textSize="14sp" />
+                android:textColor="@color/on_surface"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
@@ -179,10 +187,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:fontFamily="sans-serif"
             android:text="未选择任何音频"
-            android:textColor="@color/profile_outline"
+            android:textColor="@color/muted"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_sample_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@color/secondary_container"
+            android:textColor="@color/on_secondary_container"
+            android:padding="10dp"
+            android:text="文案：你好，我是数字人导游，欢迎来到灵山胜境景区"
+            android:textSize="12sp"
+            android:lineSpacingExtra="4dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_select_audio"
@@ -193,10 +212,10 @@
             android:text="选择音频文件"
             android:textSize="13sp"
             app:cornerRadius="20dp"
-            app:strokeColor="@color/profile_preference_green"
+            app:strokeColor="@color/secondary"
             app:strokeWidth="1dp"
-            android:textColor="@color/profile_preference_green"
-            app:rippleColor="@color/profile_surface_container" />
+            android:textColor="@color/on_secondary_container"
+            app:rippleColor="@color/secondary_container" />
     </LinearLayout>
 
     <!-- ========== 底部操作按钮 ========== -->
@@ -214,10 +233,11 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:text="取消"
-            android:textColor="@color/profile_outline"
+            android:textColor="@color/on_surface_variant"
             android:textSize="14sp"
             app:cornerRadius="22dp"
-            app:rippleColor="@color/profile_surface_container" />
+            app:rippleColor="@color/primary_container"
+            android:backgroundTint="@color/surface_variant" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_upload"
@@ -228,9 +248,9 @@
             android:text="确认上传并更换"
             android:textColor="@color/white"
             android:textSize="14sp"
-            app:backgroundTint="@color/profile_primary"
+            app:backgroundTint="@color/primary"
             app:cornerRadius="22dp"
-            app:rippleColor="@color/profile_primary_container" />
+            app:rippleColor="@color/primary_container" />
     </LinearLayout>
 
 </LinearLayout>

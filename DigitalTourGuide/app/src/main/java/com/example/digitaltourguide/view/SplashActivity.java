@@ -67,17 +67,5 @@ public class SplashActivity extends AppCompatActivity {
                     .setInterpolator(decelerate)
                     .start();
         }
-
-        // ---- 底部加载区：稍后淡入 ----
-        View bottomSection = findViewById(R.id.bottom_section);
-        if (bottomSection != null) {
-            bottomSection.setAlpha(0f);
-            bottomSection.animate()
-                    .alpha(1f)
-                    .setDuration(800)
-                    .setStartDelay(600)
-                    .setInterpolator(decelerate)
-                    .start();
-        }
     }
 }
