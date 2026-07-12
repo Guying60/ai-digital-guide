@@ -20,7 +20,13 @@ import com.example.digitaltourguide.model.user.ScenicSpot;
 import com.example.digitaltourguide.view.user.ChatHistoryActivity;
 import com.example.digitaltourguide.utils.SpUtils;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.ScenicHolder> {
     //用户主页列表
@@ -117,15 +123,22 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         // ── 分类标签（暂无数据，默认隐藏） ──
         holder.tvCategory.setVisibility(View.GONE);
 
-        // ── 对话统计（示例数据，按位置变化） ──
-        int messageCount = 38 + (position % 13) * 4 + (int)(spot.getId().hashCode() & 0x7FFFFFFF) % 15;
-        holder.tvMessageCount.setText(messageCount + " 条对话");
-        holder.tvMessageCount.setVisibility(View.VISIBLE);
+        // ── 对话统计（后端 messageCount / lastChatTime） ──
+        Integer messageCount = spot.getMessageCount();
+        if (messageCount != null && messageCount > 0) {
+            holder.tvMessageCount.setText(messageCount + " 条对话");
+            holder.tvMessageCount.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvMessageCount.setVisibility(View.GONE);
+        }
 
-        String[] times = {"08:15", "09:42", "10:03", "11:27", "12:08", "13:55", "14:30", "15:09", "16:18", "17:01", "18:24", "19:47", "20:33"};
-        String time = times[position % times.length];
-        holder.tvLastTime.setText("· " + time);
-        holder.tvLastTime.setVisibility(View.VISIBLE);
+        String lastTimeLabel = formatLastChatTime(spot.getLastChatTime());
+        if (lastTimeLabel != null) {
+            holder.tvLastTime.setText("· " + lastTimeLabel);
+            holder.tvLastTime.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvLastTime.setVisibility(View.GONE);
+        }
 
 
         // 根据是否已评价（或已结束）决定显示哪个按钮布局
@@ -209,6 +222,47 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
     @Override
     public int getItemCount() {
         return list== null ? 0 : list.size();
+    }
+
+    /**
+     * 格式化上次对话时间：今天显示 HH:mm，昨天显示「昨天 HH:mm」，更早显示 MM-dd。
+     */
+    private static String formatLastChatTime(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            SimpleDateFormat parseFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            Date date = parseFmt.parse(raw);
+            if (date == null) {
+                return null;
+            }
+            Calendar target = Calendar.getInstance();
+            target.setTime(date);
+            Calendar today = Calendar.getInstance();
+            clearTime(today);
+            Calendar targetDay = (Calendar) target.clone();
+            clearTime(targetDay);
+
+            long dayDiff = TimeUnit.MILLISECONDS.toDays(today.getTimeInMillis() - targetDay.getTimeInMillis());
+            String hm = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(date);
+            if (dayDiff == 0) {
+                return hm;
+            }
+            if (dayDiff == 1) {
+                return "昨天 " + hm;
+            }
+            return new SimpleDateFormat("MM-dd", Locale.getDefault()).format(date);
+        } catch (ParseException e) {
+            return raw.length() >= 16 ? raw.substring(11, 16) : raw;
+        }
+    }
+
+    private static void clearTime(Calendar cal) {
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
     }
 
     public static class ScenicHolder extends RecyclerView.ViewHolder{

@@ -36,6 +36,11 @@ public class UserTourHistory {
      */
     private String city;
 
+    /**
+     * 本会话对话消息条数（用户提问 + AI 回复），断开连接时写入
+     */
+    private Integer messageCount;
+
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

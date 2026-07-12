@@ -275,6 +275,8 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
 | list[].coverUrl       | String  | 封面图片地址                      |
 | list[].conversationId | String  | 对话 ID                           |
 | list[].city           | String  | 景点所属城市                      |
+| list[].messageCount   | Integer | 对话消息条数（用户提问 + AI 回复） |
+| list[].lastChatTime   | String  | 上次对话时间，格式 `yyyy-MM-dd'T'HH:mm:ss` |
 | nextLastId            | String  | 下一页游标，为 null 表示无更多数据 |
 | hasMore               | Boolean | 是否还有更多数据                  |
 
@@ -290,7 +292,9 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
         "attractionName": "故宫博物院",
         "coverUrl": "https://oss.example.com/cover/xxx.jpg",
         "conversationId": "1234567890123456789",
-        "city": "北京市"
+        "city": "北京市",
+        "messageCount": 42,
+        "lastChatTime": "2026-07-12T08:15:00"
       }
     ],
     "nextLastId": "1234567890123456789",

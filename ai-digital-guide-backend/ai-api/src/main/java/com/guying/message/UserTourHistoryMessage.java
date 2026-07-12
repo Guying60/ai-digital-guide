@@ -13,4 +13,6 @@ public class UserTourHistoryMessage {
     private Long userId;
     private Long attractionId;
     private String conversationId;
+    /** 对话消息条数（用户提问 + AI 回复） */
+    private Integer messageCount;
 }

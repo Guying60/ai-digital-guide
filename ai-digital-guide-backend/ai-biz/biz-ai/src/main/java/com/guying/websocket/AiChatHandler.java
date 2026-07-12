@@ -294,6 +294,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         msg.setUserId(ctx.getUserId());
         msg.setAttractionId(ctx.getAttractionId());
         msg.setConversationId(ctx.conversationId());
+        // 每轮用户提问对应一条 AI 回复；记忆窗口会裁剪历史，不能事后 COUNT
+        int questionCount = ctx.getQuestionCount();
+        msg.setMessageCount(questionCount > 0 ? questionCount * 2 : 0);
         rabbitTemplate.convertAndSend(
                 MqConstants.USER_TOUR_HISTORY_DIRECT,
                 MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
