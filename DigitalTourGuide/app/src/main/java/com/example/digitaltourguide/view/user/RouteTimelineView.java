@@ -186,13 +186,18 @@ public class RouteTimelineView extends HorizontalScrollView {
         btn.setText("AI路线");
         btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         btn.setTextColor(Color.WHITE);
-        btn.setBackgroundColor(Color.parseColor("#3B82F6"));
-        btn.setPadding(dp(12), dp(6), dp(12), dp(6));
+        btn.setPadding(dp(16), dp(6), dp(16), dp(6));
         btn.setAllCaps(false);
+
+        // 深灰色椭圆背景
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        bg.setColor(Color.parseColor("#3D3D3D"));
+        btn.setBackground(bg);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+                dp(32));
         params.gravity = Gravity.CENTER_VERTICAL;
         btn.setLayoutParams(params);
 

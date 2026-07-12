@@ -226,7 +226,7 @@ public class MyPerActivity extends AppCompatActivity {
                 ? R.drawable.bg_chip_filter_selected
                 : R.drawable.bg_chip_filter_unselected);
         tvLabel.setTextColor(getColor(selected
-                ? R.color.profile_on_primary
+                ? R.color.profile_on_primary_container
                 : R.color.profile_on_surface_variant));
     }
 
@@ -273,9 +273,9 @@ public class MyPerActivity extends AppCompatActivity {
 
     private void setCardSelected(MaterialCardView card, boolean selected, int checkMarkId) {
         if (selected) {
-            card.setStrokeColor(getColor(R.color.profile_primary));
+            card.setStrokeColor(getColor(R.color.profile_primary_container));
             card.setStrokeWidth(2);
-            card.setCardBackgroundColor(getColor(R.color.profile_on_primary_container));
+            card.setCardBackgroundColor(getColor(R.color.profile_primary_container));
         } else {
             card.setStrokeColor(getColor(R.color.profile_outline_variant));
             card.setStrokeWidth(1);

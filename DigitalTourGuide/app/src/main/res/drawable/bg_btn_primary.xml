@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 弹窗确认按钮：浅蓝填充 + 圆角 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/primary"/>
-    <corners android:radius="12dp"/>
+    <solid android:color="@color/profile_primary_container" />
+    <corners android:radius="10dp" />
 </shape>

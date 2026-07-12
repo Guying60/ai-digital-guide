@@ -401,7 +401,7 @@ public class ProfileInfoActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.WRAP_CONTENT
             );
             window.setGravity(Gravity.CENTER);
-            window.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
         dialog.show();
@@ -462,7 +462,7 @@ public class ProfileInfoActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.WRAP_CONTENT
             );
             window.setGravity(Gravity.CENTER);
-            window.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
         dialog.show();
