@@ -72,163 +72,188 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
-        <!-- ========== Tags (Horizontal Scroll) ========== -->
-        <HorizontalScrollView
+        <!-- ========== 筛选标签 + 对话时间排序（并排） ========== -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:scrollbars="none">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <LinearLayout
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tag_all"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_all"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_theme_park"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_theme_park"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_museum"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_museum"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_nature_park"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_nature_park"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_scenic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_scenic"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_history"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_history"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_ally"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_ally"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_zoo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_zoo"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tag_morden"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:background="@drawable/bg_history_tag"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="@string/history_tag_morden"
+                        android:textColor="@color/txt_history_tag"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/tv_sort_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:drawablePadding="2dp"
+                android:focusable="true"
                 android:gravity="center_vertical"
-                android:baselineAligned="false">
-
-                <TextView
-                    android:id="@+id/tag_all"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_all"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_theme_park"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_theme_park"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_museum"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_museum"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_nature_park"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_nature_park"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_scenic"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_scenic"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_history"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_history"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_ally"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_ally"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_zoo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_zoo"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/tag_morden"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="@string/history_tag_morden"
-                    android:textSize="12sp"
-                    android:textColor="@color/txt_history_tag"
-                    android:background="@drawable/bg_history_tag"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:gravity="center"
-                    android:fontFamily="sans-serif"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </LinearLayout>
-        </HorizontalScrollView>
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="4dp"
+                android:text="@string/history_sort_desc"
+                android:textColor="@color/login_outline"
+                android:textSize="12sp"
+                app:drawableEndCompat="@drawable/ic_expand_more" />
+        </LinearLayout>
 
     </LinearLayout>
 

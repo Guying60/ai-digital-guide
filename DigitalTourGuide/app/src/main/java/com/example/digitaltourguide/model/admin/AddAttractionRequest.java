@@ -48,6 +48,10 @@ public class AddAttractionRequest {
     @SerializedName("openHours")
     private String openHours;
 
+    /** 最近更新时间，格式 yyyy-MM-dd'T'HH:mm:ss */
+    @SerializedName("updateTime")
+    private String updateTime;
+
     // ---- 构造函数 ----
 
     /** 新增用（不带 id）：必填字段 */
@@ -105,4 +109,7 @@ public class AddAttractionRequest {
 
     public String getOpenHours() { return openHours; }
     public void setOpenHours(String openHours) { this.openHours = openHours; }
+
+    public String getUpdateTime() { return updateTime; }
+    public void setUpdateTime(String updateTime) { this.updateTime = updateTime; }
 }

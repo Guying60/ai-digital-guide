@@ -43,15 +43,20 @@ public class PointManagerActivity extends AppCompatActivity {
     private EditText etSearch;
     private RecyclerView rvScenic;
     private TextView tvDelete, tvCancel, tvBatchDelete;
+    private TextView tvSortTime;
     private MaterialButton tvAdd;
     private boolean isBatchMode = false;
     private AttractionListAdapter adapter;
     private List<AddAttractionRequest> attractionList = new ArrayList<>();
     private String currentKeyword = "";
     private Integer currentType = null;
+    /** desc=最新在前（默认），asc=最早在前 */
+    private String sortOrder = "desc";
     private String nextLastId = null;
     private boolean isLoading = false;
     private boolean hasMore = true;
+    /** 列表加载代数：切换排序/筛选时递增，用于丢弃过期的翻页回调 */
+    private int loadSeq = 0;
     private String token;
     private ActivityResultLauncher<Intent> editAttractionLauncher;
 
@@ -136,6 +141,8 @@ public class PointManagerActivity extends AppCompatActivity {
         rvScenic.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                // 仅用户向下滚动时触发翻页，避免 clear/notify 时误触发导致竞态
+                if (dy <= 0) return;
                 GridLayoutManager layoutManager = (GridLayoutManager) recyclerView.getLayoutManager();
                 int visibleItemCount = layoutManager.getChildCount();
                 int totalItemCount = layoutManager.getItemCount();
@@ -292,6 +299,14 @@ public class PointManagerActivity extends AppCompatActivity {
             return true;
         });
 
+        // 按更新时间升降序切换
+        tvSortTime.setOnClickListener(v -> {
+            boolean toAsc = !"asc".equalsIgnoreCase(sortOrder);
+            sortOrder = toAsc ? "asc" : "desc";
+            tvSortTime.setText(toAsc ? R.string.pm_sort_asc : R.string.pm_sort_desc);
+            loadFirstPage();
+        });
+
         //全部的标签
         TextView tagAll=findViewById(R.id.tag_all);
         tagAll.setOnClickListener(v->{
@@ -357,8 +372,11 @@ public class PointManagerActivity extends AppCompatActivity {
     }
 
     private void loadFirstPage() {
+        loadSeq++;
         nextLastId = null;
         hasMore = true;
+        // 先占住 loading，避免 clear 触发的滚动监听再开一个请求
+        isLoading = false;
         attractionList.clear();
         adapter.notifyDataSetChanged();
         loadNextPage();
@@ -368,15 +386,18 @@ public class PointManagerActivity extends AppCompatActivity {
         if (isLoading) return;
         if (!hasMore && nextLastId != null) return;
 
+        final int seq = loadSeq;
         isLoading = true;
         RetrofitClient.getAdminApiService()
-                .getAttractionList("Bearer " + token, currentKeyword, currentType, null, nextLastId, 6)
+                .getAttractionList("Bearer " + token, currentKeyword, currentType, null, nextLastId, 6, sortOrder)
                 .enqueue(new Callback<BaseResponse<AttractionListData>>() {
                     @Override
                     public void onResponse(Call<BaseResponse<AttractionListData>> call, Response<BaseResponse<AttractionListData>> response) {
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         Log.d(TAG, "code=" + response.code());
                         Log.d(TAG, "body=" + response.body());
-                        isLoading = false;
                         if (response.isSuccessful() && response.body() != null) {
                             BaseResponse<AttractionListData> result = response.body();
                             if (result.getCode() == 1 && result.getData() != null) {
@@ -385,26 +406,47 @@ public class PointManagerActivity extends AppCompatActivity {
                                 Log.d(TAG, "nextLastId=" + data.getNextLastId());
                                 Log.d(TAG, "hasMore=" + data.isHasMore());
                                 List<AddAttractionRequest> newList = data.getList();
+                                // 先更新游标再放开 loading / 刷新，避免滚动监听用旧游标连打
+                                nextLastId = data.getNextLastId();
+                                hasMore = data.isHasMore();
+                                isLoading = false;
                                 if (newList != null && !newList.isEmpty()) {
                                     attractionList.addAll(newList);
                                     adapter.notifyDataSetChanged();
                                 }
-                                nextLastId = data.getNextLastId();
-                                hasMore = data.isHasMore();
+                                // 一屏未铺满且还有更多时继续拉，弥补 dy<=0 不自动翻页
+                                maybeLoadMoreIfNeeded();
                             } else {
+                                isLoading = false;
                                 Toast.makeText(PointManagerActivity.this, "加载失败：" + result.getMsg(), Toast.LENGTH_SHORT).show();
                             }
                         } else {
+                            isLoading = false;
                             Toast.makeText(PointManagerActivity.this, "网络错误", Toast.LENGTH_SHORT).show();
                         }
                     }
 
                     @Override
                     public void onFailure(Call<BaseResponse<AttractionListData>> call, Throwable t) {
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         isLoading = false;
                         Toast.makeText(PointManagerActivity.this, "网络异常：" + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void maybeLoadMoreIfNeeded() {
+        if (isLoading || !hasMore || rvScenic == null) return;
+        GridLayoutManager layoutManager = (GridLayoutManager) rvScenic.getLayoutManager();
+        if (layoutManager == null) return;
+        int visibleItemCount = layoutManager.getChildCount();
+        int totalItemCount = layoutManager.getItemCount();
+        int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+        if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5) {
+            loadNextPage();
+        }
     }
 
     /**
@@ -459,6 +501,7 @@ public class PointManagerActivity extends AppCompatActivity {
         etSearch = findViewById(R.id.et_search);
         rvScenic = findViewById(R.id.rv_scenic);
         tvAdd = findViewById(R.id.tv_add);
+        tvSortTime = findViewById(R.id.tv_sort_time);
         // 初始状态下 MaterialButton 会自动从 XML 的 app:icon 加载图标
         tvBatchDelete=findViewById(R.id.tv_delete_batch);
     }

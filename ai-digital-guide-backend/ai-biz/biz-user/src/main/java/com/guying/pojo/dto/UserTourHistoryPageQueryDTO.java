@@ -25,4 +25,9 @@ public class UserTourHistoryPageQueryDTO {
     private String lastId;
     private Integer pageSize = 6;
 
+    /**
+     * 按 createTime（上次对话时间）排序：desc（默认，最新在前）/ asc（最早在前）
+     */
+    private String sortOrder = "desc";
+
 }

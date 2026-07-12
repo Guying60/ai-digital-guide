@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -40,14 +41,40 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
     @Override
     public ScrollResult<UserTourHistoryPageVO> getTourHistory(UserTourHistoryPageQueryDTO userTourHistoryPageQueryDTO) {
         Long userId = UserContext.getUserId();
+        boolean asc = "asc".equalsIgnoreCase(userTourHistoryPageQueryDTO.getSortOrder());
+
         LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserTourHistory::getUserId, userId)
                 .like(StringUtils.hasText(userTourHistoryPageQueryDTO.getKeyWord()), UserTourHistory::getAttractionName, userTourHistoryPageQueryDTO.getKeyWord())
                 .eq(userTourHistoryPageQueryDTO.getType() != null, UserTourHistory::getType, userTourHistoryPageQueryDTO.getType())
-                .eq(StringUtils.hasText(userTourHistoryPageQueryDTO.getCity()), UserTourHistory::getCity, userTourHistoryPageQueryDTO.getCity())
-                .lt(StringUtils.hasText(userTourHistoryPageQueryDTO.getLastId()), UserTourHistory::getId, userTourHistoryPageQueryDTO.getLastId())
-                .orderByDesc(UserTourHistory::getCreateTime)
-                .last("limit " + (userTourHistoryPageQueryDTO.getPageSize()+1));
+                .eq(StringUtils.hasText(userTourHistoryPageQueryDTO.getCity()), UserTourHistory::getCity, userTourHistoryPageQueryDTO.getCity());
+
+        // 按 createTime（上次对话时间）游标分页
+        if (StringUtils.hasText(userTourHistoryPageQueryDTO.getLastId())) {
+            UserTourHistory cursor = userTourHistoryMapper.selectById(Long.valueOf(userTourHistoryPageQueryDTO.getLastId()));
+            if (cursor != null && cursor.getCreateTime() != null) {
+                LocalDateTime lastTime = cursor.getCreateTime();
+                Long lastIdVal = cursor.getId();
+                if (asc) {
+                    queryWrapper.and(w -> w.gt(UserTourHistory::getCreateTime, lastTime)
+                            .or(i -> i.eq(UserTourHistory::getCreateTime, lastTime).gt(UserTourHistory::getId, lastIdVal)));
+                } else {
+                    queryWrapper.and(w -> w.lt(UserTourHistory::getCreateTime, lastTime)
+                            .or(i -> i.eq(UserTourHistory::getCreateTime, lastTime).lt(UserTourHistory::getId, lastIdVal)));
+                }
+            } else if (asc) {
+                queryWrapper.gt(UserTourHistory::getId, userTourHistoryPageQueryDTO.getLastId());
+            } else {
+                queryWrapper.lt(UserTourHistory::getId, userTourHistoryPageQueryDTO.getLastId());
+            }
+        }
+
+        if (asc) {
+            queryWrapper.orderByAsc(UserTourHistory::getCreateTime).orderByAsc(UserTourHistory::getId);
+        } else {
+            queryWrapper.orderByDesc(UserTourHistory::getCreateTime).orderByDesc(UserTourHistory::getId);
+        }
+        queryWrapper.last("limit " + (userTourHistoryPageQueryDTO.getPageSize() + 1));
 
         List<UserTourHistory> userTourHistoryList = userTourHistoryMapper.selectList(queryWrapper);
         boolean hasMore = userTourHistoryList.size() > userTourHistoryPageQueryDTO.getPageSize();

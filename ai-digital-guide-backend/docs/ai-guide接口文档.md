@@ -255,6 +255,7 @@ GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.1
 | city     | String  | 否   | 按城市（地区）筛选，不传则查全部               |
 | lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传    |
 | pageSize | Integer | 是   | 每页条数                                       |
+| sortOrder | String | 否   | 按对话时间排序：`desc`（默认，最新在前）/ `asc`（最早在前） |
 
 > `city` 为旅游发生时该景点所属城市（下单时冗余记录）；定位功能上线前的历史记录该字段为空，按城市筛选时不会命中。
 
@@ -264,6 +265,7 @@ GET /users/attractions?city=广州市&userLongitude=113.264385&userLatitude=23.1
 GET /tourHistory?keyWord=故宫&type=1&pageSize=10
 GET /tourHistory?city=广州市&pageSize=10
 GET /tourHistory?lastId=1234567890123456789&pageSize=10
+GET /tourHistory?sortOrder=asc&pageSize=10
 ```
 
 **响应参数说明：**
@@ -275,8 +277,12 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
 | list[].coverUrl       | String  | 封面图片地址                      |
 | list[].conversationId | String  | 对话 ID                           |
 | list[].city           | String  | 景点所属城市                      |
+| list[].messageCount   | Integer | 对话消息条数（用户提问 + AI 回复） |
+| list[].lastChatTime   | String  | 上次对话时间，格式 `yyyy-MM-dd'T'HH:mm:ss` |
 | nextLastId            | String  | 下一页游标，为 null 表示无更多数据 |
 | hasMore               | Boolean | 是否还有更多数据                  |
+
+> 列表按对话时间（`createTime` / `lastChatTime`）排序；翻页时服务端根据 `lastId` 对应记录的时间做组合游标，保证升降序分页正确。
 
 **响应示例：**
 
@@ -290,7 +296,9 @@ GET /tourHistory?lastId=1234567890123456789&pageSize=10
         "attractionName": "故宫博物院",
         "coverUrl": "https://oss.example.com/cover/xxx.jpg",
         "conversationId": "1234567890123456789",
-        "city": "北京市"
+        "city": "北京市",
+        "messageCount": 42,
+        "lastChatTime": "2026-07-12T08:15:00"
       }
     ],
     "nextLastId": "1234567890123456789",
@@ -1134,6 +1142,7 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 | city     | String  | 否   | 按城市（地区）筛选，不传则查全部            |
 | lastId   | String  | 否   | 游标，上一页最后一条数据的 ID，首次请求不传 |
 | pageSize | Integer | 否   | 每页条数，默认 6                            |
+| sortOrder | String | 否   | 按 `updateTime` 排序：`desc`（默认，最新在前）/ `asc`（最早在前） |
 
 **请求示例：**
 
@@ -1141,6 +1150,7 @@ GET /users/reviews?status=0&lastId=90000000000000005&pageSize=10
 GET /admins/attractions?keyWord=故宫&type=1&pageSize=6
 GET /admins/attractions?city=北京市&pageSize=6
 GET /admins/attractions?lastId=2044359968888639490&pageSize=6
+GET /admins/attractions?sortOrder=asc&pageSize=6
 ```
 
 **响应参数说明：**
@@ -1154,10 +1164,12 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
 | list[].city       | String  | 所在城市                                    |
 | list[].rating     | Double  | 景点平均分（全量口径 `ROUND(AVG(rating),1)`，1.0–5.0），无评论时为 `null` |
 | list[].reviewCount | Integer | 评论数（全量口径），无评论时为 `0`           |
+| list[].updateTime | String  | 最近更新时间，格式 `yyyy-MM-dd'T'HH:mm:ss`   |
 | nextLastId        | String  | 下一页游标，为 null 表示无更多数据           |
 | hasMore           | Boolean | 是否还有更多数据                            |
 
 > `rating`/`reviewCount` 仅统计 `status=1`（已评价）且 `rating` 非空且未删除的评论，按页一次性聚合，无时间窗口。
+> 列表按 `updateTime` 排序；翻页时服务端根据 `lastId` 对应记录的 `updateTime` 做组合游标，保证升降序分页正确。
 
 **响应示例：**
 
@@ -1173,7 +1185,8 @@ GET /admins/attractions?lastId=2044359968888639490&pageSize=6
         "type": 1,
         "city": "北京市",
         "rating": 4.7,
-        "reviewCount": 128
+        "reviewCount": 128,
+        "updateTime": "2026-07-12T10:30:00"
       }
     ],
     "nextLastId": "2044359968888639490",

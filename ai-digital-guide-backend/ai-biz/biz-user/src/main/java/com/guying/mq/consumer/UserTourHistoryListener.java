@@ -38,6 +38,7 @@ public class UserTourHistoryListener {
         userTourHistory.setCoverUrl(attraction.getCoverUrl());
         userTourHistory.setType(attraction.getType());
         userTourHistory.setCity(attraction.getCity());
+        userTourHistory.setMessageCount(msg.getMessageCount() != null ? msg.getMessageCount() : 0);
         userService.saveUserTourHistory(userTourHistory);
     }
 

@@ -122,7 +122,7 @@
                     android:textColor="#8B8E96"
                     android:textSize="12sp"
                     android:visibility="gone"
-                    tools:text="· 08:15"
+                    tools:text="· 2026年7月12日"
                     tools:visibility="visible" />
             </LinearLayout>
 

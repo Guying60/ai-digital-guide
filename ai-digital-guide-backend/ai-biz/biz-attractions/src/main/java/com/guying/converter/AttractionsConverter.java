@@ -17,5 +17,7 @@ public interface AttractionsConverter {
 
     Attraction toAttraction(AttractionUpdateDTO attractionUpdateDTO);
 
+    AttractionListVO toAttractionListVO(Attraction attraction);
+
     List<AttractionListVO> toAttractionListVOList(List<Attraction> attractionList);
 }

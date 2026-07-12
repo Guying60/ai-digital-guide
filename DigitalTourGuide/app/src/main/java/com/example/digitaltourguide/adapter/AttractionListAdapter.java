@@ -15,9 +15,13 @@ import com.bumptech.glide.Glide;
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.admin.AddAttractionRequest;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAdapter.ViewHolder>{
@@ -99,6 +103,16 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             holder.layoutRatingInfo.setVisibility(View.GONE);
         }
 
+        // 更新时间
+        String updateTimeLabel = formatUpdateTime(item.getUpdateTime());
+        if (updateTimeLabel != null) {
+            holder.tvUpdateTime.setText(
+                    holder.itemView.getContext().getString(R.string.pm_update_time_prefix) + updateTimeLabel);
+            holder.tvUpdateTime.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvUpdateTime.setVisibility(View.GONE);
+        }
+
         // 开放时间
         if (item.getOpenHours() != null && !item.getOpenHours().isEmpty()) {
             holder.tvOpenHours.setText("开放时间：" + item.getOpenHours());
@@ -150,8 +164,24 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
         return data.size();
     }
 
+    private static String formatUpdateTime(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            SimpleDateFormat parseFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            Date date = parseFmt.parse(raw);
+            if (date == null) {
+                return null;
+            }
+            return new SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(date);
+        } catch (ParseException e) {
+            return raw.length() >= 10 ? raw.substring(0, 10) : raw;
+        }
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours, tvViewAnalytics;
+        TextView tvName, tvEdit, tvDelete, tvRating, tvReviewCount, tvOpenHours, tvUpdateTime, tvViewAnalytics;
         ImageView ivCover;
         CheckBox checkBox;
         LinearLayout layoutRatingInfo;
@@ -167,6 +197,7 @@ public class AttractionListAdapter extends RecyclerView.Adapter<AttractionListAd
             tvRating = itemView.findViewById(R.id.tv_rating);
             tvReviewCount = itemView.findViewById(R.id.tv_review_count);
             tvOpenHours = itemView.findViewById(R.id.tv_open_hours);
+            tvUpdateTime = itemView.findViewById(R.id.tv_update_time);
             layoutRatingInfo = itemView.findViewById(R.id.layout_rating_info);
             layoutNavZone = itemView.findViewById(R.id.layout_nav_zone);
             layoutActionButtons = itemView.findViewById(R.id.layout_action_buttons);

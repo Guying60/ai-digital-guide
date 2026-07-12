@@ -80,7 +80,8 @@ public interface ApiService {
             @Query("type") Integer type,
             @Query("city") String city,
             @Query("lastId") String lastId,
-            @Query("pageSize") int pageSize
+            @Query("pageSize") int pageSize,
+            @Query("sortOrder") String sortOrder
     );
     //1.7删除卡片
     @DELETE("users/tourHistory/delete/{id}")

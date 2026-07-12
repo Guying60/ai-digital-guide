@@ -33,6 +33,13 @@ public class ScenicSpot {
     @SerializedName("reviewCount")
     private Integer reviewCount;
 
+    @SerializedName("messageCount")
+    private Integer messageCount;
+
+    /** 上次对话时间，格式 yyyy-MM-dd'T'HH:mm:ss */
+    @SerializedName("lastChatTime")
+    private String lastChatTime;
+
 
     public ScenicSpot() {}
 
@@ -61,6 +68,12 @@ public class ScenicSpot {
 
     public Integer getReviewCount() { return reviewCount; }
     public void setReviewCount(Integer reviewCount) { this.reviewCount = reviewCount; }
+
+    public Integer getMessageCount() { return messageCount; }
+    public void setMessageCount(Integer messageCount) { this.messageCount = messageCount; }
+
+    public String getLastChatTime() { return lastChatTime; }
+    public void setLastChatTime(String lastChatTime) { this.lastChatTime = lastChatTime; }
 
     public String getConversationId() {
         return conversationId;
