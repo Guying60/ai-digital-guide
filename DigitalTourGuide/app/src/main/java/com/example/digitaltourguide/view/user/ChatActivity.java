@@ -123,12 +123,8 @@ public class ChatActivity extends AppCompatActivity {
     private PlayerView idleVideoView;
     private ExoPlayer idlePlayer;
     private String idleVideoUrl;
-    private volatile boolean aiRoundTextDone = false;      // 本轮 LLM 文本是否已结束（responseDone）
     private volatile boolean idleCurrentlyVisible = false; // 当前待机视频是否可见（去重 hide/show）
-    private Handler idleShowHandler;                        // 帧流停止后延时显示待机视频
-    private Runnable idleShowRunnable;
     private static final long CROSSFADE_MS = 150;          // 待机↔数字人 淡入淡出时长
-    private static final long IDLE_SHOW_DELAY_MS = 500;    // 末帧后多久判定"已停说话"显示待机
     // 面部表情采集参数（成本控制 + 带宽隔离，事件触发：发文字/开始录音/停止录音）
     private static final int EMOTION_TARGET_WIDTH = 480;          // 面部分辨率上限（宽）
     private static final int EMOTION_TARGET_HEIGHT = 640;         // 面部分辨率上限（高）
@@ -279,7 +275,6 @@ public class ChatActivity extends AppCompatActivity {
             }
 
             // 6. 释放待机视频
-            cancelIdleShowTimer();
             if (idlePlayer != null) {
                 idlePlayer.release();
                 idlePlayer = null;
@@ -808,14 +803,16 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "✅ AI要说话：" + aiSpeakText);
                     } else if ("responseDone".equals(type)) {
                         Log.d("MYTEST", "✅ 本轮对话结束");
-                        // 标记本轮文本已结束：当数字人帧流停止后即可恢复待机视频
-                        aiRoundTextDone = true;
+                        // 仅恢复 UI；闭嘴由 speakingDone → AVSyncPlayer EOS → onSpeakingEnd 驱动
                         runOnUiThread(() -> {
                             aiIsReplying = false;
                             setSendButtonLoading(false);
                             // 输出完成后停留在最后一行
                             tvSubtitle.post(() -> scrollSubtitleToBottom());
                         });
+                    } else if ("speakingDone".equals(type)) {
+                        Log.d("MYTEST", "✅ 本轮数字人说话结束 speakingDone");
+                        if (avSyncPlayer != null) avSyncPlayer.onSpeakingDone();
                     } else if ("pong".equals(type)) {
                         Log.d("MYTEST", "✅ 心跳回复正常");
                     } else if ("routeTimeline".equals(type)) {
@@ -868,7 +865,6 @@ public class ChatActivity extends AppCompatActivity {
                         // 通知 AVSyncPlayer 句子结束（触发水位线不足时的播放启动）
                         if (avSyncPlayer != null) avSyncPlayer.onSentenceDone(doneSentenceId);
                     }
-
                 } catch (JSONException e) {
                     // 保留你原来的异常日志
                     Log.e("MYTEST", "后端消息解析失败", e);
@@ -898,8 +894,6 @@ public class ChatActivity extends AppCompatActivity {
                 } else {
                     Log.w("BINARY", "未知 typeFlag: 0x" + Integer.toHexString(typeFlag));
                 }
-                // 每收到一帧就重置"显示待机"定时器：帧流持续=正在说话；停流后延时恢复待机
-                scheduleIdleShowAfterDrain();
             }
 
             @Override
@@ -1160,7 +1154,6 @@ public class ChatActivity extends AppCompatActivity {
             avSyncPlayer.release();
             avSyncPlayer = null;
         }
-        cancelIdleShowTimer();
         if (idlePlayer != null) {
             idlePlayer.release();
             idlePlayer = null;
@@ -1190,25 +1183,17 @@ public class ChatActivity extends AppCompatActivity {
             // 字幕更新回调（如需要）
         });
 
-        // 待机视频：帧流停止后延时显示（避免句间短暂空档误判）
+        // 待机视频：由 AVSyncPlayer 说话生命周期驱动（开口隐藏 / EOS 排空或打断后显示）
         idleVideoView = findViewById(R.id.idle_video);
-        idleShowHandler = new Handler(Looper.getMainLooper());
-        idleShowRunnable = () -> {
-            // 仅当本轮文本已结束（responseDone）且帧流已停才显示待机，避免说话中途误显
-            if (aiRoundTextDone) showIdleVideo();
-        };
-        // 数字人开口 → 隐藏待机；数字人停止/被打断 → 显示待机
         avSyncPlayer.setRenderStateListener(new AVSyncPlayer.RenderStateListener() {
             @Override
-            public void onFrameRendered() {
+            public void onSpeakingStart() {
                 runOnUiThread(() -> {
-                    aiRoundTextDone = false;
-                    cancelIdleShowTimer();
-                    if (idleCurrentlyVisible) hideIdleVideo();  // 去重：只在可见时才隐藏
+                    if (idleCurrentlyVisible) hideIdleVideo();
                 });
             }
             @Override
-            public void onRenderStop() {
+            public void onSpeakingEnd() {
                 runOnUiThread(() -> showIdleVideo());
             }
         });
@@ -1390,19 +1375,6 @@ public class ChatActivity extends AppCompatActivity {
             if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
         }).start();
         idleCurrentlyVisible = false;
-    }
-
-    /** 重置"帧流停止后显示待机"定时器（每收到一帧调用一次）。 */
-    private void scheduleIdleShowAfterDrain() {
-        if (idleShowHandler == null || idleShowRunnable == null) return;
-        idleShowHandler.removeCallbacks(idleShowRunnable);
-        idleShowHandler.postDelayed(idleShowRunnable, IDLE_SHOW_DELAY_MS);
-    }
-
-    private void cancelIdleShowTimer() {
-        if (idleShowHandler != null && idleShowRunnable != null) {
-            idleShowHandler.removeCallbacks(idleShowRunnable);
-        }
     }
 
     /**
