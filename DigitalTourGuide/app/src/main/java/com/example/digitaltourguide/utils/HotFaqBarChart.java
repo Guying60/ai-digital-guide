@@ -12,7 +12,9 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
+import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.admin.HotFaqItem;
 
 import java.util.ArrayList;
@@ -81,26 +83,28 @@ public class HotFaqBarChart extends View {
         linePaint.setStyle(Paint.Style.FILL);
         linePaint.setStrokeCap(Paint.Cap.ROUND);
 
+        Context ctx = getContext();
+
         bgTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         bgTrackPaint.setStyle(Paint.Style.FILL);
-        bgTrackPaint.setColor(Color.parseColor("#E8F1FB"));
+        bgTrackPaint.setColor(ContextCompat.getColor(ctx, R.color.surface_variant));
 
         textQuestion = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textQuestion.setColor(Color.parseColor("#1E293B"));
+        textQuestion.setColor(ContextCompat.getColor(ctx, R.color.on_surface));
         textQuestion.setTextSize(dp(13));
 
         textValue = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textValue.setColor(Color.parseColor("#2563EB"));
+        textValue.setColor(ContextCompat.getColor(ctx, R.color.primary));
         textValue.setTextSize(dp(12));
         textValue.setFakeBoldText(true);
 
         textRank = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textRank.setColor(Color.parseColor("#64748B"));
+        textRank.setColor(ContextCompat.getColor(ctx, R.color.on_surface_variant));
         textRank.setTextSize(dp(12));
         textRank.setFakeBoldText(true);
 
         lineGrid = new Paint(Paint.ANTI_ALIAS_FLAG);
-        lineGrid.setColor(Color.parseColor("#E8F1FB"));
+        lineGrid.setColor(ContextCompat.getColor(ctx, R.color.outline_variant));
         lineGrid.setStrokeWidth(dp(0.5f));
 
         highlightOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);

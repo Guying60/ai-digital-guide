@@ -1,7 +1,6 @@
 package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.BaseResponse;
@@ -34,8 +34,6 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
-import com.github.mikephil.charting.highlight.Highlight;
-import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.google.gson.Gson;
 
 import java.io.IOException;
@@ -51,8 +49,8 @@ public class DataAnalysisActivity extends AppCompatActivity {
     private static final String TAG="DataAnalysisActivity";
     private Spinner spinnerQa,spinnerPeople,spinnerScore;
     private LineChart lineChart,lineChartSatisfaction;;
-    private int currentDays = 1; // 默认昨日 (1天)
-    private int satisfactionDays = 1; // 满意度趋势独立时间范围
+    private int currentDays = 1;
+    private int satisfactionDays = 1;
     private LinearLayout tabTouristAnalysis;
     private TextView tvEmpty,tvTotalPeople,tvTouristText,tvDataText,tvBack;
     private DataTooltipMarkerView markerTrend, markerSatisfaction;
@@ -60,19 +58,21 @@ public class DataAnalysisActivity extends AppCompatActivity {
     private HotFaqBarChart hotFaqBarChart;
     private String currentAttractionId;
 
-    String token;
+    // 图表色（从设计系统取）
+    private int chartPrimary, chartSecondary, textMuted, textVariant, surfaceWhite, chartGrid;
 
+    String token;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_data_analyse);
 
+        initColors();
         initView();
 
         token=SpUtils.getAdminToken(this);
         Log.d(TAG,"token:"+token);
 
-        // 获取当前景区ID（实际应从登录成功后的存储或Intent获取）
         currentAttractionId = getIntent().getStringExtra("attraction_id");
         Log.d(TAG, "currentAttractionId = " + currentAttractionId);
         if (currentAttractionId == null || currentAttractionId.isEmpty()) {
@@ -85,12 +85,10 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
         spinnerQa.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
             @Override
-
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 int days=(position==0) ?7:30;
                 loadHotFaqData(days);
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
             }
@@ -109,6 +107,16 @@ public class DataAnalysisActivity extends AppCompatActivity {
         });
     }
 
+    /** 从设计系统色板初始化图表用色 */
+    private void initColors() {
+        chartPrimary  = ContextCompat.getColor(this, R.color.chart_line_primary);
+        chartSecondary= ContextCompat.getColor(this, R.color.chart_line_secondary);
+        textMuted     = ContextCompat.getColor(this, R.color.muted);
+        textVariant   = ContextCompat.getColor(this, R.color.on_surface_variant);
+        surfaceWhite  = ContextCompat.getColor(this, R.color.surface);
+        chartGrid     = ContextCompat.getColor(this, R.color.outline);
+    }
+
     private void setupSpinner() {
         spinnerPeople.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -120,7 +128,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
                 }
                 loadChatTrendData(currentDays);
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {}
         });
@@ -135,7 +142,6 @@ public class DataAnalysisActivity extends AppCompatActivity {
                 }
                 loadSatisfactionTrendData(satisfactionDays);
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {}
         });
@@ -147,7 +153,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
                 .enqueue(new Callback<BaseResponse<SatisfactionTrendVO>>() {
                     @Override
                     public void onResponse(Call<BaseResponse<SatisfactionTrendVO>> call, Response<BaseResponse<SatisfactionTrendVO>> response) {
-Log.d(TAG, "satisfaction response code: " + response.code());
+                        Log.d(TAG, "satisfaction response code: " + response.code());
                         if (response.body() != null) {
                             Log.d(TAG, "satisfaction body: " + new Gson().toJson(response.body()));
                         } else if (response.errorBody() != null) {
@@ -155,7 +161,6 @@ Log.d(TAG, "satisfaction response code: " + response.code());
                                 Log.e(TAG, "satisfaction error body: " + response.errorBody().string());
                             } catch (IOException e) { /* ... */ }
                         }
-
                         if(response.isSuccessful() && response.body()!=null && response.body().getCode()==1){
                             SatisfactionTrendVO data=response.body().getData();
                             drawSatisfactionLineChart(data);
@@ -163,10 +168,9 @@ Log.d(TAG, "satisfaction response code: " + response.code());
                             showSatisfactionEmptyState("加载失败："+((response.body()!=null) ? response.body().getMsg():"未知错误"));
                         }
                     }
-
                     @Override
                     public void onFailure(Call<BaseResponse<SatisfactionTrendVO>> call, Throwable t) {
-showSatisfactionEmptyState("网络错误："+t.getMessage());
+                        showSatisfactionEmptyState("网络错误："+t.getMessage());
                     }
                 });
     }
@@ -191,17 +195,14 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
             entries.add(new Entry(i, avgScores.get(i).floatValue()));
         }
 
-        // 满意度均分折线——主色采用暖橙 #FF9800（与绿色服务人次图区分）
         LineDataSet dataSet = new LineDataSet(entries, "满意度均分");
-        styleTrendDataSet(dataSet, Color.parseColor("#F59E0B"));
+        styleTrendDataSet(dataSet, chartSecondary);
 
         LineData lineData = new LineData(dataSet);
         lineChartSatisfaction.setData(lineData);
 
-        // 满意度范围为 0~5 分，第六个参数 isScore=true 切换 Y 轴刻度到 0~5
         applyChartStyle(lineChartSatisfaction, dates, true);
 
-        // MarkerView
         markerSatisfaction = new DataTooltipMarkerView(this,
                 dates.toArray(new String[0]), "满意度: ");
         List<Integer> countList = data.getCounts();
@@ -213,7 +214,6 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
         lineChartSatisfaction.invalidate();
     }
 
-    //折线图
     private void loadChatTrendData(int days) {
         RetrofitClient.getAdminApiService()
                 .getChatTrend("Bearer "+token,currentAttractionId,days)
@@ -228,12 +228,10 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
                             if (response.errorBody() != null) {
                                 try {
                                     Log.e(TAG, "Error body: " + response.errorBody().string());
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
+                                } catch (IOException e) { e.printStackTrace(); }
                             }
                         }
-if(response.isSuccessful()&& response.body()!=null){
+                        if(response.isSuccessful()&& response.body()!=null){
                             BaseResponse<ChatTrendData> result=response.body();
                             if(result.getCode()==1 && result.getData()!=null){
                                 ChatTrendData data=result.getData();
@@ -247,21 +245,19 @@ if(response.isSuccessful()&& response.body()!=null){
                             Toast.makeText(DataAnalysisActivity.this,"请求失败" ,Toast.LENGTH_SHORT).show();
                         }
                     }
-
                     @Override
                     public void onFailure(Call<BaseResponse<ChatTrendData>> call, Throwable t) {
-Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
-    //画折线图
     private void drawLineChart(List<ChatTrendData.TrendItem> trendList) {
         lineChart.setVisibility(View.VISIBLE);
 
         if(trendList==null || trendList.isEmpty()){
             lineChart.setNoDataText("暂无数据");
-            lineChart.invalidate();//刷新显示
+            lineChart.invalidate();
             return;
         }
         ArrayList<Entry> entries=new ArrayList<>();
@@ -273,17 +269,14 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
             xLabels.add(item.getTime());
         }
 
-        // 服务人次折线——主色采用与 FAQ 区分的中性蓝绿 #10B981
         LineDataSet dataSet = new LineDataSet(entries, "服务人次");
-        styleTrendDataSet(dataSet, Color.parseColor("#22C55E"));
+        styleTrendDataSet(dataSet, chartPrimary);
 
         LineData lineData=new LineData(dataSet);
         lineChart.setData(lineData);
 
-        // 坐标轴 / 网格 / 图例等通用样式
         applyChartStyle(lineChart, xLabels, false);
 
-        // MarkerView 替代浮层
         markerTrend = new DataTooltipMarkerView(this,
                 xLabels.toArray(new String[0]), "人次：");
         markerTrend.setChartView(lineChart);
@@ -313,7 +306,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
                    }
                } else {
                    try {
-                       Log.e(TAG, "error body: " + response.errorBody().string()); // 需要处理 IOException
+                       Log.e(TAG, "error body: " + response.errorBody().string());
                    } catch (IOException e) {
                        throw new RuntimeException(e);
                    }
@@ -327,14 +320,12 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
        });
    }
 
-   //展示空数据或错误信息
     private void showEmptyState(String message){
         hotFaqBarChart.setVisibility(View.GONE);
         tvEmpty.setVisibility(View.VISIBLE);
         tvEmpty.setText(message);
     }
 
-   //展示柱状图
     private void showBarChart(List<HotFaqItem> dataList){
         hotFaqBarChart.setVisibility(View.VISIBLE);
         tvEmpty.setVisibility(View.GONE);
@@ -342,101 +333,73 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 折线图高级样式工具方法（平滑曲线 / 渐变填充 / 虚线网格 / 图例）
+    // 折线图样式
     // ═══════════════════════════════════════════════════════════
 
-    /**
-     * 统一折线数据集样式：CUBIC_BEZIER 平滑曲线、白色描边实心圆点、
-     * 30% 透明渐变填充、数值标签。
-     *
-     * @param set   LineDataSet 对象
-     * @param color 线条主色（圆点内孔、填充均以此色衍生）
-     */
     private void styleTrendDataSet(LineDataSet set, int color) {
-        // ---- 线条 ----
         set.setColor(color);
         set.setLineWidth(2.5f);
-        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);   // 平滑贝塞尔曲线
+        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         set.setCubicIntensity(0.2f);
 
-        // ---- 数据点：白色描边的实心圆 ----
-        // circleColor = 白色（外圈/描边），circleHoleColor = 线条色（内孔/实心）
-        set.setCircleColor(Color.WHITE);
+        set.setCircleColor(surfaceWhite);
         set.setCircleHoleColor(color);
         set.setCircleRadius(4f);
         set.setCircleHoleRadius(3f);
         set.setDrawCircleHole(true);
 
-        // ---- 数值标签 ----
         set.setDrawValues(true);
         set.setValueTextSize(10f);
-        set.setValueTextColor(Color.parseColor("#64748B"));
+        set.setValueTextColor(textVariant);
 
-        // ---- 渐变填充（自上而下：线条色 30% 透明 → 全透明） ----
         set.setDrawFilled(true);
         set.setFillDrawable(makeGradientFill(color));
 
-        // ---- 点击高亮辅助线 ----
         set.setHighlightEnabled(true);
-        set.setHighLightColor(Color.parseColor("#94A3B8"));
+        set.setHighLightColor(textMuted);
         set.setHighlightLineWidth(1f);
         set.enableDashedHighlightLine(10f, 5f, 0f);
     }
 
-    /**
-     * 生成自上而下的渐变填充 Drawable（线条色 30% 不透明度 → 全透明）。
-     */
     private GradientDrawable makeGradientFill(int color) {
-        int top = (color & 0x00FFFFFF) | 0x4D000000;   // 0x4D ≈ 30% 不透明度
-        int bottom = 0x00000000;                        // 完全透明
+        int top = (color & 0x00FFFFFF) | 0x4D000000;
+        int bottom = 0x00000000;
         return new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
     }
 
-    /**
-     * 应用图表通用基础样式：去除边框、浅灰横向虚线网格、底部图例、
-     * 双指缩放平移、X/Y 轴配色。
-     *
-     * @param chart   目标 LineChart
-     * @param xLabels X 轴日期标签列表
-     * @param isScore true 表示满意度图表（Y 轴 0~5），false 表示人次图表（自适应）
-     */
     private void applyChartStyle(LineChart chart, List<String> xLabels, boolean isScore) {
-        // ---- 基础设置 ----
         chart.getDescription().setEnabled(false);
         chart.setDrawBorders(false);
         chart.setDrawGridBackground(false);
-        chart.setBackgroundColor(Color.WHITE);
-        chart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+        chart.setBackgroundColor(surfaceWhite);
+        chart.setNoDataTextColor(textMuted);
 
-        // ---- 交互 ----
         chart.setTouchEnabled(true);
         chart.setDragEnabled(true);
         chart.setScaleEnabled(true);
-        chart.setPinchZoom(true);                   // 双指缩放
-        chart.setDoubleTapToZoomEnabled(false);     // 双击缩放关闭，保留单指平移
+        chart.setPinchZoom(true);
+        chart.setDoubleTapToZoomEnabled(false);
 
-        // ---- 图例：底部水平排列，圆形 ----
         Legend legend = chart.getLegend();
         legend.setEnabled(true);
         legend.setForm(Legend.LegendForm.CIRCLE);
         legend.setFormSize(8f);
         legend.setFormToTextSpace(6f);
         legend.setTextSize(12f);
-        legend.setTextColor(Color.parseColor("#64748B"));
+        legend.setTextColor(textVariant);
         legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
         legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
         legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
         legend.setDrawInside(false);
         legend.setYOffset(8f);
 
-        // ---- X 轴：底部、次要灰色、无轴线/无竖向网格 ----
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setTextColor(textMuted);
         xAxis.setTextSize(11f);
-        xAxis.setDrawGridLines(false);              // 不画竖向网格线
-        xAxis.setDrawAxisLine(false);               // 不画 X 轴线
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(false);
         xAxis.setGranularity(1f);
         xAxis.setYOffset(6f);
 
@@ -451,19 +414,17 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         }
         xAxis.setLabelRotationAngle(size > 6 ? 45f : 0f);
 
-        // ---- 左 Y 轴：浅灰横向虚线网格，无轴线 ----
         YAxis leftAxis = chart.getAxisLeft();
-        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
+        leftAxis.setTextColor(textMuted);
         leftAxis.setTextSize(11f);
         leftAxis.setDrawGridLines(true);
         leftAxis.enableGridDashedLine(10f, 5f, 0f);
-        leftAxis.setGridColor(Color.parseColor("#2094A3B8"));   // 20% 透明度
+        leftAxis.setGridColor(chartGrid);
         leftAxis.setGridLineWidth(0.8f);
         leftAxis.setDrawAxisLine(false);
         leftAxis.setXOffset(8f);
 
         if (isScore) {
-            // 满意度 Y 轴：固定 0~5 分，6 个刻度
             leftAxis.setAxisMinimum(0f);
             leftAxis.setAxisMaximum(5f);
             leftAxis.setLabelCount(6, true);
@@ -475,7 +436,6 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
                 }
             });
         } else {
-            // 人次 Y 轴：自动范围，整数刻度
             leftAxis.setAxisMinimum(0f);
             leftAxis.setGranularity(1f);
             leftAxis.setLabelCount(6, false);
@@ -487,10 +447,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
             });
         }
 
-        // ---- 右 Y 轴：隐藏 ----
         chart.getAxisRight().setEnabled(false);
-
-        // ---- 留白 ----
         chart.setExtraOffsets(8f, 12f, 8f, 12f);
         chart.animateX(600);
     }
@@ -510,6 +467,5 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         tvBack=findViewById(R.id.tv_back);
         lineChartSatisfaction = findViewById(R.id.line_chart_satisfaction);
         spinnerScore = findViewById(R.id.spinner_score);
-
     }
 }

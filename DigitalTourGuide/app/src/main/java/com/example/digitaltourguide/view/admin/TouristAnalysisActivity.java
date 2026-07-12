@@ -1,7 +1,6 @@
 package com.example.digitaltourguide.view.admin;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -17,6 +16,7 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 
 import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.BaseResponse;
@@ -58,23 +58,17 @@ public class TouristAnalysisActivity extends AppCompatActivity {
     private PieChart pieChart;
     private EmotionMarkerView emotionMarkerView;
     private String currentAttractionId;
-    private int currentDays = 7; // 默认近7天
-    private TextView tvPositiveRateMain;   // 显示 86% 的位置
-    private TextView tvPositiveChange;     // 显示 ↑21% 较上月 的位置
-    private TextView tvTopFocus;           // 显示 餐饮/票务 的位置
-    private TextView tvTopFocusRate;       // 显示 占所有问题71% 的位置
-    private TextView tvWorstFocus;         // 显示 停车/导览 的位置
+    private int currentDays = 7;
+    private TextView tvPositiveRateMain, tvPositiveChange, tvTopFocus, tvTopFocusRate, tvWorstFocus;
     private CardView llSuggestion;
     private TextView tvSummary, tvSuggestion, tvScenicText, tvDataText;
     private Button btnScrollToSuggestion;
     private ScrollView scrollView;
-    private LinearLayout  tabDataAnalysis;
+    private LinearLayout tabDataAnalysis;
     private ImageView ivScenicIcon, ivDataIcon;
-    private static final int ICON_SCENIC_SELECTED = R.drawable.ic_tourist_selected;  // 选中态
-    private static final int ICON_SCENIC_NORMAL = R.drawable.ic_tourist_normal;    // 未选中态
-    // 数据分析图标
-    private static final int ICON_DATA_SELECTED = R.drawable.ic_data_selected;
-    private static final int ICON_DATA_NORMAL = R.drawable.ic_data_normal;
+
+    // 图表色（从设计系统取）
+    private int cPositive, cNeutral, cNegative, cMuted, cVariant, cOnSurface, cSurface, cContainer, cErrContainer, cSuccess, cPrimary;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -82,15 +76,14 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         setContentView(R.layout.activity_tourist_analysis);
 
         currentAttractionId = getIntent().getStringExtra("attraction_id");
-
+        initColors();
         initViews();
         setupChartStyles();
         setupSpinner();
         loadEmotionTrendData(7);
-        loadAiSuggestion();  // 默认近7天
+        loadAiSuggestion();
 
         btnScrollToSuggestion.setOnClickListener(v -> {
-            // 滚动到服务建议区域
             scrollView.post(() -> scrollView.smoothScrollTo(0, llSuggestion.getTop()));
         });
 
@@ -103,8 +96,21 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         });
     }
 
+    private void initColors() {
+        cPositive     = ContextCompat.getColor(this, R.color.chart_positive);
+        cNeutral      = ContextCompat.getColor(this, R.color.chart_line_primary);
+        cNegative     = ContextCompat.getColor(this, R.color.chart_negative);
+        cMuted        = ContextCompat.getColor(this, R.color.muted);
+        cVariant      = ContextCompat.getColor(this, R.color.on_surface_variant);
+        cOnSurface    = ContextCompat.getColor(this, R.color.on_surface);
+        cSurface      = ContextCompat.getColor(this, R.color.surface);
+        cContainer    = ContextCompat.getColor(this, R.color.primary_container);
+        cErrContainer = ContextCompat.getColor(this, R.color.error_container);
+        cSuccess      = ContextCompat.getColor(this, R.color.success);
+        cPrimary      = ContextCompat.getColor(this, R.color.primary);
+    }
+
     private void loadAiSuggestion() {
-        // 默认加载近7天（type=0）
         loadAiSuggestionByType(0);
     }
 
@@ -127,14 +133,11 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                 } else {
                     try {
                         Log.e(TAG, "Error body: " + response.errorBody().string());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    } catch (IOException e) { e.printStackTrace(); }
                     tvSummary.setText("请求失败，HTTP " + response.code());
                     tvSuggestion.setText("请稍后重试");
                 }
             }
-
             @Override
             public void onFailure(Call<BaseResponse<SuggestionData>> call, Throwable t) {
                 tvSummary.setText("网络错误");
@@ -153,10 +156,8 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                     loadEmotionTrendData(days);
                 }
             }
-
             @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-            }
+            public void onNothingSelected(AdapterView<?> adapterView) {}
         });
 
         spinnerTimeCard.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -164,30 +165,19 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 int days;
                 switch (position) {
-                    case 0:
-                        days = 1;
-                        break;   // 昨日
-                    case 1:
-                        days = 7;
-                        break;   // 近7天
-                    case 2:
-                        days = 30;
-                        break;  // 近30天
-                    default:
-                        days = 7;
+                    case 0: days = 1; break;
+                    case 1: days = 7; break;
+                    case 2: days = 30; break;
+                    default: days = 7;
                 }
                 loadFocusCardData(days);
             }
-
             @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-            }
+            public void onNothingSelected(AdapterView<?> adapterView) {}
         });
-        //默认选近七天
         spinnerTimeCard.setSelection(1);
     }
 
-    //4.2加载卡片
     private void loadFocusCardData(int days) {
         AdminApiService apiService = RetrofitClient.getAdminApiService();
         Call<BaseResponse<FocusCardData>> call = apiService.getEmotionFocusCard(currentAttractionId, days);
@@ -205,63 +195,58 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                     showCardErrorState("请求失败: " + response.code());
                 }
             }
-
             @Override
             public void onFailure(Call<BaseResponse<FocusCardData>> call, Throwable t) {
                 showCardErrorState("网络错误: " + t.getMessage());
             }
-
-            private void showCardErrorState(String s) {
-                tvPositiveRateMain.setText("--%");
-                tvPositiveChange.setText("暂无数据");
-                tvTopFocus.setText("暂无数据");
-                tvTopFocusRate.setText("");
-                tvWorstFocus.setText("暂无数据");
-            }
         });
     }
 
+    private void showCardErrorState(String s) {
+        tvPositiveRateMain.setText("--%");
+        tvPositiveChange.setText("暂无数据");
+        tvTopFocus.setText("暂无数据");
+        tvTopFocusRate.setText("");
+        tvWorstFocus.setText("暂无数据");
+    }
 
     private void updateFocusCards(FocusCardData data) {
         String topFocus = data.getTopFocus();
         String worstFocus = data.getWorstFocus();
         double positiveRate = data.getPositiveRate();
 
-        // 判断是否无数据：topFocus/worstFocus为"暂无数据"或null，且positiveRate为0
         boolean isEmpty = (topFocus == null || "暂无数据".equals(topFocus))
                 && positiveRate == 0.0;
 
         if (isEmpty) {
             tvPositiveRateMain.setText("--%");
-            tvPositiveRateMain.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvPositiveRateMain.setTextColor(cMuted);
             tvPositiveChange.setText("暂无数据");
-            tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvPositiveChange.setTextColor(cMuted);
             tvTopFocus.setText("暂无数据");
             tvTopFocusRate.setText("");
             tvWorstFocus.setText("暂无数据");
             return;
         }
 
-        // 1. 正面情感占比
         tvPositiveRateMain.setText(String.format(Locale.CHINA, "%.1f%%", positiveRate));
-        tvPositiveRateMain.setTextColor(getResources().getColor(android.R.color.black));
+        tvPositiveRateMain.setTextColor(cOnSurface);
 
         double change = data.getPositiveRateChange();
         String changeLabel = data.getChangeLabel() != null ? data.getChangeLabel() : "";
         String changeText;
         if (change > 0) {
             changeText = String.format(Locale.CHINA, "↑ %.1f%% %s", change, changeLabel);
-            tvPositiveChange.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+            tvPositiveChange.setTextColor(cSuccess);
         } else if (change < 0) {
             changeText = String.format(Locale.CHINA, "↓ %.1f%% %s", Math.abs(change), changeLabel);
-            tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvPositiveChange.setTextColor(cOnSurface);
         } else {
             changeText = String.format(Locale.CHINA, "→ %.1f%% %s", change, changeLabel);
-            tvPositiveChange.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            tvPositiveChange.setTextColor(cOnSurface);
         }
         tvPositiveChange.setText(changeText);
 
-        // 2. 高频关注点
         tvTopFocus.setText(topFocus != null ? topFocus : "暂无数据");
         Double topFocusRate = data.getTopFocusRate();
         if (topFocusRate != null) {
@@ -269,12 +254,9 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         } else {
             tvTopFocusRate.setText("");
         }
-
-        // 3. 待改善
         tvWorstFocus.setText(worstFocus != null ? worstFocus : "暂无数据");
     }
 
-    //默认加载近七天数据
     private void loadEmotionTrendData(int days) {
         AdminApiService apiService = RetrofitClient.getAdminApiService();
         Call<BaseResponse<EmotionTrendData>> call = apiService.getEmotionTrend(currentAttractionId, days);
@@ -288,21 +270,19 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                         updateLineChart(data);
                         updatePieChart(data);
                     } else {
-                        // data 为 null 时，图表显示空状态提示
                         lineChart.clear();
                         lineChart.setNoDataText("暂无情感趋势数据");
-                        lineChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+                        lineChart.setNoDataTextColor(cMuted);
                         lineChart.invalidate();
                         pieChart.clear();
                         pieChart.setNoDataText("暂无情感数据");
-                        pieChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+                        pieChart.setNoDataTextColor(cMuted);
                         pieChart.invalidate();
                     }
                 } else {
                     Toast.makeText(TouristAnalysisActivity.this, "请求失败: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(Call<BaseResponse<EmotionTrendData>> call, Throwable t) {
                 Toast.makeText(TouristAnalysisActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
@@ -321,12 +301,11 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                 || positivesRates.isEmpty() || neutralRates.isEmpty() || negativeRates.isEmpty()) {
             lineChart.clear();
             lineChart.setNoDataText("暂无情感趋势数据");
-            lineChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+            lineChart.setNoDataTextColor(cMuted);
             lineChart.invalidate();
             return;
         }
 
-        // 更新 MarkerView 数据
         emotionMarkerView.setData(dates, positivesRates, neutralRates, negativeRates);
 
         List<Entry> positiveEntries = new ArrayList<>();
@@ -339,20 +318,12 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             negativeEntries.add(new Entry(i, negativeRates.get(i).floatValue()));
         }
 
-        // ---- 正面情感（绿色） ----
-        int positiveColor = Color.parseColor("#22C55E");
         LineDataSet positiveSet = new LineDataSet(positiveEntries, "正面");
-        styleDataSet(positiveSet, positiveColor);
-
-        // ---- 中性情感（蓝色） ----
-        int neutralColor = Color.parseColor("#3B82F6");
+        styleDataSet(positiveSet, cPositive);
         LineDataSet neutralSet = new LineDataSet(neutralEntries, "中性");
-        styleDataSet(neutralSet, neutralColor);
-
-        // ---- 负面情感（红色） ----
-        int negativeColor = Color.parseColor("#EF4444");
+        styleDataSet(neutralSet, cNeutral);
         LineDataSet negativeSet = new LineDataSet(negativeEntries, "负面");
-        styleDataSet(negativeSet, negativeColor);
+        styleDataSet(negativeSet, cNegative);
 
         List<ILineDataSet> dataSets = new ArrayList<>();
         dataSets.add(positiveSet);
@@ -360,10 +331,9 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         dataSets.add(negativeSet);
 
         LineData lineData = new LineData(dataSets);
-        lineData.setDrawValues(false);  // 不在数据点旁显示数值，保持简洁
+        lineData.setDrawValues(false);
         lineChart.setData(lineData);
 
-        // 设置X轴标签为日期
         lineChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(dates));
         lineChart.getXAxis().setLabelCount(Math.min(dates.size(), 7), true);
 
@@ -371,13 +341,10 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         lineChart.invalidate();
     }
 
-    /**
-     * 统一设置折线样式：CUBIC_BEZIER 平滑曲线、圆点标记、半透明填充。
-     */
     private void styleDataSet(LineDataSet set, int color) {
         set.setColor(color);
         set.setCircleColor(color);
-        set.setCircleHoleColor(Color.WHITE);
+        set.setCircleHoleColor(cSurface);
         set.setCircleRadius(5f);
         set.setCircleHoleRadius(3f);
         set.setLineWidth(2.5f);
@@ -386,11 +353,9 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         set.setDrawValues(false);
         set.setDrawCircleHole(true);
         set.setHighlightEnabled(true);
-        set.setHighLightColor(Color.parseColor("#1E293B"));
+        set.setHighLightColor(cOnSurface);
         set.setHighlightLineWidth(1.5f);
         set.enableDashedHighlightLine(8f, 4f, 0f);
-
-        // 半透明填充（渐变效果）
         set.setDrawFilled(true);
         set.setFillColor(color);
         set.setFillAlpha(30);
@@ -406,25 +371,18 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         if (totalNeutral > 0) entries.add(new PieEntry((float) totalNeutral, "中性"));
         if (totalNegative > 0) entries.add(new PieEntry((float) totalNegative, "负面"));
 
-        // 无数据时显示提示
         if (entries.isEmpty()) {
             pieChart.clear();
             pieChart.setNoDataText("暂无情感数据");
-            pieChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
+            pieChart.setNoDataTextColor(cMuted);
             pieChart.invalidate();
             return;
         }
 
         PieDataSet dataSet = new PieDataSet(entries, "");
-        // 自定义紫色系配色
-        int[] purpleColors = new int[]{
-                Color.parseColor("#3B82F6"),  // 正面 - 紫色
-                Color.parseColor("#DBEAFE"),  // 中性 - 浅紫
-                Color.parseColor("#FCA5A5"),  // 负面 - 浅红
-        };
-        dataSet.setColors(purpleColors);
+        dataSet.setColors(new int[]{cPrimary, cContainer, cErrContainer});
         dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.parseColor("#1E293B"));
+        dataSet.setValueTextColor(cOnSurface);
         dataSet.setValueLinePart1Length(0.4f);
         dataSet.setValueLinePart2Length(0.4f);
         dataSet.setUsingSliceColorAsValueLineColor(true);
@@ -435,13 +393,12 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         pieData.setValueFormatter(new com.github.mikephil.charting.formatter.PercentFormatter(pieChart));
         pieChart.setData(pieData);
         pieChart.setDrawEntryLabels(true);
-        pieChart.setEntryLabelColor(Color.parseColor("#1E293B"));
+        pieChart.setEntryLabelColor(cOnSurface);
         pieChart.setEntryLabelTextSize(11f);
         pieChart.invalidate();
     }
 
     private void setupChartStyles() {
-        // ==================== 折线图样式（现代简洁风格） ====================
         lineChart.getDescription().setEnabled(false);
         lineChart.setTouchEnabled(true);
         lineChart.setDragEnabled(true);
@@ -449,15 +406,14 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         lineChart.setPinchZoom(true);
         lineChart.setDoubleTapToZoomEnabled(false);
         lineChart.setDrawGridBackground(false);
-        lineChart.setBackgroundColor(Color.WHITE);
+        lineChart.setBackgroundColor(cSurface);
         lineChart.setViewPortOffsets(40f, 20f, 40f, 30f);
         lineChart.animateX(800);
 
-        // 图例 — 顶部水平排列
         Legend legend = lineChart.getLegend();
         legend.setEnabled(true);
         legend.setTextSize(12f);
-        legend.setTextColor(Color.parseColor("#64748B"));
+        legend.setTextColor(cVariant);
         legend.setForm(Legend.LegendForm.CIRCLE);
         legend.setFormSize(8f);
         legend.setFormToTextSpace(6f);
@@ -468,28 +424,26 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         legend.setXEntrySpace(20f);
         legend.setYOffset(4f);
 
-        // X轴 — 日期标签
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setGranularity(1f);
         xAxis.setLabelRotationAngle(0f);
         xAxis.setTextSize(11f);
-        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setTextColor(cMuted);
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(true);
-        xAxis.setAxisLineColor(Color.parseColor("#E8F1FB"));
+        xAxis.setAxisLineColor(cContainer);
         xAxis.setAxisLineWidth(1f);
         xAxis.setYOffset(8f);
 
-        // 左Y轴 — 0~100，带刻度线和网格
         YAxis leftAxis = lineChart.getAxisLeft();
         leftAxis.setAxisMinimum(0f);
         leftAxis.setAxisMaximum(100f);
         leftAxis.setLabelCount(6, true);
         leftAxis.setTextSize(11f);
-        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
+        leftAxis.setTextColor(cMuted);
         leftAxis.setDrawGridLines(true);
-        leftAxis.setGridColor(Color.parseColor("#E8F1FB"));
+        leftAxis.setGridColor(cContainer);
         leftAxis.setGridLineWidth(1f);
         leftAxis.enableGridDashedLine(8f, 4f, 0f);
         leftAxis.setDrawAxisLine(false);
@@ -500,28 +454,19 @@ public class TouristAnalysisActivity extends AppCompatActivity {
             }
         });
 
-        // 右Y轴 — 隐藏
-        YAxis rightAxis = lineChart.getAxisRight();
-        rightAxis.setEnabled(false);
+        lineChart.getAxisRight().setEnabled(false);
 
-        // 自定义 MarkerView
         emotionMarkerView = new EmotionMarkerView(this, R.layout.marker_emotion);
         emotionMarkerView.setChartView(lineChart);
         lineChart.setMarker(emotionMarkerView);
 
-        // 点击监听（保留 Toast 作为备用反馈，MarkerView 为主要展示方式）
         lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
-            public void onValueSelected(Entry e, Highlight h) {
-                // MarkerView 已处理显示，这里不额外弹 Toast
-            }
-
+            public void onValueSelected(Entry e, Highlight h) {}
             @Override
-            public void onNothingSelected() {
-            }
+            public void onNothingSelected() {}
         });
 
-        // ==================== 饼图样式（保持不变） ====================
         pieChart.getDescription().setEnabled(false);
         pieChart.setUsePercentValues(true);
         pieChart.setExtraOffsets(5, 10, 5, 5);
@@ -549,11 +494,9 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         btnScrollToSuggestion = findViewById(R.id.btn_scroll_to_suggestion);
         scrollView = findViewById(R.id.scrollView);
         tabDataAnalysis = findViewById(R.id.tab_data_analysis);
-        ivScenicIcon = findViewById(R.id.iv_icon_scenic);   // 需要给 ImageView 添加 id
+        ivScenicIcon = findViewById(R.id.iv_icon_scenic);
         ivDataIcon = tabDataAnalysis.findViewById(R.id.iv_icon_data);
-        tvScenicText = findViewById(R.id.tv_text_scenic);   // 给 TextView 添加 id
+        tvScenicText = findViewById(R.id.tv_text_scenic);
         tvDataText = tabDataAnalysis.findViewById(R.id.tv_text_data);
-
     }
-
 }
