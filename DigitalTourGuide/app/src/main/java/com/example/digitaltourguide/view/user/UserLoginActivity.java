@@ -106,8 +106,8 @@ public class UserLoginActivity extends AppCompatActivity {
     }
 
     private void initColors() {
-        colorSelected = ContextCompat.getColor(this, R.color.login_on_primary);
-        colorUnselected = ContextCompat.getColor(this, R.color.login_on_surface_variant);
+        colorSelected = ContextCompat.getColor(this, R.color.primary);
+        colorUnselected = ContextCompat.getColor(this, R.color.on_surface_variant);
     }
 
     private void initToggle() {

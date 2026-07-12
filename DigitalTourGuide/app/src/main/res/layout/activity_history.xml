@@ -63,6 +63,7 @@
                 android:layout_height="46dp"
                 android:text="@string/history_search_action"
                 android:textSize="14sp"
+                app:cornerRadius="12dp"
                 android:textColor="@color/login_on_primary"
                 android:backgroundTint="@color/primary"
                 android:fontFamily="sans-serif-medium"

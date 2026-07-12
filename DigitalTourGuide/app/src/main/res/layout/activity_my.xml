@@ -32,12 +32,12 @@
             <!-- ═══════════════ 第一段：头部区域 — 渐变背景 + 个人信息 ═══════════════ -->
 
 
-            <!-- ═══════════════ 第三段：我的服务卡片 — 原评价 + 偏好（真功能，大入口） ═══════════════ -->
+            <!-- ═══════════════ 头部区域 — 背景图 + 渐变遮罩 + 个人信息 ═══════════════ -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/header_container"
                 android:layout_width="match_parent"
                 android:layout_height="240dp"
-                android:background="@drawable/bg_profile_header_gradient"
+                android:background="@color/primary"
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingHorizontal="20dp"
@@ -167,8 +167,7 @@
                                 android:layout_height="50dp"
                                 android:layout_gravity="center"
                                 android:contentDescription="@null"
-                                android:src="@drawable/ic_star_filled"
-                                 />
+                                android:src="@drawable/ic_star_filled" />
                         </FrameLayout>
 
                         <TextView
@@ -212,8 +211,7 @@
                                 android:layout_height="52dp"
                                 android:layout_gravity="center"
                                 android:contentDescription="@null"
-                                android:src="@drawable/ic_per_setting"
-                                 />
+                                android:src="@drawable/ic_per_setting" />
                         </FrameLayout>
 
                         <TextView
@@ -463,7 +461,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="24dp"
                 app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="16dp"
