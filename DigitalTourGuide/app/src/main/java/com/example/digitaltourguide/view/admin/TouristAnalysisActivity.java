@@ -291,11 +291,11 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                         // data 为 null 时，图表显示空状态提示
                         lineChart.clear();
                         lineChart.setNoDataText("暂无情感趋势数据");
-                        lineChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+                        lineChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
                         lineChart.invalidate();
                         pieChart.clear();
                         pieChart.setNoDataText("暂无情感数据");
-                        pieChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+                        pieChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
                         pieChart.invalidate();
                     }
                 } else {
@@ -321,7 +321,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
                 || positivesRates.isEmpty() || neutralRates.isEmpty() || negativeRates.isEmpty()) {
             lineChart.clear();
             lineChart.setNoDataText("暂无情感趋势数据");
-            lineChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+            lineChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
             lineChart.invalidate();
             return;
         }
@@ -340,7 +340,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         }
 
         // ---- 正面情感（绿色） ----
-        int positiveColor = Color.parseColor("#10B981");
+        int positiveColor = Color.parseColor("#22C55E");
         LineDataSet positiveSet = new LineDataSet(positiveEntries, "正面");
         styleDataSet(positiveSet, positiveColor);
 
@@ -386,7 +386,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         set.setDrawValues(false);
         set.setDrawCircleHole(true);
         set.setHighlightEnabled(true);
-        set.setHighLightColor(Color.parseColor("#1F2937"));
+        set.setHighLightColor(Color.parseColor("#1E293B"));
         set.setHighlightLineWidth(1.5f);
         set.enableDashedHighlightLine(8f, 4f, 0f);
 
@@ -410,7 +410,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         if (entries.isEmpty()) {
             pieChart.clear();
             pieChart.setNoDataText("暂无情感数据");
-            pieChart.setNoDataTextColor(Color.parseColor("#9CA3AF"));
+            pieChart.setNoDataTextColor(Color.parseColor("#94A3B8"));
             pieChart.invalidate();
             return;
         }
@@ -418,13 +418,13 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         PieDataSet dataSet = new PieDataSet(entries, "");
         // 自定义紫色系配色
         int[] purpleColors = new int[]{
-                Color.parseColor("#7C3AED"),  // 正面 - 紫色
-                Color.parseColor("#A78BFA"),  // 中性 - 浅紫
+                Color.parseColor("#3B82F6"),  // 正面 - 紫色
+                Color.parseColor("#DBEAFE"),  // 中性 - 浅紫
                 Color.parseColor("#FCA5A5"),  // 负面 - 浅红
         };
         dataSet.setColors(purpleColors);
         dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.parseColor("#1F2937"));
+        dataSet.setValueTextColor(Color.parseColor("#1E293B"));
         dataSet.setValueLinePart1Length(0.4f);
         dataSet.setValueLinePart2Length(0.4f);
         dataSet.setUsingSliceColorAsValueLineColor(true);
@@ -435,7 +435,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         pieData.setValueFormatter(new com.github.mikephil.charting.formatter.PercentFormatter(pieChart));
         pieChart.setData(pieData);
         pieChart.setDrawEntryLabels(true);
-        pieChart.setEntryLabelColor(Color.parseColor("#1F2937"));
+        pieChart.setEntryLabelColor(Color.parseColor("#1E293B"));
         pieChart.setEntryLabelTextSize(11f);
         pieChart.invalidate();
     }
@@ -457,7 +457,7 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         Legend legend = lineChart.getLegend();
         legend.setEnabled(true);
         legend.setTextSize(12f);
-        legend.setTextColor(Color.parseColor("#6B7280"));
+        legend.setTextColor(Color.parseColor("#64748B"));
         legend.setForm(Legend.LegendForm.CIRCLE);
         legend.setFormSize(8f);
         legend.setFormToTextSpace(6f);
@@ -474,10 +474,10 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         xAxis.setGranularity(1f);
         xAxis.setLabelRotationAngle(0f);
         xAxis.setTextSize(11f);
-        xAxis.setTextColor(Color.parseColor("#9CA3AF"));
+        xAxis.setTextColor(Color.parseColor("#94A3B8"));
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(true);
-        xAxis.setAxisLineColor(Color.parseColor("#E5E7EB"));
+        xAxis.setAxisLineColor(Color.parseColor("#E8F1FB"));
         xAxis.setAxisLineWidth(1f);
         xAxis.setYOffset(8f);
 
@@ -487,9 +487,9 @@ public class TouristAnalysisActivity extends AppCompatActivity {
         leftAxis.setAxisMaximum(100f);
         leftAxis.setLabelCount(6, true);
         leftAxis.setTextSize(11f);
-        leftAxis.setTextColor(Color.parseColor("#9CA3AF"));
+        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
         leftAxis.setDrawGridLines(true);
-        leftAxis.setGridColor(Color.parseColor("#F3F4F6"));
+        leftAxis.setGridColor(Color.parseColor("#E8F1FB"));
         leftAxis.setGridLineWidth(1f);
         leftAxis.enableGridDashedLine(8f, 4f, 0f);
         leftAxis.setDrawAxisLine(false);

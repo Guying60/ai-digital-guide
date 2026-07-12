@@ -11,7 +11,7 @@
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="8dp"
-        android:background="#CCCCCC"
+        android:background="@color/outline"
         android:radius="2dp"/>
 
     <!-- 选项列表 -->
@@ -21,7 +21,7 @@
         android:layout_height="56dp"
         android:text="男"
         android:textSize="18sp"
-        android:textColor="#000000"
+        android:textColor="@color/on_surface"
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:clickable="true"
@@ -30,7 +30,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
-        android:background="#E0E0E0"/>
+        android:background="@color/surface_variant"/>
 
     <TextView
         android:id="@+id/tv_gender_female"
@@ -38,7 +38,7 @@
         android:layout_height="56dp"
         android:text="女"
         android:textSize="18sp"
-        android:textColor="#000000"
+        android:textColor="@color/on_surface"
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:clickable="true"
@@ -47,7 +47,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
-        android:background="#E0E0E0"/>
+        android:background="@color/surface_variant"/>
 
     <TextView
         android:id="@+id/tv_gender_secret"
@@ -55,7 +55,7 @@
         android:layout_height="56dp"
         android:text="保密"
         android:textSize="18sp"
-        android:textColor="#000000"
+        android:textColor="@color/on_surface"
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:clickable="true"

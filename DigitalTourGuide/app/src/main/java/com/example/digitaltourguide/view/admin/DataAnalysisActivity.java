@@ -193,7 +193,7 @@ showSatisfactionEmptyState("网络错误："+t.getMessage());
 
         // 满意度均分折线——主色采用暖橙 #FF9800（与绿色服务人次图区分）
         LineDataSet dataSet = new LineDataSet(entries, "满意度均分");
-        styleTrendDataSet(dataSet, Color.parseColor("#FF9800"));
+        styleTrendDataSet(dataSet, Color.parseColor("#F59E0B"));
 
         LineData lineData = new LineData(dataSet);
         lineChartSatisfaction.setData(lineData);
@@ -275,7 +275,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
 
         // 服务人次折线——主色采用与 FAQ 区分的中性蓝绿 #10B981
         LineDataSet dataSet = new LineDataSet(entries, "服务人次");
-        styleTrendDataSet(dataSet, Color.parseColor("#10B981"));
+        styleTrendDataSet(dataSet, Color.parseColor("#22C55E"));
 
         LineData lineData=new LineData(dataSet);
         lineChart.setData(lineData);
@@ -370,7 +370,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         // ---- 数值标签 ----
         set.setDrawValues(true);
         set.setValueTextSize(10f);
-        set.setValueTextColor(Color.parseColor("#475569"));
+        set.setValueTextColor(Color.parseColor("#64748B"));
 
         // ---- 渐变填充（自上而下：线条色 30% 透明 → 全透明） ----
         set.setDrawFilled(true);
@@ -423,7 +423,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         legend.setFormSize(8f);
         legend.setFormToTextSpace(6f);
         legend.setTextSize(12f);
-        legend.setTextColor(Color.parseColor("#6B7280"));
+        legend.setTextColor(Color.parseColor("#64748B"));
         legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
         legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
         legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
@@ -457,7 +457,7 @@ Toast.makeText(DataAnalysisActivity.this, "网络错误：" + t.getMessage(), To
         leftAxis.setTextSize(11f);
         leftAxis.setDrawGridLines(true);
         leftAxis.enableGridDashedLine(10f, 5f, 0f);
-        leftAxis.setGridColor(Color.parseColor("#3394A3B8"));   // 20% 透明度
+        leftAxis.setGridColor(Color.parseColor("#2094A3B8"));   // 20% 透明度
         leftAxis.setGridLineWidth(0.8f);
         leftAxis.setDrawAxisLine(false);
         leftAxis.setXOffset(8f);

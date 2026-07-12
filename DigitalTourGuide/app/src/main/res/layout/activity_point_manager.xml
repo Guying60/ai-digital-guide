@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F8FA"
+    android:background="@color/background"
     android:fitsSystemWindows="true">
 
     <!-- ======================== 标题栏 ======================== -->
@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:text="@string/pm_title"
-            android:textColor="#111111"
+            android:textColor="@color/on_surface"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -79,8 +79,8 @@
                 android:hint="@string/pm_search_hint"
                 android:imeOptions="actionSearch"
                 android:singleLine="true"
-                android:textColor="#333333"
-                android:textColorHint="#999999"
+                android:textColor="@color/on_surface"
+                android:textColorHint="@color/muted"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -91,9 +91,9 @@
             android:layout_height="44dp"
             android:layout_marginStart="12dp"
             android:text="@string/pm_search_action"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:textSize="14sp"
-            app:backgroundTint="#7854F4"
+            app:backgroundTint="@color/primary"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -269,7 +269,7 @@
         android:id="@+id/layout_bottom"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="20dp"
@@ -322,17 +322,17 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:backgroundTint="#7854F4"
+            android:backgroundTint="@color/primary"
             android:gravity="center"
             android:text="@string/pm_add"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:textSize="15sp"
             android:textStyle="bold"
             app:cornerRadius="12dp"
             app:icon="@drawable/ic_add_circle"
             app:iconGravity="textStart"
             app:iconSize="18dp"
-            app:iconTint="#FFFFFF" />
+            app:iconTint="@color/on_primary" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

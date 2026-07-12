@@ -3,7 +3,7 @@
     <!-- Outer glow ring -->
     <item>
         <shape android:shape="oval">
-            <solid android:color="#3322C55E" />
+            <solid android:color="@color/success" />
         </shape>
     </item>
     <!-- Inner solid dot -->
@@ -13,7 +13,7 @@
         android:right="2dp"
         android:bottom="2dp">
         <shape android:shape="oval">
-            <solid android:color="#22C55E" />
+            <solid android:color="@color/success" />
         </shape>
     </item>
 </layer-list>

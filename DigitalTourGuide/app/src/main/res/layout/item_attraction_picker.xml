@@ -67,14 +67,14 @@
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:src="@drawable/ic_star"
-                    app:tint="#FFC107" />
+                    app:tint="@color/accent" />
 
                 <TextView
                     android:id="@+id/tv_rating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
-                    android:textColor="#333333"
+                    android:textColor="@color/on_surface"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -83,7 +83,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:textColor="#999999"
+                    android:textColor="@color/muted"
                     android:textSize="12sp" />
             </LinearLayout>
 

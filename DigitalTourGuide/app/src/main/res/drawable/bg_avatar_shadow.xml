@@ -8,7 +8,7 @@
         android:start="0dp"
         android:top="0dp">
         <shape android:shape="oval">
-            <solid android:color="#26004BD7" />
+            <solid android:color="@color/primary_container" />
         </shape>
     </item>
 </layer-list>

@@ -27,7 +27,7 @@
             android:id="@+id/iv_cover"
             android:layout_width="64dp"
             android:layout_height="64dp"
-            android:background="#F0F1F5"
+            android:background="@color/surface_variant"
             android:contentDescription="@string/app_name"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_pdf" />
@@ -52,7 +52,7 @@
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:textColor="#191C1F"
+                    android:textColor="@color/on_surface"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     tools:text="沙头角" />
@@ -81,7 +81,7 @@
                 android:background="@drawable/bg_status_pill"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="2dp"
-                android:textColor="#474554"
+                android:textColor="@color/on_surface_variant"
                 android:textSize="11sp"
                 android:visibility="gone" />
 
@@ -97,7 +97,7 @@
                     android:layout_height="14dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_chat_bubble"
-                    android:tint="#8B8E96" />
+                    android:tint="@color/muted" />
 
                 <TextView
                     android:id="@+id/tv_message_count"
@@ -106,7 +106,7 @@
                     android:layout_marginStart="6dp"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:textColor="#8B8E96"
+                    android:textColor="@color/muted"
                     android:textSize="12sp"
                     android:visibility="gone"
                     tools:text="42 条对话"
@@ -119,7 +119,7 @@
                     android:layout_marginStart="6dp"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:textColor="#8B8E96"
+                    android:textColor="@color/muted"
                     android:textSize="12sp"
                     android:visibility="gone"
                     tools:text="· 2026年7月12日"
@@ -138,7 +138,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/history_view_chat"
-                    android:textColor="#6B4EF2"
+                    android:textColor="@color/primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
@@ -148,7 +148,7 @@
                     android:layout_marginStart="2dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_arrow_right"
-                    android:tint="#6B4EF2" />
+                    android:tint="@color/primary" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
@@ -183,7 +183,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/history_end_chat"
-                android:textColor="#FF3B30"
+                android:textColor="@color/error"
                 android:textSize="13sp" />
 
             <TextView
@@ -196,7 +196,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/history_continue_chat"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/white"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -217,7 +217,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/history_rate_attraction"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/white"
                 android:textSize="14sp" />
         </LinearLayout>
     </FrameLayout>

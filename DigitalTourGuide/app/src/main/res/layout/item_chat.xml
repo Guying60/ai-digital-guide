@@ -3,7 +3,7 @@
     android:id="@+id/tv_content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#EEEEEE"
+    android:background="@color/surface_variant"
     android:padding="12dp"
     android:layout_margin="4dp"
     android:textSize="15sp"/>

@@ -22,7 +22,7 @@
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:src="@drawable/ic_delete_sweep"
-            app:tint="#F59E0B" />
+            app:tint="@color/accent" />
     </FrameLayout>
 
     <!-- Title -->
@@ -75,7 +75,7 @@
             android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="6dp"
-            android:backgroundTint="#F59E0B"
+            android:backgroundTint="@color/accent"
             android:text="确认清空"
             android:textColor="@android:color/white"
             android:textSize="15sp"

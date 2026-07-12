@@ -27,7 +27,7 @@
             android:contentDescription="@null"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_pdf"
-            tools:background="#E0E0E0" />
+            tools:background="@color/outline_variant" />
 
         <!-- Info Column -->
         <LinearLayout

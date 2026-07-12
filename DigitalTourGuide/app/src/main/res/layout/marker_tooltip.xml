@@ -10,7 +10,7 @@
         android:id="@+id/tv_marker_label1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/white"
         android:textSize="10sp"
         android:textStyle="bold"
         android:maxLines="1"
@@ -20,7 +20,7 @@
         android:id="@+id/tv_marker_label2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#E0E0E0"
+        android:textColor="@color/on_surface_variant"
         android:textSize="10sp"
         android:maxLines="1"
         android:includeFontPadding="false" />

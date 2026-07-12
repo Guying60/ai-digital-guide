@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:text="修改昵称"
         android:textSize="18sp"
-        android:textColor="#000000"
+        android:textColor="@color/on_surface"
         android:layout_marginBottom="16dp"/>
 
     <!-- 输入框 -->
@@ -40,7 +40,7 @@
             android:layout_height="wrap_content"
             android:text="取消"
             android:textSize="16sp"
-            android:textColor="#666666"
+            android:textColor="@color/on_surface_variant"
             android:padding="10dp"
             android:layout_marginEnd="16dp"/>
 
@@ -50,7 +50,7 @@
             android:layout_height="wrap_content"
             android:text="确认"
             android:textSize="16sp"
-            android:textColor="#2196F3"
+            android:textColor="@color/primary"
             android:padding="10dp"/>
 
     </LinearLayout>

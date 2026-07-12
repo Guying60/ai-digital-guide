@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F9FB"
+    android:background="@color/background"
     android:orientation="vertical">
 
     <ScrollView
@@ -30,7 +30,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:text="主要指标"
-                android:textColor="#1F2937"
+                android:textColor="@color/on_surface"
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
@@ -57,7 +57,7 @@
                 android:layout_width="0dp"
                 android:layout_height="150dp"
                 android:layout_weight="1"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
                 app:cardUseCompatPadding="true">
@@ -73,7 +73,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="正面情感占比"
-                        android:textColor="#7C3AED"
+                        android:textColor="@color/primary"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -83,7 +83,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="86%"
-                        android:textColor="#1F2937"
+                        android:textColor="@color/on_surface"
                         android:textSize="22sp"
                         android:textStyle="bold" />
 
@@ -93,7 +93,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="↑21% 较上月"
-                        android:textColor="#7C3AED"
+                        android:textColor="@color/primary"
                         android:textSize="12sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -104,7 +104,7 @@
                 android:layout_height="150dp"
                 android:layout_weight="1"
                 android:layout_marginStart="10dp"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
                 app:cardUseCompatPadding="true">
@@ -120,7 +120,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="高频关注点"
-                        android:textColor="#6D28D9"
+                        android:textColor="@color/primary"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -130,7 +130,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="餐饮"
-                        android:textColor="#1F2937"
+                        android:textColor="@color/on_surface"
                         android:textSize="22sp"
                         android:textStyle="bold" />
 
@@ -140,7 +140,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="占所有问题71%"
-                        android:textColor="#9CA3AF"
+                        android:textColor="@color/muted"
                         android:textSize="12sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -151,7 +151,7 @@
                 android:layout_height="150dp"
                 android:layout_weight="1"
                 android:layout_marginStart="10dp"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
                 app:cardUseCompatPadding="true">
@@ -167,7 +167,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="待改善"
-                        android:textColor="#DC2626"
+                        android:textColor="@color/error"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -177,7 +177,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="停车"
-                        android:textColor="#1F2937"
+                        android:textColor="@color/on_surface"
                         android:textSize="22sp"
                         android:textStyle="bold" />
 
@@ -186,7 +186,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="负面评价最集中"
-                        android:textColor="#9CA3AF"
+                        android:textColor="@color/muted"
                         android:textSize="12sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -198,7 +198,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#F5F3FF"
+            app:cardBackgroundColor="@color/primary_container"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
@@ -215,14 +215,14 @@
                     android:layout_height="24dp"
                     android:contentDescription="@null"
                     android:src="@drawable/bulb"
-                    app:tint="#7C3AED" />
+                    app:tint="@color/primary" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:text="AI建议已生成，点击跳转"
-                    android:textColor="#6D28D9"
+                    android:textColor="@color/primary"
                     android:textSize="15sp" />
 
                 <View
@@ -234,10 +234,10 @@
                     android:id="@+id/btn_scroll_to_suggestion"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:backgroundTint="#FFFFFF"
+                    android:backgroundTint="@color/surface"
                     android:minWidth="80dp"
                     android:text="查看分析"
-                    android:textColor="#7C3AED"
+                    android:textColor="@color/primary"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     app:cornerRadius="20dp" />
@@ -255,7 +255,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:text="情感分布趋势"
-                android:textColor="#1F2937"
+                android:textColor="@color/on_surface"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -271,7 +271,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="时间范围："
-                    android:textColor="#9CA3AF"
+                    android:textColor="@color/muted"
                     android:textSize="13sp" />
 
                 <Spinner
@@ -290,7 +290,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="20dp"
             app:cardElevation="2dp"
             app:cardUseCompatPadding="true">
@@ -306,7 +306,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="情感分布趋势（%）"
-                    android:textColor="#1F2937"
+                    android:textColor="@color/on_surface"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -327,7 +327,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="整体情感分布"
-                    android:textColor="#1F2937"
+                    android:textColor="@color/on_surface"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -346,7 +346,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#F5F3FF"
+            app:cardBackgroundColor="@color/primary_container"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
@@ -367,7 +367,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="AI建议"
-                        android:textColor="#6D28D9"
+                        android:textColor="@color/primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -380,7 +380,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="每日21:00自动生成"
-                        android:textColor="#9CA3AF"
+                        android:textColor="@color/muted"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -391,7 +391,7 @@
                     android:layout_marginTop="12dp"
                     android:lineSpacingExtra="4dp"
                     android:text="暂无AI生成建议"
-                    android:textColor="#6D28D9"
+                    android:textColor="@color/primary"
                     android:textSize="14sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -405,7 +405,7 @@
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="64dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         android:gravity="center"
         android:orientation="horizontal"
         android:elevation="4dp">
@@ -435,7 +435,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="数据分析"
-                android:textColor="#9CA3AF"
+                android:textColor="@color/muted"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -464,7 +464,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="游客分析"
-                android:textColor="#7C3AED"
+                android:textColor="@color/primary"
                 android:textSize="12sp" />
         </LinearLayout>
 

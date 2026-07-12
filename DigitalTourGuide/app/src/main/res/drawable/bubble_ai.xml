@@ -2,9 +2,9 @@
 <!-- AI 气泡：浅紫灰底色 + 微描边，圆角 20dp -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#EDECF5" />
+    <solid android:color="@color/surface_variant" />
     <corners android:radius="20dp" />
     <stroke
         android:width="0.5dp"
-        android:color="#DCDAED" />
+        android:color="@color/outline_variant" />
 </shape>

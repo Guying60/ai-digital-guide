@@ -8,18 +8,18 @@
     <path
         android:fillColor="#00000000"
         android:pathData="M16,16 L64,16 C68.4,16 72,19.6 72,24 L72,52 C72,56.4 68.4,60 64,60 L40,60 L24,68 L28,60 L16,60 C11.6,60 8,56.4 8,52 L8,24 C8,19.6 11.6,16 16,16 Z"
-        android:strokeColor="#5241CD"
+        android:strokeColor="@color/primary"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <!-- 省略号 -->
     <path
-        android:fillColor="#5241CD"
+        android:fillColor="@color/primary"
         android:pathData="M28,38 m-2.5,0 a2.5,2.5 0,1 1,5 0 a2.5,2.5 0,1 1,-5 0" />
     <path
-        android:fillColor="#5241CD"
+        android:fillColor="@color/primary"
         android:pathData="M40,38 m-2.5,0 a2.5,2.5 0,1 1,5 0 a2.5,2.5 0,1 1,-5 0" />
     <path
-        android:fillColor="#5241CD"
+        android:fillColor="@color/primary"
         android:pathData="M52,38 m-2.5,0 a2.5,2.5 0,1 1,5 0 a2.5,2.5 0,1 1,-5 0" />
 </vector>

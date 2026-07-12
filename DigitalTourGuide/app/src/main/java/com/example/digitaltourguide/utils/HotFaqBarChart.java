@@ -83,10 +83,10 @@ public class HotFaqBarChart extends View {
 
         bgTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         bgTrackPaint.setStyle(Paint.Style.FILL);
-        bgTrackPaint.setColor(Color.parseColor("#E5E7EB"));
+        bgTrackPaint.setColor(Color.parseColor("#E8F1FB"));
 
         textQuestion = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textQuestion.setColor(Color.parseColor("#1F2937"));
+        textQuestion.setColor(Color.parseColor("#1E293B"));
         textQuestion.setTextSize(dp(13));
 
         textValue = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -95,12 +95,12 @@ public class HotFaqBarChart extends View {
         textValue.setFakeBoldText(true);
 
         textRank = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textRank.setColor(Color.parseColor("#6B7280"));
+        textRank.setColor(Color.parseColor("#64748B"));
         textRank.setTextSize(dp(12));
         textRank.setFakeBoldText(true);
 
         lineGrid = new Paint(Paint.ANTI_ALIAS_FLAG);
-        lineGrid.setColor(Color.parseColor("#F3F4F6"));
+        lineGrid.setColor(Color.parseColor("#E8F1FB"));
         lineGrid.setStrokeWidth(dp(0.5f));
 
         highlightOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);

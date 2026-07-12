@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#333333"
+    android:background="@color/background"
     >
 
     <!-- 顶部栏：结束对话 + 音色下拉 -->
@@ -31,7 +31,7 @@
             android:layout_width="120dp"
             android:layout_height="40dp"
             android:text="结束对话"
-            android:textColor="#FF3B30"
+            android:textColor="@color/error"
             android:background="@drawable/tag_bg"
            android:gravity="center"
             android:layout_marginLeft="90dp"
@@ -48,6 +48,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:background="@drawable/ui_chat_stage_bg"
         tools:ignore="MissingClass,InflatedId,,All">
 
         <!-- 数字人区域（全屏填充）。H.264 MediaCodec 硬解直渲到 TextureView -->
@@ -65,7 +66,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone"
-            android:background="#333333"
+            android:background="@color/on_surface"
             app:surface_type="texture_view"
             app:use_controller="false"
             app:resize_mode="zoom" />
@@ -76,7 +77,7 @@
             android:layout_width="120dp"
             android:layout_height="160dp"
             android:layout_margin="16dp"
-            android:background="#cccccc"
+            android:background="@color/outline_variant"
             android:layout_gravity="end|top" />
 
     </FrameLayout>
@@ -98,7 +99,7 @@
         android:textSize="16sp"
         android:gravity="center"
         android:padding="8dp"
-        android:background="#333333"/>
+        android:background="@color/background"/>
 
     <!-- 新增：文本输入栏（水平布局） -->
     <LinearLayout
@@ -106,7 +107,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="8dp"
-        android:background="#333333">
+        android:background="@color/surface">
 
         <EditText
             android:id="@+id/et_message"
@@ -124,7 +125,7 @@
             android:layout_height="wrap_content"
             android:text="发送"
             android:textColor="@android:color/white"
-            android:backgroundTint="#4ECDC4"
+            android:backgroundTint="@color/primary"
             android:layout_marginStart="8dp"
             android:paddingHorizontal="20dp"
             android:paddingVertical="12dp"
@@ -139,7 +140,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:padding="12dp"
-        android:background="#333333">
+        android:background="@color/surface">
 
         <ImageView
             android:id="@+id/btn_mic"

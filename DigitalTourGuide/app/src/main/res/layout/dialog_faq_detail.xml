@@ -14,7 +14,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TOP 1"
-        android:textColor="#1F2937"
+        android:textColor="@color/on_surface"
         android:textSize="20sp"
         android:textStyle="bold" />
 
@@ -25,7 +25,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="被提问 15 次"
-        android:textColor="#3B82F6"
+        android:textColor="@color/primary"
         android:textSize="14sp" />
 
     <!-- 问题内容 -->
@@ -43,7 +43,7 @@
             android:gravity="center"
             android:lineSpacingExtra="6dp"
             android:text="问题内容"
-            android:textColor="#4B5563"
+            android:textColor="@color/on_surface_variant"
             android:textSize="15sp" />
     </ScrollView>
 
@@ -53,9 +53,9 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:layout_marginTop="16dp"
-        android:backgroundTint="#DBEAFE"
+        android:backgroundTint="@color/primary_container"
         android:text="关闭"
-        android:textColor="#2563EB"
+        android:textColor="@color/primary"
         android:textSize="15sp"
         android:textStyle="bold"
         app:cornerRadius="12dp" />

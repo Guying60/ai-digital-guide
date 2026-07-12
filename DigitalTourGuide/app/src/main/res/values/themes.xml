@@ -1,44 +1,43 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme — Sky Travel 统一色板 -->
     <style name="Base.Theme.DigitalTourGuide" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/profile_primary</item>
-        <item name="colorOnPrimary">@color/profile_on_primary</item>
-        <item name="colorPrimaryContainer">@color/profile_primary_container</item>
-        <item name="colorOnPrimaryContainer">@color/profile_on_primary_container</item>
-        <item name="colorSecondary">@color/profile_secondary</item>
-        <item name="colorSecondaryContainer">@color/profile_secondary_container</item>
-        <item name="colorOnSecondaryContainer">@color/profile_on_secondary_container</item>
-        <item name="colorError">@color/profile_error</item>
-        <item name="colorErrorContainer">@color/profile_error_container</item>
-        <item name="colorOnErrorContainer">@color/profile_on_error_container</item>
-        <item name="android:windowBackground">@color/profile_background</item>
-        <item name="android:statusBarColor">@color/profile_surface</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryContainer">@color/secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/on_secondary_container</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorErrorContainer">@color/error_container</item>
+        <item name="colorOnErrorContainer">@color/on_error_container</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/surface</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.DigitalTourGuide" parent="Base.Theme.DigitalTourGuide">
-        <!-- 全局页面切换动画 -->
         <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
     </style>
 
-    <!-- PointManager theme: status bar blends with #F7F8FA background -->
+    <!-- PointManager: transparent status bar -->
     <style name="Theme.DigitalTourGuide.PointManager" parent="Theme.DigitalTourGuide">
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
-    <!-- Profile page theme (use for ProfileActivity) -->
+    <!-- Profile: uses same base, transparent status bar -->
     <style name="Theme.DigitalTourGuide.Profile" parent="Base.Theme.DigitalTourGuide">
-        <item name="android:windowBackground">@color/profile_background</item>
-        <item name="android:statusBarColor">@color/profile_surface</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/surface</item>
     </style>
 
-    <!-- ShapeableImageView 圆形裁切 -->
+    <!-- ShapeableImageView circular crop -->
     <style name="circle_avatar">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
 
-    <!-- 全局页面切换过渡动画 -->
+    <!-- Page transition animations -->
     <style name="WindowAnimationTransition">
         <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
         <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>

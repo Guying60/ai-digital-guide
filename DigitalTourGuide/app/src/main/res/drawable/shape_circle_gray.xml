@@ -3,7 +3,7 @@
     android:shape="oval">
 
     <!-- 灰色实心圆 -->
-    <solid android:color="#DDDDDD" />
+    <solid android:color="@color/outline_variant" />
 
     <!-- 让它变成正圆 -->
     <size

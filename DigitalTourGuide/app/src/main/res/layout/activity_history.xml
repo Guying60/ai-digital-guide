@@ -64,7 +64,7 @@
                 android:text="@string/history_search_action"
                 android:textSize="14sp"
                 android:textColor="@color/login_on_primary"
-                android:backgroundTint="#5241CD"
+                android:backgroundTint="@color/primary"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
                 android:paddingStart="16dp"
@@ -261,7 +261,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#E8E5F3" />
+        android:background="@color/primary_container" />
 
     <!-- ==================== SwipeRefreshLayout + RecyclerView ==================== -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout

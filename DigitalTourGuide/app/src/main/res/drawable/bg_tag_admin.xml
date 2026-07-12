@@ -5,6 +5,6 @@
     <!-- 红色边框，宽度2dp -->
     <stroke
         android:width="1dp"
-        android:color="#E0E0E0"/>
+        android:color="@color/outline_variant"/>
     <corners android:radius="10dp"/>
 </shape>

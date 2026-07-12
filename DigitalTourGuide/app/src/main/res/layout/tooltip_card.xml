@@ -10,7 +10,7 @@
         android:id="@+id/tv_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/white"
         android:textSize="10sp"
         android:textStyle="bold"
         android:maxLines="1"
@@ -20,7 +20,7 @@
         android:id="@+id/tv_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#CCCCCC"
+        android:textColor="@color/outline"
         android:textSize="10sp"
         android:maxLines="1"
         android:includeFontPadding="false" />

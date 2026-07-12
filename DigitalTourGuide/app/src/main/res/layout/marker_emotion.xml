@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="07-01"
-        android:textColor="#1F2937"
+        android:textColor="@color/on_surface"
         android:textSize="13sp"
         android:textStyle="bold" />
 
@@ -41,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:text="正面 86%"
-                android:textColor="#059669"
+                android:textColor="@color/success"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -63,7 +63,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:text="中性 10%"
-                android:textColor="#2563EB"
+                android:textColor="@color/primary"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -85,7 +85,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:text="负面 4%"
-                android:textColor="#DC2626"
+                android:textColor="@color/error"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>

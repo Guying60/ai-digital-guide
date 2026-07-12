@@ -120,13 +120,13 @@ public class RouteTimelineView extends HorizontalScrollView {
         int dotColor;
         String statusText;
         if (stop.isArrived()) {
-            dotColor = Color.parseColor("#4CAF50");   // 绿色已到达
+            dotColor = Color.parseColor("#22C55E");   // 绿色已到达
             statusText = "✓";
         } else if (stop.isCurrent()) {
-            dotColor = Color.parseColor("#FF9800");   // 橙色进行中
+            dotColor = Color.parseColor("#F59E0B");   // 橙色进行中
             statusText = "▶";
         } else {
-            dotColor = Color.parseColor("#9E9E9E");   // 灰色未到达
+            dotColor = Color.parseColor("#94A3B8");   // 灰色未到达
             statusText = "";
         }
 
@@ -170,7 +170,7 @@ public class RouteTimelineView extends HorizontalScrollView {
         params.gravity = Gravity.CENTER_VERTICAL;
         params.bottomMargin = dp(16); // 对齐圆点中心（偏移 label 高度）
         line.setLayoutParams(params);
-        line.setBackgroundColor(Color.parseColor("#555555"));
+        line.setBackgroundColor(Color.parseColor("#64748B"));
         return line;
     }
 
@@ -186,7 +186,7 @@ public class RouteTimelineView extends HorizontalScrollView {
         btn.setText("AI路线");
         btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         btn.setTextColor(Color.WHITE);
-        btn.setBackgroundColor(Color.parseColor("#4ECDC4"));
+        btn.setBackgroundColor(Color.parseColor("#3B82F6"));
         btn.setPadding(dp(12), dp(6), dp(12), dp(6));
         btn.setAllCaps(false);
 
@@ -228,7 +228,7 @@ public class RouteTimelineView extends HorizontalScrollView {
         Button btn = new Button(getContext());
         btn.setText("✕");
         btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        btn.setTextColor(Color.parseColor("#FF3B30"));
+        btn.setTextColor(Color.parseColor("#EF4444"));
         btn.setBackgroundColor(Color.TRANSPARENT);
         btn.setPadding(dp(8), dp(6), dp(8), dp(6));
         btn.setAllCaps(false);

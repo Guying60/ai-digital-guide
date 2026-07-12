@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F9FAFB"
+    android:background="@color/background"
     android:fitsSystemWindows="true">
 
     <!-- 滚动内容区域（在保存按钮上方） -->
@@ -40,7 +40,7 @@
                     android:paddingHorizontal="28dp"
                     android:background="@drawable/bg_segment_active"
                     android:text="@string/se_edit_attraction"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/white"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -52,7 +52,7 @@
                     android:paddingHorizontal="28dp"
                     android:background="@drawable/bg_segment_inactive"
                     android:text="@string/se_edit_digital"
-                    android:textColor="#666666"
+                    android:textColor="@color/on_surface_variant"
                     android:textSize="14sp"
                     android:clickable="true"
                     android:focusable="true" />
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
                 app:cardUseCompatPadding="true"
@@ -81,7 +81,7 @@
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
                         android:contentDescription="@string/se_change_cover"
-                        android:background="#F3F4F6" />
+                        android:background="@color/surface_variant" />
 
                     <!-- 图片占位提示（无图片时显示） -->
                     <LinearLayout
@@ -102,7 +102,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:text="@string/se_change_cover"
-                            android:textColor="#CCCCCC"
+                            android:textColor="@color/outline"
                             android:textSize="14sp" />
                     </LinearLayout>
 
@@ -119,7 +119,7 @@
                         android:paddingHorizontal="14dp"
                         android:paddingVertical="8dp"
                         android:text="@string/se_change_cover"
-                        android:textColor="#333333"
+                        android:textColor="@color/on_surface"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:clickable="true"
@@ -143,7 +143,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/se_attraction_name"
-                    android:textColor="#666666"
+                    android:textColor="@color/on_surface_variant"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textAllCaps="true"
@@ -163,8 +163,8 @@
                     android:maxLines="1"
                     android:paddingHorizontal="20dp"
                     android:paddingVertical="16dp"
-                    android:textColor="#111111"
-                    android:textColorHint="#999999"
+                    android:textColor="@color/on_surface"
+                    android:textColorHint="@color/muted"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -176,7 +176,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/se_attraction_type"
-                    android:textColor="#666666"
+                    android:textColor="@color/on_surface_variant"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textAllCaps="true"
@@ -198,7 +198,7 @@
                         android:gravity="start|center_vertical"
                         android:paddingStart="20dp"
                         android:paddingEnd="52dp"
-                        android:textColor="#111111"
+                        android:textColor="@color/on_surface"
                         android:textSize="16sp" />
 
                     <ImageView
@@ -220,7 +220,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="位置坐标"
-                    android:textColor="#666666"
+                    android:textColor="@color/on_surface_variant"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textAllCaps="true"
@@ -247,8 +247,8 @@
                             android:layout_height="40dp"
                             android:text="获取定位"
                             android:textSize="13sp"
-                            android:textColor="#FFFFFF"
-                            android:backgroundTint="#8B5CF6"
+                            android:textColor="@color/white"
+                            android:backgroundTint="@color/primary"
                             android:paddingHorizontal="16dp"
                             android:minWidth="0dp"
                             android:minHeight="0dp" />
@@ -259,8 +259,8 @@
                             android:layout_height="40dp"
                             android:text="地图选点"
                             android:textSize="13sp"
-                            android:textColor="#FFFFFF"
-                            android:backgroundTint="#F59E0B"
+                            android:textColor="@color/white"
+                            android:backgroundTint="@color/accent"
                             android:paddingHorizontal="16dp"
                             android:minWidth="0dp"
                             android:minHeight="0dp"
@@ -272,7 +272,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="点击按钮获取当前位置坐标"
-                        android:textColor="#666666"
+                        android:textColor="@color/on_surface_variant"
                         android:textSize="13sp"
                         android:layout_marginTop="8dp" />
 
@@ -306,7 +306,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/se_knowledge_base"
-                                android:textColor="#666666"
+                                android:textColor="@color/on_surface_variant"
                                 android:textSize="12sp"
                                 android:textStyle="bold"
                                 android:textAllCaps="true"
@@ -340,7 +340,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="4dp"
                                 android:text="@string/se_add_file"
-                                android:textColor="#4F46E5"
+                                android:textColor="@color/primary"
                                 android:textSize="14sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
@@ -394,7 +394,7 @@
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
                                         android:text="@string/se_no_file"
-                                        android:textColor="#111111"
+                                        android:textColor="@color/on_surface"
                                         android:textSize="14sp"
                                         android:textStyle="bold"
                                         android:maxLines="1"
@@ -451,7 +451,7 @@
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
                                         android:text="@string/se_no_file"
-                                        android:textColor="#111111"
+                                        android:textColor="@color/on_surface"
                                         android:textSize="14sp"
                                         android:textStyle="bold"
                                         android:maxLines="1"
@@ -508,7 +508,7 @@
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
                                         android:text="@string/se_no_file"
-                                        android:textColor="#111111"
+                                        android:textColor="@color/on_surface"
                                         android:textSize="14sp"
                                         android:textStyle="bold"
                                         android:maxLines="1"
@@ -565,7 +565,7 @@
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
                                         android:text="@string/se_no_file"
-                                        android:textColor="#111111"
+                                        android:textColor="@color/on_surface"
                                         android:textSize="14sp"
                                         android:textStyle="bold"
                                         android:maxLines="1"
@@ -606,12 +606,12 @@
         android:layout_alignParentBottom="true"
         android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="32dp"
-        android:backgroundTint="#8B5CF6"
+        android:backgroundTint="@color/primary"
         android:elevation="4dp"
         android:stateListAnimator="@animator/btn_lift"
         android:foreground="?attr/selectableItemBackground"
         android:text="@string/se_save_changes"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold" />
 

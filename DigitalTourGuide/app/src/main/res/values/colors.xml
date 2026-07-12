@@ -1,85 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Sky Travel v0.3 · 统一语义色板（唯一真相）                  -->
+    <!-- 品牌主色 #3B82F6 晴空蓝，废弃紫/橙/多蓝混用                 -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- ====== 品牌与交互 ====== -->
+    <color name="primary">#3B82F6</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#DBEAFE</color>
+    <color name="on_primary_container">#1E40AF</color>
+
+    <color name="secondary">#38BDF8</color>
+    <color name="on_secondary">#0C4A6E</color>
+    <color name="secondary_container">#E0F2FE</color>
+    <color name="on_secondary_container">#0369A1</color>
+
+    <color name="accent">#F59E0B</color>
+    <color name="on_accent">#FFFFFF</color>
+
+    <!-- ====== 表面与文字 ====== -->
+    <color name="background">#F5F9FE</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#E8F1FB</color>
+    <color name="outline">#94A3B8</color>
+    <color name="outline_variant">#D7E3F2</color>
+    <color name="on_surface">#1E293B</color>
+    <color name="on_surface_variant">#64748B</color>
+    <color name="muted">#94A3B8</color>
+
+    <!-- ====== 语义状态 ====== -->
+    <color name="success">#22C55E</color>
+    <color name="warning">#F59E0B</color>
+    <color name="error">#EF4444</color>
+    <color name="error_container">#FEE2E2</color>
+    <color name="on_error_container">#B91C1C</color>
+    <color name="info">#3B82F6</color>
+
+    <!-- ====== 图表专用 ====== -->
+    <color name="chart_positive">#22C55E</color>
+    <color name="chart_neutral">#94A3B8</color>
+    <color name="chart_negative">#EF4444</color>
+    <color name="chart_line_primary">#3B82F6</color>
+    <color name="chart_line_secondary">#38BDF8</color>
+
+    <!-- ====== 基础 ====== -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- 旧名 alias（过渡兼容，下一迭代删除前缀色）                    -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Tab / Nav（旧：多套蓝+橙 → 统一蓝） -->
     <color name="tab_normal">#999999</color>
-    <color name="tab_selected">#165EFE</color>
-
+    <color name="tab_selected">@color/primary</color>
     <color name="nav_pressed_bg">#33000000</color>
-    <color name="nav_text_normal">#666666</color>
-    <color name="nav_text_selected">#FF5722</color>
+    <color name="nav_text_normal">@color/on_surface_variant</color>
+    <color name="nav_text_selected">@color/primary</color>
 
-    <!-- Profile page colors -->
-    <color name="profile_background">#F9F9FF</color>
-    <color name="profile_on_surface">#141C28</color>
-    <color name="profile_on_surface_variant">#434656</color>
-    <color name="profile_primary">#004BD7</color>
-    <color name="profile_primary_container">#2463FF</color>
-    <color name="profile_on_primary_container">#F7F6FF</color>
-    <color name="profile_on_primary">#FFFFFF</color>
-    <color name="profile_secondary">#006B5B</color>
-    <color name="profile_on_secondary">#FFFFFF</color>
-    <color name="profile_secondary_container">#53F8D9</color>
-    <color name="profile_on_secondary_container">#00705F</color>
-    <color name="profile_error">#BA1A1A</color>
-    <color name="profile_error_container">#FFDAD6</color>
-    <color name="profile_on_error_container">#93000A</color>
-    <color name="profile_outline">#737687</color>
-    <color name="profile_outline_variant">#C3C5D8</color>
-    <color name="profile_surface">#F9F9FF</color>
-    <color name="profile_surface_container_lowest">#FFFFFF</color>
+    <!-- Profile（旧：#004BD7 + 青绿 → alias） -->
+    <color name="profile_background">@color/background</color>
+    <color name="profile_on_surface">@color/on_surface</color>
+    <color name="profile_on_surface_variant">@color/on_surface_variant</color>
+    <color name="profile_primary">@color/primary</color>
+    <color name="profile_primary_container">@color/primary_container</color>
+    <color name="profile_on_primary_container">@color/on_primary_container</color>
+    <color name="profile_on_primary">@color/on_primary</color>
+    <color name="profile_secondary">@color/info</color>
+    <color name="profile_on_secondary">@color/on_primary</color>
+    <color name="profile_secondary_container">@color/primary_container</color>
+    <color name="profile_on_secondary_container">@color/on_primary_container</color>
+    <color name="profile_error">@color/error</color>
+    <color name="profile_error_container">@color/error_container</color>
+    <color name="profile_on_error_container">@color/on_error_container</color>
+    <color name="profile_outline">@color/outline</color>
+    <color name="profile_outline_variant">@color/outline_variant</color>
+    <color name="profile_surface">@color/surface</color>
+    <color name="profile_surface_container_lowest">@color/surface</color>
     <color name="profile_surface_container_low">#F0F3FF</color>
     <color name="profile_surface_container">#E7EEFF</color>
-    <color name="profile_surface_variant">#DBE3F4</color>
+    <color name="profile_surface_variant">@color/surface_variant</color>
     <color name="profile_glass_white">#B3FFFFFF</color>
-    <color name="profile_brand_gradient_start">#004BD7</color>
-    <color name="profile_brand_gradient_end">#2ADEC0</color>
-    <color name="profile_star_yellow">#FFB300</color>
+    <color name="profile_brand_gradient_start">@color/primary</color>
+    <color name="profile_brand_gradient_end">@color/secondary</color>
+    <color name="profile_star_yellow">@color/accent</color>
     <color name="profile_preference_green">#66BB6A</color>
     <color name="profile_female_pink">#F06292</color>
-    <color name="profile_on_female_pink">#FFFFFF</color>
+    <color name="profile_on_female_pink">@color/on_primary</color>
 
-    <!-- ===================== Login Page Colors (Material You palette) ===================== -->
-    <color name="login_primary">#5241CD</color>
-    <color name="login_on_primary">#FFFFFF</color>
-    <color name="login_primary_container">#6B5CE7</color>
-    <color name="login_on_primary_container">#FAF5FF</color>
-    <color name="login_secondary">#5644D0</color>
-    <color name="login_background">#F8F9FE</color>
-    <color name="login_surface">#F8F9FE</color>
-    <color name="login_surface_container_low">#F2F3F8</color>
-    <color name="login_surface_container_lowest">#FFFFFF</color>
-    <color name="login_on_surface">#191C1F</color>
-    <color name="login_on_surface_variant">#474554</color>
-    <color name="login_outline">#787586</color>
-    <color name="login_outline_variant">#C8C4D7</color>
-    <color name="login_error">#BA1A1A</color>
-    <color name="login_error_container">#FFDAD6</color>
-    <color name="login_on_error_container">#93000A</color>
+    <!-- Login（旧：紫 #5241CD → alias） -->
+    <color name="login_primary">@color/primary</color>
+    <color name="login_on_primary">@color/on_primary</color>
+    <color name="login_primary_container">@color/primary_container</color>
+    <color name="login_on_primary_container">@color/on_primary_container</color>
+    <color name="login_secondary">@color/primary</color>
+    <color name="login_background">@color/background</color>
+    <color name="login_surface">@color/surface</color>
+    <color name="login_surface_container_low">@color/surface_variant</color>
+    <color name="login_surface_container_lowest">@color/surface</color>
+    <color name="login_on_surface">@color/on_surface</color>
+    <color name="login_on_surface_variant">@color/on_surface_variant</color>
+    <color name="login_outline">@color/outline</color>
+    <color name="login_outline_variant">@color/outline_variant</color>
+    <color name="login_error">@color/error</color>
+    <color name="login_error_container">@color/error_container</color>
+    <color name="login_on_error_container">@color/on_error_container</color>
 
-    <!-- ===================== Chat / Real-time Conversation colors (from HTML Tailwind) ===================== -->
-    <color name="chat_background">#F8F9FE</color>
-    <color name="chat_surface">#F8F9FE</color>
-    <color name="chat_on_surface">#191C1F</color>
-    <color name="chat_on_surface_variant">#474554</color>
-    <color name="chat_primary">#5241CD</color>
-    <color name="chat_on_primary">#FFFFFF</color>
-    <color name="chat_primary_container">#6B5CE7</color>
-    <color name="chat_on_primary_container">#FAF5FF</color>
-    <color name="chat_surface_container_low">#F2F3F8</color>
-    <color name="chat_surface_container">#ECEEF3</color>
-    <color name="chat_surface_container_high">#E7E8ED</color>
-    <color name="chat_surface_variant">#E1E2E7</color>
+    <!-- Chat（旧：紫 #5241CD → alias） -->
+    <color name="chat_background">@color/background</color>
+    <color name="chat_surface">@color/surface</color>
+    <color name="chat_on_surface">@color/on_surface</color>
+    <color name="chat_on_surface_variant">@color/on_surface_variant</color>
+    <color name="chat_primary">@color/primary</color>
+    <color name="chat_on_primary">@color/on_primary</color>
+    <color name="chat_primary_container">@color/primary_container</color>
+    <color name="chat_on_primary_container">@color/on_primary_container</color>
+    <color name="chat_surface_container_low">@color/surface_variant</color>
+    <color name="chat_surface_container">@color/surface_variant</color>
+    <color name="chat_surface_container_high">@color/surface_variant</color>
+    <color name="chat_surface_variant">@color/surface_variant</color>
     <color name="chat_surface_dim">#D8DADF</color>
-    <color name="chat_outline">#787586</color>
-    <color name="chat_outline_variant">#C8C4D7</color>
-    <color name="chat_green_dot">#22C55E</color>
+    <color name="chat_outline">@color/outline</color>
+    <color name="chat_outline_variant">@color/outline_variant</color>
+    <color name="chat_green_dot">@color/success</color>
     <color name="chat_green_text">#16A34A</color>
 
-    <!-- ===================== Splash Screen (蓝白·简约) ===================== -->
-    <color name="splash_bg_top">#FFFFFF</color>
-    <color name="splash_bg_bottom">#EAF0FF</color>
-    <color name="splash_ink">#16233B</color>
-    <color name="splash_accent">#2F6BFF</color>
-    <color name="splash_muted">#8893A8</color>
+    <!-- Splash（旧：蓝 #2F6BFF → alias） -->
+    <color name="splash_bg_top">@color/surface</color>
+    <color name="splash_bg_bottom">@color/primary_container</color>
+    <color name="splash_ink">@color/on_surface</color>
+    <color name="splash_accent">@color/primary</color>
+    <color name="splash_muted">@color/outline</color>
 </resources>
