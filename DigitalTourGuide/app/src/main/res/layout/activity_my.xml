@@ -36,8 +36,8 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/header_container"
                 android:layout_width="match_parent"
-                android:layout_height="240dp"
-                android:background="@color/primary"
+                android:layout_height="250dp"
+                android:background="#B33B82F6"
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingHorizontal="20dp"
