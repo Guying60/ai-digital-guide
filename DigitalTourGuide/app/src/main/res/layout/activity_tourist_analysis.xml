@@ -346,7 +346,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/primary_container"
+            app:cardBackgroundColor="@color/background"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
@@ -380,7 +380,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="每日21:00自动生成"
-                        android:textColor="@color/muted"
+                        android:textColor="@color/black"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -391,7 +391,7 @@
                     android:layout_marginTop="12dp"
                     android:lineSpacingExtra="4dp"
                     android:text="暂无AI生成建议"
-                    android:textColor="@color/primary"
+                    android:textColor="@color/muted"
                     android:textSize="14sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
