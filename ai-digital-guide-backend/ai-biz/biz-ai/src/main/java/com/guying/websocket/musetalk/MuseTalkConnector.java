@@ -161,6 +161,9 @@ public class MuseTalkConnector {
                     } else {
                         sender.send(ctx, new TextMessage(doneMsg.toString()));
                     }
+                    if (ctx.onSpeakVideoDoneAndMaybeReady()) {
+                        sender.enqueueSpeakingDone(ctx);
+                    }
                 }
                 case "error" -> log.error("[Python WS] 报错：{}", node.get("message").asText());
                 default -> log.warn("[Python WS] 收到未知类型消息: {}", type);

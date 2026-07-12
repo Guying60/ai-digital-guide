@@ -96,6 +96,7 @@ async def websocket_endpoint(ws: WebSocket):
                 max_frames = audio_duration_ms // _MS_PER_FRAME
                 frame_index = 0
                 pts_ms = 0
+                tail_frames = 0
 
                 async with engine._lock:
                     pending_aus_future: Optional[asyncio.Future] = None
@@ -133,16 +134,15 @@ async def websocket_endpoint(ws: WebSocket):
                                 pts_ms += _MS_PER_FRAME
                                 frame_index += 1
 
-                        # flush 编码器残留包
+                        # flush 编码器残留包：尾包一律发送，不受 max_frames 截断（保证收口 AU 发出）
                         if not shutdown_event.is_set():
                             tail_aus = encoder.close()
                             for au_bytes, is_keyframe in tail_aus:
-                                if frame_index >= max_frames:
-                                    break
                                 header = struct.pack(">HIB", sentence_id, pts_ms, 1 if is_keyframe else 0)
                                 await ws.send_bytes(header + au_bytes)
                                 pts_ms += _MS_PER_FRAME
                                 frame_index += 1
+                                tail_frames += 1
                     finally:
                         encoder.close()
                         encoder = H264StreamEncoder(width=TARGET_W, height=TARGET_H, fps=FPS)
@@ -156,7 +156,7 @@ async def websocket_endpoint(ws: WebSocket):
                     rt_ratio = audio_duration_s / infer_elapsed if infer_elapsed > 0 else float("inf")
                     logger.info(
                         f"[perf] sentence_id={sentence_id} 推理完成 | "
-                        f"帧数={frame_index} | 音频={audio_duration_s:.2f}s | "
+                        f"帧数={frame_index} | tailFrames={tail_frames} | 音频={audio_duration_s:.2f}s | "
                         f"推理耗时={infer_elapsed:.3f}s | "
                         f"audio2feat={t_audio_done - t_audio_start:.3f}s | "
                         f"实时倍率={rt_ratio:.2f}x | "

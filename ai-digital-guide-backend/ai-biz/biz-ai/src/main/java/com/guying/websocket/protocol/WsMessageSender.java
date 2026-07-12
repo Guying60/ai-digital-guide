@@ -34,6 +34,25 @@ public class WsMessageSender {
         sendJson(ctx, "done", null);
     }
 
+    /**
+     * 本轮数字人音画均已产出完毕：经 OutboundPacer 排在末帧之后发给前端，
+     * 触发客户端进入 Draining（EOS 排空末帧 → 待机闭嘴）。
+     */
+    public void enqueueSpeakingDone(ChatSessionContext ctx) {
+        if (ctx == null) return;
+        ObjectNode resp = objectMapper.createObjectNode();
+        resp.put("type", "speakingDone");
+        TextMessage msg = new TextMessage(resp.toString());
+        var pacer = ctx.getOutboundPacer();
+        if (pacer != null) {
+            pacer.enqueueControl(msg);
+            log.info("[speakingDone] enqueued via pacer sid={}", ctx.getSid());
+        } else {
+            send(ctx, msg);
+            log.info("[speakingDone] sent direct sid={}", ctx.getSid());
+        }
+    }
+
     // ---- 通用消息发送 ----
 
     public void sendJson(ChatSessionContext ctx, String type, String text) {

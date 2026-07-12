@@ -148,6 +148,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             case "text" -> {
                 String wordText = node.get("text").asText();
                 log.info("用户输入文本：{}", wordText);
+                ctx.resetSpeakRound();
                 ctx.markE2eUserInput();
                 aiChatService.invoke(ctx, wordText);
             }
@@ -254,6 +255,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
      */
     private void handleInterrupt(ChatSessionContext ctx) {
         log.info("用户主动打断 sid={}", ctx.getSid());
+        ctx.resetSpeakRound();
         museTalkConnector.interrupt(ctx);
         cosyVoiceConnector.interrupt(ctx);
         ctx.getPtsTracker().onInterrupt();

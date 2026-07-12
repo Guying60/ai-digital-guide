@@ -8,6 +8,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -84,6 +85,14 @@ public class ChatSessionContext {
 
     private volatile long lastActiveTime;
 
+    /**
+     * 本轮数字人说话收尾：LLM 已结束且待出镜句数为 0 时，经 Pacer 下发 {@code speakingDone}。
+     * pendingSpeakSentences 在 emitSentence 时 +1，MuseTalk 句级 done 时 -1。
+     */
+    private final AtomicInteger pendingSpeakSentences = new AtomicInteger(0);
+    private volatile boolean llmRoundComplete = false;
+    private final AtomicBoolean speakingDoneEnqueued = new AtomicBoolean(false);
+
     public ChatSessionContext(WebSocketSession session, Long digitalHumanId) {
         this.userSession = session;
         this.sid = session.getId();
@@ -113,5 +122,43 @@ public class ChatSessionContext {
         this.lastActiveTime = System.currentTimeMillis();
     }
 
-    // ★ 删除了 recordSentenceAudioOrigin 和 getSentenceAudioOrigin 两个方法
+    /** 新一轮用户输入 / 打断：重置说话轮次计数。 */
+    public void resetSpeakRound() {
+        pendingSpeakSentences.set(0);
+        llmRoundComplete = false;
+        speakingDoneEnqueued.set(false);
+    }
+
+    /** 调度一句 TTS+数字人视频时调用。 */
+    public void beginSpeakSentence() {
+        pendingSpeakSentences.incrementAndGet();
+    }
+
+    /**
+     * MuseTalk 单句视频 done 后调用。
+     * @return true 表示应立即入队 {@code speakingDone}
+     */
+    public boolean onSpeakVideoDoneAndMaybeReady() {
+        pendingSpeakSentences.decrementAndGet();
+        return tryClaimSpeakingDone();
+    }
+
+    /**
+     * LLM 流结束（已发 responseDone）后调用。
+     * @return true 表示应立即入队 {@code speakingDone}
+     */
+    public boolean markLlmCompleteAndMaybeReady() {
+        llmRoundComplete = true;
+        return tryClaimSpeakingDone();
+    }
+
+    private boolean tryClaimSpeakingDone() {
+        if (!llmRoundComplete) {
+            return false;
+        }
+        if (pendingSpeakSentences.get() > 0) {
+            return false;
+        }
+        return speakingDoneEnqueued.compareAndSet(false, true);
+    }
 }

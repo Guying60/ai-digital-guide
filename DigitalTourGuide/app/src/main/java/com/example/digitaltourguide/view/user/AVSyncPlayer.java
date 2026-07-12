@@ -45,6 +45,8 @@ public class AVSyncPlayer {
     private static final long SYNC_MAX_WAIT_MS = 700;    // 安全阀：单帧累计等待上限，防音频线程意外死亡导致永久冻结
     /** 音频时钟超过该墙钟未更新 → 视为停滞，视频降级为 40ms 墙钟（禁止 700ms 慢放） */
     private static final long AUDIO_STALE_MS = 500;
+    /** 无 speakingDone 时的兜底：音画供给均停超过该时长才进入 Draining */
+    private static final long DRAIN_FALLBACK_IDLE_MS = 300;
     // Data format (type byte NO LONGER stripped by ChatActivity — B1 optimization):
     // Audio: [typeFlag:1B][sentenceId:2B][ptsMs:4B][PCM:N]  → header = 7 bytes
     // Video: [typeFlag:1B][sentenceId:2B][ptsMs:4B][keyFrame:1B][H.264:N] → header = 8 bytes
@@ -53,13 +55,16 @@ public class AVSyncPlayer {
     public static final int VIDEO_WIDTH = 720;
     public static final int VIDEO_HEIGHT = 1280;
 
+    /** 数字人说话状态：Idle → Playing → Draining → Idle */
+    private enum SpeakState { IDLE, PLAYING, DRAINING }
+
     private final TextureView textureView;
     private Consumer<String> subtitleCallback;
 
-    /** 数字人渲染状态回调：用于在真人数字人开口/收口时切换待机视频。 */
+    /** 数字人说话生命周期：开口隐藏待机，收口（EOS 排空或打断）显示待机。 */
     public interface RenderStateListener {
-        void onFrameRendered();  // 渲染了一帧（开始/正在说话）；调用方需内部去重
-        void onRenderStop();     // 数字人播放被清空/打断（停止说话）
+        void onSpeakingStart();  // 本轮首帧渲染：开始说话
+        void onSpeakingEnd();    // EOS 排空完成 / interrupt：停止说话
     }
     private volatile RenderStateListener renderStateListener;
 
@@ -76,6 +81,15 @@ public class AVSyncPlayer {
     private volatile boolean playbackStarted = false;  // 播放线程是否已启动
     private volatile boolean firstSentenceBuffered = false;  // 首句预缓冲是否完成
     private volatile long generation = 0;  // 对话代际计数器，用于安全重启播放线程
+
+    /** 说话状态机（videoFeedLoop / interrupt 写入） */
+    private volatile SpeakState speakState = SpeakState.IDLE;
+    /** 后端 speakingDone 已到达，本地排空后进入 Draining */
+    private volatile boolean speakingDoneReceived = false;
+    /** 本轮已向解码器发送 EOS */
+    private volatile boolean eosSignaled = false;
+    /** EOS 发出的墙钟时刻，超时则强制 completeDrain */
+    private volatile long eosSignaledWallMs = 0;
 
     // ---- 帧接收 & 解码耗时统计 ----
     private long lastVideoRecvTime = 0;
@@ -255,11 +269,11 @@ public class AVSyncPlayer {
         }
         videoQueue.offer(frameData);
         int curSize = videoQueueSize.incrementAndGet();  // O(1) 快照，避免后续 size() 调用
+        long now = System.currentTimeMillis();
+        long interval = lastVideoRecvTime == 0 ? 0 : now - lastVideoRecvTime;
+        lastVideoRecvTime = now;  // 始终更新，供 Draining 兜底超时
+        videoRecvCount++;
         if (LOG) {
-            long now = System.currentTimeMillis();
-            long interval = lastVideoRecvTime == 0 ? 0 : now - lastVideoRecvTime;
-            lastVideoRecvTime = now;
-            videoRecvCount++;
             long enqCost = now - tEntry;
             // ★ 诊断：enqueueExecutor 队列深度
             int enqBacklog = enqSubmitted.get() - enqCompleted.get();
@@ -328,9 +342,7 @@ public class AVSyncPlayer {
      */
     public void onConversationEnd() {
         if (LOG) Log.i(TAG, "onConversationEnd: clearing queues");
-        // 数字人停止 → 通知显示待机视频（盖住可能冻结的尾帧）
-        RenderStateListener rsl = renderStateListener;
-        if (rsl != null) rsl.onRenderStop();
+        forceStopSpeaking();
         generation++;  // ★ 通知运行中的音视频线程立即退出
         audioQueue.clear();
         videoQueue.clear();
@@ -389,11 +401,18 @@ public class AVSyncPlayer {
         }
     }
 
+    /**
+     * 后端 speakingDone：本轮音画均已下发完毕，本地队列排空后进入 Draining（EOS flush）。
+     */
+    public void onSpeakingDone() {
+        speakingDoneReceived = true;
+        if (LOG) Log.i(TAG, "onSpeakingDone: flag set speakState=" + speakState
+                + " vQ=" + videoQueueSize.get() + " aQ=" + audioQueue.size());
+    }
+
     public void interrupt() {
         if (LOG) Log.i(TAG, "interrupt");
-        // 被打断 → 通知显示待机视频
-        RenderStateListener rsl = renderStateListener;
-        if (rsl != null) rsl.onRenderStop();
+        forceStopSpeaking();
         generation++;  // ★ 通知运行中的音视频线程立即退出
         audioQueue.clear();
         videoQueue.clear();
@@ -427,6 +446,16 @@ public class AVSyncPlayer {
         audioStarted = false;
         audioPlaybackPtsMs = 0;
         audioPlaybackWallMs = 0;
+    }
+
+    /** 打断/会话结束：跳过 EOS 排空，立即 Idle 并通知待机。 */
+    private void forceStopSpeaking() {
+        speakState = SpeakState.IDLE;
+        speakingDoneReceived = false;
+        eosSignaled = false;
+        eosSignaledWallMs = 0;
+        RenderStateListener rsl = renderStateListener;
+        if (rsl != null) rsl.onSpeakingEnd();
     }
 
     public void release() {
@@ -503,6 +532,13 @@ public class AVSyncPlayer {
         audioStarted = false;
         audioPlaybackPtsMs = 0;
         audioPlaybackWallMs = 0;
+        // 新播放会话：清除上一轮 drain 标记（打断已 forceStop；此处兜底）
+        speakingDoneReceived = false;
+        eosSignaled = false;
+        eosSignaledWallMs = 0;
+        if (speakState == SpeakState.DRAINING) {
+            speakState = SpeakState.IDLE;
+        }
         new Thread(this::audioPlayLoop, "av-audio").start();
     }
 
@@ -692,6 +728,49 @@ public class AVSyncPlayer {
         return System.currentTimeMillis() - wall > AUDIO_STALE_MS;
     }
 
+    /**
+     * 是否应进入 Draining：本地音视频队列已空，且（收到 speakingDone 或兜底超时）。
+     */
+    private boolean shouldEnterDrain() {
+        if (speakState != SpeakState.PLAYING) return false;
+        if (videoQueueSize.get() > 0) return false;
+        if (!audioQueue.isEmpty()) return false;
+        // 音频仍在播则继续等（句间短空档音频通常未停）
+        if (audioStarted && !isAudioClockStale()) return false;
+        if (speakingDoneReceived) return true;
+        long sinceVideo = lastVideoRecvTime == 0
+                ? Long.MAX_VALUE
+                : System.currentTimeMillis() - lastVideoRecvTime;
+        return sinceVideo >= DRAIN_FALLBACK_IDLE_MS && isAudioClockStale();
+    }
+
+    private void notifySpeakingStartOnce() {
+        if (speakState != SpeakState.IDLE) return;
+        speakState = SpeakState.PLAYING;
+        RenderStateListener rsl = renderStateListener;
+        if (rsl != null) rsl.onSpeakingStart();
+        if (LOG) Log.i(TAG, "speakState → PLAYING (onSpeakingStart)");
+    }
+
+    /**
+     * EOS 输出排空完成：释放解码器、回 Idle、通知待机。
+     */
+    private void completeDrain(int feedCount, int renderCount, int residualRendered) {
+        if (LOG) {
+            Log.w(TAG, "EOS-FLUSH end residualRendered=" + residualRendered
+                    + " feed=" + feedCount + " render=" + renderCount
+                    + " gapClosed=" + (feedCount - renderCount));
+        }
+        releaseDecoder();
+        speakState = SpeakState.IDLE;
+        speakingDoneReceived = false;
+        eosSignaled = false;
+        eosSignaledWallMs = 0;
+        RenderStateListener rsl = renderStateListener;
+        if (rsl != null) rsl.onSpeakingEnd();
+        if (LOG) Log.i(TAG, "speakState → IDLE (onSpeakingEnd after EOS)");
+    }
+
     // ====================== VIDEO DECODE & RENDER ======================
 
     private void videoFeedLoop() {
@@ -737,6 +816,7 @@ public class AVSyncPlayer {
         long loopTotalQInMs = 0;    // 累计 queueInputBuffer 耗时
         long loopLastDiagWallMs = videoStartWallMs;
         int lastVideoQ = videoQueueSize.get(); // 追踪 vQ 变化以检测降到 0
+        int eosResidualRendered = 0;           // EOS 阶段额外渲染的帧数
 
         while (!released) {
             loopIter++;
@@ -831,13 +911,39 @@ public class AVSyncPlayer {
             if (outIdx >= 0) {
                 if ((outInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                     c.releaseOutputBuffer(outIdx, false);
+                } else if ((outInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    // EOS 输出：若还有可显示内容则渲染，然后完成排空
+                    if (outInfo.size > 0) {
+                        long elapsed = System.currentTimeMillis() - lastRenderTime;
+                        if (elapsed < FRAME_INTERVAL_MS) {
+                            try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }
+                        }
+                        c.releaseOutputBuffer(outIdx, true);
+                        eosResidualRendered++;
+                        videoRenderCount++;
+                        lastRenderTime = System.currentTimeMillis();
+                        notifySpeakingStartOnce();
+                    } else {
+                        c.releaseOutputBuffer(outIdx, false);
+                    }
+                    completeDrain(videoFeedCount, videoRenderCount, eosResidualRendered);
+                    c = null;
+                    eosResidualRendered = 0;
+                    continue;
                 } else {
                     // ★ P2.2 音频主时钟门控：首帧立即渲染；之后按音频真实播放头择时呈现 → 真 lip-sync
-                    // ★ 音频停滞时降级为墙钟 40ms，禁止每帧打满 SYNC_MAX_WAIT_MS(700) 导致有帧仍慢放
+                    // ★ 音频停滞 / Draining 时降级为墙钟 40ms，禁止每帧打满 SYNC_MAX_WAIT_MS(700) 导致有帧仍慢放
                     long framePtsMs = outInfo.presentationTimeUs / 1000;  // us→ms（后端全局 PTS）
                     boolean drop = false;
-                    if (!firstFrameRendered) {
-                        // 首帧立即渲染：数字人尽快出画面，避免起播长时间持有解码 buffer / 黑屏
+                    boolean draining = speakState == SpeakState.DRAINING || eosSignaled;
+                    if (!firstFrameRendered || draining) {
+                        // 首帧或 EOS 排空：墙钟节拍（Draining 不再等已停的音频头）
+                        if (firstFrameRendered || draining) {
+                            long elapsed = System.currentTimeMillis() - lastRenderTime;
+                            if (elapsed < FRAME_INTERVAL_MS) {
+                                try { Thread.sleep(FRAME_INTERVAL_MS - elapsed); } catch (InterruptedException e) { return; }
+                            }
+                        }
                     } else if (audioStarted && !isAudioClockStale()) {
                         // 以音频真实播放头为基准：视频超前则等待，滞后过多则丢帧追赶
                         long waited = 0;
@@ -913,9 +1019,8 @@ public class AVSyncPlayer {
                         long renderCost = System.currentTimeMillis() - tRenderStart;
                         if (LOG) loopTotalRenderMs += renderCost;
                         firstFrameRendered = true;
-                        // 每渲染一帧通知一次（ChatActivity 据此在数字人开口时隐藏待机视频，内部去重）
-                        RenderStateListener rsl = renderStateListener;
-                        if (rsl != null) rsl.onFrameRendered();
+                        if (draining) eosResidualRendered++;
+                        notifySpeakingStartOnce();
                         lastRenderTime = System.currentTimeMillis();  // 仅墙钟回退分支会用到
                         videoRenderCount++;
                         diagVideoRenderPtsMs = framePtsMs;
@@ -995,7 +1100,39 @@ public class AVSyncPlayer {
             byte[] pkt = videoQueue.peek(); // non-blocking peek
             if (pkt == null) {
                 if (LOG) loopIdleEmptyQ++;
+                // 队列空：若应进入 Draining，向解码器发 EOS 以吐出 pipeline 残留帧
+                if (c != null && !eosSignaled && shouldEnterDrain()) {
+                    speakState = SpeakState.DRAINING;
+                    try {
+                        c.signalEndOfInputStream();
+                        eosSignaled = true;
+                        eosSignaledWallMs = System.currentTimeMillis();
+                        if (LOG) {
+                            Log.w(TAG, "EOS-FLUSH start feed=" + videoFeedCount
+                                    + " render=" + videoRenderCount
+                                    + " gap=" + (videoFeedCount - videoRenderCount)
+                                    + " speakingDone=" + speakingDoneReceived);
+                        }
+                    } catch (IllegalStateException e) {
+                        if (LOG) Log.w(TAG, "EOS-FLUSH signal failed: " + e.getMessage());
+                        // 解码器已异常：直接收口，避免永远卡在 PLAYING
+                        completeDrain(videoFeedCount, videoRenderCount, 0);
+                        c = null;
+                    }
+                } else if (c != null && eosSignaled && eosSignaledWallMs > 0
+                        && System.currentTimeMillis() - eosSignaledWallMs > 2000) {
+                    if (LOG) Log.w(TAG, "EOS-FLUSH timeout 2s, force complete");
+                    completeDrain(videoFeedCount, videoRenderCount, eosResidualRendered);
+                    c = null;
+                    eosResidualRendered = 0;
+                }
                 try { Thread.sleep(10); } catch (InterruptedException e) { return; }
+                continue;
+            }
+            // Draining 且已发 EOS：不再喂新帧（理论上 speakingDone 后不应再有；兜底丢弃防卡住）
+            if (eosSignaled) {
+                if (LOG) Log.w(TAG, "EOS-FLUSH: drop late frame while draining, vQ=" + videoQueueSize.get());
+                if (videoQueue.poll() != null) videoQueueSize.decrementAndGet();
                 continue;
             }
             if (LOG) Log.d(TAG, "videoFeedLoop: feed frame, vQ=" + videoQueueSize.get());

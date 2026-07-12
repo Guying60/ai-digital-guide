@@ -105,6 +105,9 @@ public class AiChatService {
                     // 仅打 LLM 阶段；首音/首帧在 TTS / MuseTalk 就绪后由 E2eMetricsLogger 补 COMPLETE
                     e2eMetricsLogger.logLlmStage(ctx);
                     sender.sendJson(ctx, "responseDone", null);
+                    if (ctx.getDigitalHumanId() != null && ctx.markLlmCompleteAndMaybeReady()) {
+                        sender.enqueueSpeakingDone(ctx);
+                    }
                 }
         );
     }
@@ -117,6 +120,7 @@ public class AiChatService {
         if (ctx.getDigitalHumanId() == null) {
             return;
         }
+        ctx.beginSpeakSentence();
         ExecutorService executor = ctx.getTtsExecutor();
         // 把可能阻塞的 TTS 调度扔进单线程池里串行执行，
         // 仅阻塞当前用户的 TTS 队列，不影响 WebFlux 主流和其它会话
