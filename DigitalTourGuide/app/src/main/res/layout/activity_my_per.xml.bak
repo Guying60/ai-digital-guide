@@ -69,7 +69,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_teach_style" />
+                    android:src="@drawable/ic_teach" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -109,7 +109,7 @@
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_style_professional"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
                     android:layout_rowWeight="1"
                     android:layout_marginEnd="6dp"
@@ -128,20 +128,18 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
-                        android:layout_gravity="center"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:gravity="center"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
+                            android:layout_marginTop="2dp"
                             android:text="专业讲解"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="14sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_pro"
@@ -186,19 +184,18 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="2dp"
                             android:text="故事化讲解"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="14sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_story"
@@ -243,19 +240,18 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="2dp"
                             android:text="轻松幽默"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="14sp" />
+                            android:textSize="13sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_humor"
@@ -300,19 +296,18 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="70dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="2dp"
                             android:text="儿童模式"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="14sp" />
+                            android:textSize="13sp" />
 
                         <FrameLayout
                             android:id="@+id/check_style_kids"
@@ -350,7 +345,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_teach_deep_style"
+                    android:src="@drawable/ic_teach_deep"
                      />
 
                 <LinearLayout
@@ -408,19 +403,18 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:gravity="center"
                             android:text="简洁速览"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="13sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_brief"
@@ -462,20 +456,19 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="1dp"
                             android:gravity="center"
                             android:text="标准导览"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="13sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_std"
@@ -517,20 +510,19 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="60dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="1dp"
                             android:gravity="center"
                             android:text="深度文化解析"
                             android:textColor="@color/profile_on_surface"
-                            android:textSize="13sp" />
+                            android:textSize="11sp" />
 
                         <FrameLayout
                             android:id="@+id/check_depth_deep"
@@ -567,7 +559,8 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_heart_style" />
+                    android:src="@drawable/ic_heart"
+                     />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -954,7 +947,8 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_compass_style" />
+                    android:src="@drawable/ic_compass"
+                    />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -1013,16 +1007,15 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
+                            android:layout_marginTop="3dp"
                             android:text="学习知识"
                             android:textColor="@color/profile_on_surface"
                             android:textSize="13sp" />
@@ -1069,15 +1062,14 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="3dp"
                             android:text="亲子陪伴"
                             android:textColor="@color/profile_on_surface"
@@ -1125,15 +1117,14 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="3dp"
                             android:text="拍照打卡"
                             android:textColor="@color/profile_on_surface"
@@ -1181,14 +1172,14 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="50dp"
+                        android:layout_height="65dp"
                         android:gravity="center"
                         android:orientation="vertical">
 
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="@null"
                             android:layout_marginTop="3dp"
                             android:text="休闲放松"
                             android:textColor="@color/profile_on_surface"

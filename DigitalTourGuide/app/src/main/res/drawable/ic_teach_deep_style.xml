@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 讲解深度图标：浅蓝方形底 + 深蓝三条横线 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 浅蓝方形背景（圆角方形） -->
+    <path
+        android:fillColor="@color/profile_primary_container"
+        android:pathData="M4,2h16c1.1,0 2,0.9 2,2v16c0,1.1 -0.9,2 -2,2H4c-1.1,0 -2,-0.9 -2,-2V4c0,-1.1 0.9,-2 2,-2z" />
+
+    <!-- 深蓝三条横线 -->
+    <group
+        android:pivotX="12"
+        android:pivotY="12"
+        android:scaleX="0.75"
+        android:scaleY="0.75">
+        <path
+            android:fillColor="@color/profile_on_primary_container"
+            android:pathData="M3,6h18v2H3V6z M3,11h18v2H3V11z M3,16h18v2H3V16z" />
+    </group>
+</vector>
