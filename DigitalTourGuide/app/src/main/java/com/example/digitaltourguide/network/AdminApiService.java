@@ -97,7 +97,8 @@ public interface AdminApiService {
             @Query("type") Integer type,
             @Query("city") String city,
             @Query("lastId") String lastId,
-            @Query("pageSize") int pageSize
+            @Query("pageSize") int pageSize,
+            @Query("sortOrder") String sortOrder
     );
 
     //2.8

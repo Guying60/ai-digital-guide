@@ -20,4 +20,9 @@ public class AttractionListQueryDTO {
     private String lastId;
     private Integer pageSize = 6;
 
+    /**
+     * 按 updateTime 排序方向：desc（默认，最新在前）/ asc（最早在前）
+     */
+    private String sortOrder = "desc";
+
 }

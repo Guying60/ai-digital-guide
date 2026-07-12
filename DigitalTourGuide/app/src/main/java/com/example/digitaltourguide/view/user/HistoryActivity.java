@@ -66,6 +66,11 @@ public class HistoryActivity extends AppCompatActivity {
     // 筛选参数
     private String currentKeyWord = null;   // 没输入时为 null
     private String currentCity = null;      // 没选择时为 null
+    /** desc=最新在前（默认），asc=最早在前 */
+    private String sortOrder = "desc";
+    private TextView tvSortTime;
+    /** 列表加载代数：切换排序/筛选时递增，丢弃过期回调 */
+    private int loadSeq = 0;
     // 城市标签（复用原来的类型标签 View）
     private final TextView[] cityTagViews = new TextView[8];
     private String[] cityNames = new String[0];
@@ -198,6 +203,7 @@ public class HistoryActivity extends AppCompatActivity {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
+                if (dy <= 0) return;
                 GridLayoutManager layoutManager = (GridLayoutManager) recyclerView.getLayoutManager();
                 if (!isLoading && hasMore && layoutManager != null) {
                     int visibleItemCount = layoutManager.getChildCount();
@@ -433,11 +439,20 @@ public class HistoryActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        tvSortTime.setOnClickListener(v -> {
+            boolean toAsc = !"asc".equalsIgnoreCase(sortOrder);
+            sortOrder = toAsc ? "asc" : "desc";
+            tvSortTime.setText(toAsc ? R.string.history_sort_asc : R.string.history_sort_desc);
+            resetAndLoad();
+        });
     }
 
     private void resetAndLoad() {
+        loadSeq++;
         lastId = null;
         hasMore = true;
+        isLoading = false;
         adapter.clearData();
         loadFirstPage();
     }
@@ -445,13 +460,15 @@ public class HistoryActivity extends AppCompatActivity {
     private void loadFirstPage() {
         token = SpUtils.getUserToken(this);
         Log.d("HistoryActivity", "此时用户token: " + token);
+        final int seq = loadSeq;
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, null, currentCity, null, pageSize)
+        apiService.getTourHistory(currentKeyWord, null, currentCity, null, pageSize, sortOrder)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
-
-                        isLoading = false;
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         if (response.isSuccessful() && response.body() != null && response.body().code == 1) {
                             String bodyJson = new Gson().toJson(response.body());
                             Log.d("HistoryActivity", "响应体 JSON: " + bodyJson);
@@ -478,18 +495,23 @@ public class HistoryActivity extends AppCompatActivity {
                                             uniqueList.add(spot);
                                         }
                                     }
-                                    adapter.addData(uniqueList);
                                     lastId = data.nextLastId;
                                     hasMore = data.hasMore;
+                                    isLoading = false;
+                                    adapter.addData(uniqueList);
                                     updateCityTags();
+                                    maybeLoadMoreIfNeeded();
                                 } else {
-                                    // 搜索结果为空
+                                    isLoading = false;
                                     Toast.makeText(HistoryActivity.this, "未找到相关景点", Toast.LENGTH_SHORT).show();
                                     lastId = null;
                                     hasMore = false;
                                 }
+                            } else {
+                                isLoading = false;
                             }
                         } else {
+                            isLoading = false;
                             HistoryResponse body = response.body();
                             if (body == null) {
                                 Log.e("HistoryActivity", "景点请求失败: 响应体为 null, HTTP状态码=" + response.code());
@@ -507,6 +529,9 @@ public class HistoryActivity extends AppCompatActivity {
                     }
                     @Override
                     public void onFailure(Call<HistoryResponse> call, Throwable t) {
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         isLoading = false;
                         Log.e("HistoryActivity", "网络请求失败: " + t.getMessage(), t);
                         Toast.makeText(HistoryActivity.this,"网络错误",Toast.LENGTH_SHORT).show();
@@ -518,12 +543,15 @@ public class HistoryActivity extends AppCompatActivity {
         Log.d(TAG, "loadNextPage, lastId=" + lastId + ", hasMore=" + hasMore);
         token = SpUtils.getUserToken(this);
         if (!hasMore || isLoading) return;
+        final int seq = loadSeq;
         isLoading = true;
-        apiService.getTourHistory(currentKeyWord, null, currentCity, lastId, pageSize)
+        apiService.getTourHistory(currentKeyWord, null, currentCity, lastId, pageSize, sortOrder)
                 .enqueue(new Callback<HistoryResponse>() {
                     @Override
                     public void onResponse(Call<HistoryResponse> call, Response<HistoryResponse> response) {
-                        isLoading = false;
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         if (response.isSuccessful() && response.body() != null && response.body().code == 1) {
                             String bodyJson = new Gson().toJson(response.body());
                             Log.d("HistoryActivity", "响应体 JSON: " + bodyJson);
@@ -540,18 +568,23 @@ public class HistoryActivity extends AppCompatActivity {
                                             spot.setEnded(true);
                                         }
                                     }
-                                    adapter.addData(newList);
                                     lastId = data.nextLastId;
                                     hasMore = data.hasMore;
+                                    isLoading = false;
+                                    adapter.addData(newList);
                                     updateCityTags();
+                                    maybeLoadMoreIfNeeded();
                                 } else {
-                                    // 没有更多数据
+                                    isLoading = false;
                                     Toast.makeText(HistoryActivity.this, "没有更多了", Toast.LENGTH_SHORT).show();
                                     hasMore = false;
                                 }
+                            } else {
+                                isLoading = false;
                             }
                         } else {
-                            hasMore = false; // 请求失败不再继续
+                            isLoading = false;
+                            hasMore = false;
                             HistoryResponse body = response.body();
                             if (body == null) {
                                 Log.e("HistoryActivity", "景点请求失败: 响应体为 null, HTTP状态码=" + response.code());
@@ -569,9 +602,24 @@ public class HistoryActivity extends AppCompatActivity {
 
                     @Override
                     public void onFailure(Call<HistoryResponse> call, Throwable t) {
+                        if (seq != loadSeq) {
+                            return;
+                        }
                         isLoading = false;
                     }
                 });
+    }
+
+    private void maybeLoadMoreIfNeeded() {
+        if (isLoading || !hasMore || rvScenic == null) return;
+        GridLayoutManager layoutManager = (GridLayoutManager) rvScenic.getLayoutManager();
+        if (layoutManager == null) return;
+        int visibleItemCount = layoutManager.getChildCount();
+        int totalItemCount = layoutManager.getItemCount();
+        int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
+        if ((visibleItemCount + firstVisiblePosition) >= totalItemCount - 3) {
+            loadNextPage();
+        }
     }
 
     private void setupTags() {
@@ -671,6 +719,7 @@ public class HistoryActivity extends AppCompatActivity {
         // 活跃标签指示器已在布局 XML 中通过 bg_nav_active 设置
         rvScenic = findViewById(R.id.rv_scenic);
         etSearch = findViewById(R.id.et_search);
+        tvSortTime = findViewById(R.id.tv_sort_time);
 
         tvHistory.setOnClickListener(v -> {
            Toast.makeText(this,"当前已是旅游历史页面",Toast.LENGTH_SHORT).show();

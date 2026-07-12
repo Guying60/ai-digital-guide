@@ -96,6 +96,8 @@
     <string name="history_end_chat">结束</string>
     <string name="history_continue_chat">继续对话</string>
     <string name="history_rate_attraction">评价景点</string>
+    <string name="history_sort_desc">对话时间 · 最新</string>
+    <string name="history_sort_asc">对话时间 · 最早</string>
 
     <style name="BottomDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
         <item name="windowNoTitle">true</item>
@@ -138,6 +140,9 @@
     <string name="pm_cancel">取消</string>
     <string name="pm_add">新增景点</string>
     <string name="pm_open_hours_prefix">开放时间：</string>
+    <string name="pm_update_time_prefix">更新时间：</string>
+    <string name="pm_sort_desc">更新时间 · 最新</string>
+    <string name="pm_sort_asc">更新时间 · 最早</string>
     <string name="pm_settings">设置</string>
     <string name="pm_view_analytics">查看运营数据</string>
     <string name="pm_edit">编辑</string>

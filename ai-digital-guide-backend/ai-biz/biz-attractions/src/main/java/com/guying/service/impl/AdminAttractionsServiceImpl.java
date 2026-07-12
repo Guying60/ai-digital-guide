@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -224,14 +225,40 @@ public class AdminAttractionsServiceImpl extends ServiceImpl<AttractionsMapper, 
     @Override
     public ScrollResult<AttractionListVO> getAttractionList(AttractionListQueryDTO attractionListQueryDTO) {
         Long adminId = AdminContext.getAdminId();
+        boolean asc = "asc".equalsIgnoreCase(attractionListQueryDTO.getSortOrder());
+
         LambdaQueryWrapper<Attraction> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Attraction::getAdminId, adminId)
                 .like(StringUtils.hasText(attractionListQueryDTO.getKeyWord()), Attraction::getAttractionName, attractionListQueryDTO.getKeyWord())
                 .eq(attractionListQueryDTO.getType() != null, Attraction::getType, attractionListQueryDTO.getType())
-                .eq(StringUtils.hasText(attractionListQueryDTO.getCity()), Attraction::getCity, attractionListQueryDTO.getCity())
-                .lt(StringUtils.hasText(attractionListQueryDTO.getLastId()), Attraction::getId, attractionListQueryDTO.getLastId())
-                .orderByDesc(Attraction::getCreateTime)
-                .last("limit " + (attractionListQueryDTO.getPageSize()+1));
+                .eq(StringUtils.hasText(attractionListQueryDTO.getCity()), Attraction::getCity, attractionListQueryDTO.getCity());
+
+        // 按 updateTime 游标分页：用上一页末条的 updateTime + id 组合，避免仅按 id 错位
+        if (StringUtils.hasText(attractionListQueryDTO.getLastId())) {
+            Attraction cursor = attractionsMapper.selectById(Long.valueOf(attractionListQueryDTO.getLastId()));
+            if (cursor != null && cursor.getUpdateTime() != null) {
+                LocalDateTime lastUpdateTime = cursor.getUpdateTime();
+                Long lastId = cursor.getId();
+                if (asc) {
+                    queryWrapper.and(w -> w.gt(Attraction::getUpdateTime, lastUpdateTime)
+                            .or(i -> i.eq(Attraction::getUpdateTime, lastUpdateTime).gt(Attraction::getId, lastId)));
+                } else {
+                    queryWrapper.and(w -> w.lt(Attraction::getUpdateTime, lastUpdateTime)
+                            .or(i -> i.eq(Attraction::getUpdateTime, lastUpdateTime).lt(Attraction::getId, lastId)));
+                }
+            } else if (asc) {
+                queryWrapper.gt(Attraction::getId, attractionListQueryDTO.getLastId());
+            } else {
+                queryWrapper.lt(Attraction::getId, attractionListQueryDTO.getLastId());
+            }
+        }
+
+        if (asc) {
+            queryWrapper.orderByAsc(Attraction::getUpdateTime).orderByAsc(Attraction::getId);
+        } else {
+            queryWrapper.orderByDesc(Attraction::getUpdateTime).orderByDesc(Attraction::getId);
+        }
+        queryWrapper.last("limit " + (attractionListQueryDTO.getPageSize() + 1));
 
         List<Attraction> attractionList = attractionsMapper.selectList(queryWrapper);
         boolean hasMore = attractionList.size() > attractionListQueryDTO.getPageSize();
