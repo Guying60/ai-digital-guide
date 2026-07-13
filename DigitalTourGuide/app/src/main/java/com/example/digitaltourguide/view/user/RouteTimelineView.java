@@ -186,7 +186,7 @@ public class RouteTimelineView extends HorizontalScrollView {
         nameView.setMaxLines(1);
         nameView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         nameView.setPadding(dp(6), 0, 0, 0);
-        nameView.setTypeface(null, android.graphics.Typeface.MEDIUM);
+        nameView.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
 
         // ── 推荐时长（如果有） ──
         LinearLayout textContainer = new LinearLayout(getContext());
