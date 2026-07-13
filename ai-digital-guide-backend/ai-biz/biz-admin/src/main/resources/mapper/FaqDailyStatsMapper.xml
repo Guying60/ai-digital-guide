@@ -6,7 +6,7 @@
     <select id="getHotFaqChartData" resultType="com.guying.pojo.vo.HotFaqChartVO">
         SELECT
             f.question AS question,
-            SUM(s.`count`) AS count
+            COALESCE(SUM(s.`count`), 0) AS count
         FROM
             tb_faq_daily_stats s
                 INNER JOIN

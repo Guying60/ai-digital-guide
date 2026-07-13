@@ -129,6 +129,8 @@ public class StatServiceImpl implements StatService {
      */
     @Override
     public void saveFaqDailyStats(List<FaqDailyStats> dbList) {
-        faqDailyStatsMapper.insert(dbList);
+        for (FaqDailyStats entity : dbList) {
+            faqDailyStatsMapper.insert(entity);
+        }
     }
 }
