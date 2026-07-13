@@ -187,9 +187,6 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
             if (listener != null) {
                 listener.onStopChatClick(spot);
             }
-            // 更新本地状态并刷新UI
-            spot.setEnded(true);
-            notifyItemChanged(holder.getBindingAdapterPosition());
         });
 
         // 继续对话按钮
