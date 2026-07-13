@@ -1,5 +1,6 @@
 package com.example.digitaltourguide.view.admin;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -10,7 +11,11 @@ import android.os.Handler;
 import android.provider.OpenableColumns;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import com.google.android.material.button.MaterialButton;
 import android.widget.ImageView;
@@ -214,9 +219,11 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             if (response != null && response.getCode() == 1) {
                 TestVideoStatus statusObj = response.getData();
                 if ("SUCCESS".equals(statusObj.getStatus())) {
+                    hideLoadingBar();
                     playTestVideo(statusObj.getVideoUrl());
                     stopPollingTestVideo();
                 } else if ("FAILED".equals(statusObj.getStatus())) {
+                    hideLoadingBar();
                     Toast.makeText(this, "测试视频生成失败", Toast.LENGTH_SHORT).show();
                     stopPollingTestVideo();
                 } else {
@@ -235,6 +242,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
                 Toast.makeText(this, "测试视频任务已提交，正在生成...", Toast.LENGTH_SHORT).show();
                 startPollingTestVideoStatus();
             } else {
+                hideLoadingBar();
                 String msg = (response != null) ? response.getMsg() : "提交失败";
                 Toast.makeText(this, "生成测试视频失败：" + msg, Toast.LENGTH_SHORT).show();
             }
@@ -457,6 +465,7 @@ public class ManageAIHumanActivity extends AppCompatActivity {
             String customText = etText.getText().toString().trim();
             viewModel.generateTestVideo(currentAIHumanId, customText);
             testVideoDialog.dismiss();
+            showLoadingBar("正在生成测试视频...", "预计需要2-3分钟，请耐心等待");
         });
         btnCancelTest.setOnClickListener(v -> testVideoDialog.dismiss());
 
@@ -530,18 +539,41 @@ public class ManageAIHumanActivity extends AppCompatActivity {
     }
 
     private void showVideoDialog(String filePath) {
-        // 创建 Dialog 并显示 VideoView
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_video_player, null);
+        dialog.setContentView(dialogView);
         VideoView videoView = dialogView.findViewById(R.id.video_view);
         Button btnClose = dialogView.findViewById(R.id.btn_close);
 
-        builder.setView(dialogView);
-        AlertDialog dialog = builder.create();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.92),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE));
+        }
 
         videoView.setVideoPath(filePath);
         videoView.setOnPreparedListener(mp -> {
             mp.setLooping(false);
+            // 根据视频真实比例调整 VideoView 大小
+            int videoWidth = mp.getVideoWidth();
+            int videoHeight = mp.getVideoHeight();
+            if (videoWidth > 0 && videoHeight > 0) {
+                int dialogWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
+                float density = getResources().getDisplayMetrics().density;
+                int paddingPx = (int) (24 * density);
+                int contentWidth = dialogWidth - paddingPx * 2; // 减去左右白边
+                // 固定 3:2 比例（宽:高）
+                int scaledHeight = contentWidth * 2 / 3;
+                ViewGroup.LayoutParams params = videoView.getLayoutParams();
+                params.width = contentWidth;
+                params.height = scaledHeight;
+                videoView.setLayoutParams(params);
+            }
             videoView.start();
         });
         videoView.setOnCompletionListener(mp -> Toast.makeText(this, "播放完成", Toast.LENGTH_SHORT).show());

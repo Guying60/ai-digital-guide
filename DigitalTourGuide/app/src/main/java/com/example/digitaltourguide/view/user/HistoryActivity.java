@@ -174,13 +174,7 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onStopChatClick(ScenicSpot spot) {
-                // 结束对话：可调用后端接口标记对话结束，并更新本地状态
-                if (listener != null) {
-                    listener.onStopChatClick(spot);
-                }
-                // 修改状态并刷新UI
-                spot.setEnded(true);
-                adapter.notifyDataSetChanged();
+                showConversationEndedDialog(spot);
             }
 
             @Override
@@ -217,6 +211,51 @@ public class HistoryActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void showConversationEndedDialog(ScenicSpot spot) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_conversation_ended, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // 去评价 → 关闭当前弹窗，弹出评分弹窗
+        view.findViewById(R.id.btn_go_rate).setOnClickListener(v -> {
+            dialog.dismiss();
+            showRatingDialog(spot);
+        });
+
+        // 继续对话 → 关闭弹窗，跳转到 ChatActivity 继续对话
+        view.findViewById(R.id.btn_continue_chat).setOnClickListener(v -> {
+            dialog.dismiss();
+            Intent intent = new Intent(HistoryActivity.this, ChatActivity.class);
+            intent.putExtra("attractionId", spot.getId());
+            intent.putExtra("conversationId", spot.getConversationId());
+            startActivity(intent);
+        });
+
+        // 返回记录 → 关闭弹窗，标记已结束并刷新UI
+        view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
+            dialog.dismiss();
+            spot.setEnded(true);
+            int position = dataList.indexOf(spot);
+            if (position != -1) {
+                adapter.notifyItemChanged(position);
+            }
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
 
     private void showRatingDialog(ScenicSpot spot) {
