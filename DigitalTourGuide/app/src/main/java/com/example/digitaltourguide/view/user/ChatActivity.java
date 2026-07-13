@@ -218,9 +218,8 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
-        //初始化相机线程
+        //初始化相机线程（摄像头默认关闭，点击 btn_camera 后开启）
         cameraExecutor= Executors.newSingleThreadExecutor();
-        checkCameraPermissionAndStart();
     }
 
     private void stopPlayback() {
