@@ -174,12 +174,10 @@ public class ChatActivity extends AppCompatActivity {
             }
             if (isRecording) {
                 // 正在录音 -> 停止录音
-                Toast.makeText(this,"停止录音",Toast.LENGTH_SHORT).show();
                 stopRecord();
             } else {
                 // 未录音 -> 开始录音
                 if (isRecordReady()) {
-                    Toast.makeText(this,"开始录音",Toast.LENGTH_SHORT).show();
                     startRecord();
                 } else {
                     Toast.makeText(this, "请先授予录音权限", Toast.LENGTH_SHORT).show();
@@ -195,7 +193,7 @@ public class ChatActivity extends AppCompatActivity {
             }
             String text=etMessage.getText().toString().trim();
             if(text.isEmpty()){
-                Toast.makeText(this,"请输入文本",Toast.LENGTH_SHORT).show();
+
                 return;
             }
             sendTextMessage(text);
@@ -375,7 +373,7 @@ public class ChatActivity extends AppCompatActivity {
         if (isCameraOpen) {
             stopCamera();
         } else {
-            checkEmotionPrivacyAndStart();
+            checkCameraPermissionAndStart();
         }
     }
 
