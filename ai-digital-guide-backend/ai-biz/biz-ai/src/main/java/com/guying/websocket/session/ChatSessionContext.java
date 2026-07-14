@@ -79,6 +79,8 @@ public class ChatSessionContext {
     @Setter private volatile WebSocketSession museTalkSession;
     @Setter private volatile WebSocketSession cosyVoiceSession;
     @Setter private volatile SpeechTranscriber transcriber;
+    /** NLS transcriber 已进入可发送音频的状态（STATE_TRANSCRIBING）。在 onTranscriberStart 异步确认后置 true。 */
+    @Setter private volatile boolean nlsReady;
     @Setter private volatile ExecutorService ttsExecutor;
     /** 按 PTS 时钟节流的视频出站发送器，afterConnectionEstablished 创建。 */
     @Setter private volatile OutboundPacer outboundPacer;
