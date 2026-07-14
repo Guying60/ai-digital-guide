@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DigitalTourGuide</string>
+    <string name="app_name">知途灵眸</string>
     <string name="app_name_profile">个人信息</string>
     <string name="mic_button">麦克风</string>
     <string name="photo_button">拍照</string>
@@ -124,7 +124,7 @@
     </style>
 
     <!-- Splash screen strings -->
-    <string name="splash_app_title">数字人导游</string>
+    <string name="splash_app_title">数字人导游——知途灵眸</string>
     <string name="splash_app_subtitle">您的 AI 智能旅游助手</string>
     <string name="splash_loading_status">正在启动导游服务...</string>
     <string name="splash_cloud_verify">云端安全验证</string>
