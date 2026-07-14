@@ -336,6 +336,7 @@ public class ChatActivity extends AppCompatActivity {
                 cameraProvider = cameraProviderFuture.get();
                 bindCameraUseCases(cameraProvider);
                 isCameraOpen = true;
+                runOnUiThread(() -> ivCamera.setImageResource(R.drawable.ic_video));
                 if (previewView != null) {
                     previewView.setVisibility(View.VISIBLE);
                 }
@@ -361,6 +362,7 @@ public class ChatActivity extends AppCompatActivity {
         }
         lastEmotionThumbnail = null;
         isCameraOpen = false;
+        runOnUiThread(() -> ivCamera.setImageResource(R.drawable.ic_video_de));
         Log.d("MYTEST", "前置摄像头已关闭");
 
         if (previewView != null) {
@@ -858,6 +860,7 @@ public class ChatActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             setSendButtonLoading(false);
                             sendMicStatus(false);  // 告知后端麦克风关闭
+                            ivMic.setImageResource(R.drawable.ic_mic_blue_de);
                         });
                     }else if ("done".equals(type)) {
                          int doneSentenceId = json.optInt("sentence_id");
@@ -990,6 +993,7 @@ public class ChatActivity extends AppCompatActivity {
 
         isRecording = true;
        sendMicStatus(true);
+       runOnUiThread(() -> ivMic.setImageResource(R.drawable.ic_mic_blue));
        captureEmotionFrame();  // 事件触发：开始说话时抓表情
        try {
             // 启动录音
@@ -1030,6 +1034,7 @@ public class ChatActivity extends AppCompatActivity {
     private void stopRecord(){
         isRecording=false;
         sendMicStatus(false);
+        runOnUiThread(() -> ivMic.setImageResource(R.drawable.ic_mic_blue_de));
         if(audioRecord!=null){
             audioRecord.stop();
         }
