@@ -6,7 +6,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -41,10 +40,6 @@ public class RouteTimelineView extends HorizontalScrollView {
     private static final int COLOR_ARRIVED_TEXT = 0xFFFFFFFF;
     private static final int COLOR_CURRENT_TEXT = 0xFFFFFFFF;
     private static final int COLOR_UPCOMING_TEXT = 0xFF94A3B8;
-
-    // 全屏自由拖拽
-    private float touchDownX, touchDownRawY;
-    private float startDragX, startDragY;
 
     public RouteTimelineView(Context context) {
         this(context, null);
@@ -119,50 +114,6 @@ public class RouteTimelineView extends HorizontalScrollView {
 
     public RoutePlanVO getCurrentRoute() {
         return currentRoute;
-    }
-
-    // ====================== 全屏自由拖拽 ======================
-
-    private boolean isDragging = false;
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        switch (ev.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                touchDownX = ev.getX();
-                touchDownRawY = ev.getRawY();
-                startDragX = getTranslationX();
-                startDragY = getTranslationY();
-                isDragging = false;
-                getParent().requestDisallowInterceptTouchEvent(true);
-                break;
-
-            case MotionEvent.ACTION_MOVE: {
-                float dx = ev.getX() - touchDownX;
-                float dy = ev.getRawY() - touchDownRawY;
-                float dist = dx * dx + dy * dy;
-                if (dist > 100 && !isDragging) {
-                    isDragging = true;
-                    // 发给子 View 一个 CANCEL，阻止它们响应点击
-                    MotionEvent cancel = MotionEvent.obtain(ev);
-                    cancel.setAction(MotionEvent.ACTION_CANCEL);
-                    super.dispatchTouchEvent(cancel);
-                    cancel.recycle();
-                }
-                if (isDragging) {
-                    setTranslationX(startDragX + dx);
-                    setTranslationY(startDragY + dy);
-                    return true;
-                }
-                break;
-            }
-
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                isDragging = false;
-                break;
-        }
-        return super.dispatchTouchEvent(ev);
     }
 
     // ====================== 胶囊节点构建 ======================
