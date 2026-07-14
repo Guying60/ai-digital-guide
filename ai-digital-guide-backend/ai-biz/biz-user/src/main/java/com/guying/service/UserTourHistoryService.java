@@ -10,5 +10,7 @@ public interface UserTourHistoryService {
 
     void deleteTourHistory(Long id);
 
+    void endTourHistory(String conversationId);
+
     void evaluateTourHistory(TourEvaluateDTO tourEvaluateDTO);
 }

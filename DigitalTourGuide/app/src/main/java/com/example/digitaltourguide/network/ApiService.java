@@ -104,6 +104,11 @@ public interface ApiService {
             @Header("Authorization") String authorization,
             @Body EvaluateRequest request
     );
+    //1.10.1 结束对话
+    @PUT("users/tourHistory/{conversationId}/end")
+    Call<BaseResponse<Void>> endTourHistory(
+            @Path("conversationId") String conversationId
+    );
     //1.11
     @Multipart
     @POST("users/file/avatar")

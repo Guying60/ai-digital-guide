@@ -230,6 +230,22 @@ public class ChatActivity extends AppCompatActivity {
     private void endChatAndGoBack() {
         Log.d(TAG, "结束对话按钮被点击，开始清理资源");
         try {
+            // 0. 通知后端结束对话（fire-and-forget，不等返回）
+            if (conversationId != null && !conversationId.isEmpty()) {
+                ApiService.getInstance().endTourHistory(conversationId).enqueue(
+                        new retrofit2.Callback<BaseResponse<Void>>() {
+                            @Override
+                            public void onResponse(retrofit2.Call<BaseResponse<Void>> call,
+                                                   retrofit2.Response<BaseResponse<Void>> response) {
+                                Log.d(TAG, "结束对话接口调用成功");
+                            }
+                            @Override
+                            public void onFailure(retrofit2.Call<BaseResponse<Void>> call, Throwable t) {
+                                Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                            }
+                        });
+            }
+
             // 1. 关闭 WebSocket
             if (webSocketClient != null) {
                 webSocketClient.close(1000, "用户结束对话");

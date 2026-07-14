@@ -41,6 +41,11 @@ public class UserTourHistory {
      */
     private Integer messageCount;
 
+    /**
+     * 会话状态：0-进行中 1-已结束 2-已评价
+     */
+    private Integer tourStatus;
+
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

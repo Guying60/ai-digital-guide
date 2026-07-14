@@ -39,6 +39,14 @@ public class UserTourHistoryController {
     }
 
 
+    @Operation(summary = "结束对话")
+    @PutMapping("/{conversationId}/end")
+    public Result<?> endTourHistory(@PathVariable String conversationId) {
+        log.info("结束对话, conversationId:{}", conversationId);
+        userTourHistoryService.endTourHistory(conversationId);
+        return Result.success();
+    }
+
     @Operation(summary = "评价旅游历史")
     @PostMapping("/evaluate")
     public Result<?> evaluate(@RequestBody TourEvaluateDTO tourEvaluateDTO) {

@@ -30,4 +30,9 @@ public class UserTourHistoryPageQueryDTO {
      */
     private String sortOrder = "desc";
 
+    /**
+     * 按会话状态筛选：0-进行中 1-已结束 2-已评价，可空（查全部）
+     */
+    private Integer tourStatus;
+
 }

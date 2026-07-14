@@ -27,6 +27,10 @@ public class ScenicSpot {
     @SerializedName("ScenicSpot")
     private boolean ended;
 
+    /** 会话状态：0-进行中 1-已结束 2-已评价（服务端 tourStatus 字段） */
+    @SerializedName("tourStatus")
+    private Integer tourStatus;
+
     @SerializedName("rating")
     private Double rating;
 
@@ -56,8 +60,25 @@ public class ScenicSpot {
     public void setLatitude(Double latitude) { this.latitude = latitude; }
 
     public boolean isEnded() {
+        // 优先使用服务端 tourStatus 判断，兜底使用本地 ended 标记
+        if (tourStatus != null) {
+            return tourStatus >= 1;
+        }
         return ended;
     }
+
+    /** 服务端优先：已评价 = tourStatus == 2 或本地已评价缓存 */
+    public boolean isRated() {
+        return tourStatus != null && tourStatus == 2;
+    }
+
+    /** 服务端优先：进行中 = tourStatus == 0 */
+    public boolean isInProgress() {
+        return tourStatus == null || tourStatus == 0;
+    }
+
+    public Integer getTourStatus() { return tourStatus; }
+    public void setTourStatus(Integer tourStatus) { this.tourStatus = tourStatus; }
 
     public void setEnded(boolean ended) {
         this.ended = ended;

@@ -1,6 +1,8 @@
 package com.guying.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.guying.common.enums.TourStatusEnum;
 import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
 import com.guying.converter.UserTourHistoryConverter;
@@ -47,7 +49,8 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
         queryWrapper.eq(UserTourHistory::getUserId, userId)
                 .like(StringUtils.hasText(userTourHistoryPageQueryDTO.getKeyWord()), UserTourHistory::getAttractionName, userTourHistoryPageQueryDTO.getKeyWord())
                 .eq(userTourHistoryPageQueryDTO.getType() != null, UserTourHistory::getType, userTourHistoryPageQueryDTO.getType())
-                .eq(StringUtils.hasText(userTourHistoryPageQueryDTO.getCity()), UserTourHistory::getCity, userTourHistoryPageQueryDTO.getCity());
+                .eq(StringUtils.hasText(userTourHistoryPageQueryDTO.getCity()), UserTourHistory::getCity, userTourHistoryPageQueryDTO.getCity())
+                .eq(userTourHistoryPageQueryDTO.getTourStatus() != null, UserTourHistory::getTourStatus, userTourHistoryPageQueryDTO.getTourStatus());
 
         // 按 createTime（上次对话时间）游标分页
         if (StringUtils.hasText(userTourHistoryPageQueryDTO.getLastId())) {
@@ -104,7 +107,24 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
     }
 
     /**
-     * 评价旅游历史（已迁移至 tb_user_review，委托给 ReviewInternalService）
+     * 结束对话：将会话状态从「进行中」改为「已结束」。
+     * 已是「已评价」的记录不再降级为「已结束」。
+     * @param conversationId 会话 ID
+     */
+    @Override
+    public void endTourHistory(String conversationId) {
+        Long userId = UserContext.getUserId();
+        LambdaUpdateWrapper<UserTourHistory> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(UserTourHistory::getUserId, userId)
+                .eq(UserTourHistory::getConversationId, conversationId)
+                .eq(UserTourHistory::getTourStatus, TourStatusEnum.IN_PROGRESS.getCode())
+                .set(UserTourHistory::getTourStatus, TourStatusEnum.ENDED.getCode());
+        userTourHistoryMapper.update(updateWrapper);
+    }
+
+    /**
+     * 评价旅游历史（已迁移至 tb_user_review，委托给 ReviewInternalService）。
+     * 评价成功后联动更新 tour_history 状态为「已评价」。
      * @param tourEvaluateDTO
      */
     @Override
@@ -115,5 +135,11 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
                 userId,
                 tourEvaluateDTO.getScore(),
                 tourEvaluateDTO.getFeedbackText());
+        // 联动更新 tour history 状态为已评价
+        LambdaUpdateWrapper<UserTourHistory> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(UserTourHistory::getUserId, userId)
+                .eq(UserTourHistory::getConversationId, tourEvaluateDTO.getConversationId())
+                .set(UserTourHistory::getTourStatus, TourStatusEnum.RATED.getCode());
+        userTourHistoryMapper.update(updateWrapper);
     }
 }

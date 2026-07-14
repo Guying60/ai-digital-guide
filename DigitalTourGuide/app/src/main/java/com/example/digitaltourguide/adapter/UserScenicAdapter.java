@@ -94,8 +94,12 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         }
 
         // ── 状态徽章 ──
-        // 与按钮可见性共用 isRated / isEnded 判断，不改变原有逻辑
-        boolean isRated = SpUtils.isRated(context, spot.getConversationId());
+        // 优先使用服务端 tourStatus，SpUtils 作为本地缓存兜底
+        Integer tourStatus = spot.getTourStatus();
+        boolean isRated = (tourStatus != null && tourStatus == 2)
+                || SpUtils.isRated(context, spot.getConversationId());
+        boolean isEnded = (tourStatus != null && tourStatus == 1)
+                || (tourStatus == null && spot.isEnded());
         String statusText;
         String statusBgColor;
         String statusTextColor;
@@ -143,7 +147,7 @@ public class UserScenicAdapter extends RecyclerView.Adapter<UserScenicAdapter.Sc
         if (isRated) {
             // 已评价：只保留导航区，隐藏操作区
             holder.layoutActionZone.setVisibility(View.GONE);
-        } else if (spot.isEnded()) {
+        } else if (isEnded) {
             holder.layoutActionZone.setVisibility(View.VISIBLE);
             holder.layoutDualButtons.setVisibility(View.GONE);
             holder.layoutSingleButton.setVisibility(View.VISIBLE);

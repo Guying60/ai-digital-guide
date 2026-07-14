@@ -245,9 +245,22 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // 返回记录 → 关闭弹窗，标记已结束并刷新UI
+        // 返回记录 → 关闭弹窗，通知后端结束对话并刷新
         view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
             dialog.dismiss();
+            // 调用后端结束对话接口
+            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
+                @Override
+                public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                    Log.d(TAG, "结束对话接口调用成功");
+                }
+                @Override
+                public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                    Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                }
+            });
+            // 本地立刻更新 UI（服务端状态以接口返回为准）
+            spot.setTourStatus(1); // ENDED
             spot.setEnded(true);
             int position = dataList.indexOf(spot);
             if (position != -1) {
@@ -391,6 +404,7 @@ public class HistoryActivity extends AppCompatActivity {
                                 // 成功
                                 Toast.makeText(HistoryActivity.this, "评价成功", Toast.LENGTH_SHORT).show();
                                 SpUtils.addRatedConversation(HistoryActivity.this,spot.getConversationId());
+                                spot.setTourStatus(2); // RATED
                                 spot.setEnded(true);
                                 //刷新对应的item
                                 int position=dataList.indexOf(spot);

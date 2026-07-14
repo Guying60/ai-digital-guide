@@ -1,6 +1,7 @@
 package com.guying.mq.consumer;
 
 import com.guying.attractions.service.UserAttractionsInternalService;
+import com.guying.common.enums.TourStatusEnum;
 import com.guying.message.UserTourHistoryMessage;
 import com.guying.attractions.dto.AttractionDTO;
 import com.guying.common.constants.MqConstants;
@@ -39,6 +40,7 @@ public class UserTourHistoryListener {
         userTourHistory.setType(attraction.getType());
         userTourHistory.setCity(attraction.getCity());
         userTourHistory.setMessageCount(msg.getMessageCount() != null ? msg.getMessageCount() : 0);
+        userTourHistory.setTourStatus(msg.getTourStatus() != null ? msg.getTourStatus() : TourStatusEnum.IN_PROGRESS.getCode());
         userService.saveUserTourHistory(userTourHistory);
     }
 
