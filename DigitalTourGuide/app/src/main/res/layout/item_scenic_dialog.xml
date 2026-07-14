@@ -178,12 +178,12 @@
                 android:layout_height="match_parent"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/profile_error_container"
+                android:background="@drawable/bg_btn_end_border"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/history_end_chat"
-                android:textColor="@color/profile_on_error_container"
+                android:textColor="@color/chart_negative"
                 android:textSize="13sp" />
 
             <TextView
