@@ -89,8 +89,16 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
             String guideDepth = orDefault((String) stringRedisTemplate.opsForHash().get(infoKey, "guideDepth"), "未知");
 
             // 2. 检索景点路线/景点资料
+            // 注：interests 取自用户偏好缓存，历史 bug 曾导致该字段回落"未知"使 query 劣化、
+            // 相似度跌破 0.7 阈值而误报"暂无资料"。这里在默认阈值召回为空时低阈值兜底重召回，
+            // 避免个性化字段质量波动直接中断路线生成。
             String query = "推荐游览路线 参观顺序 必看景点 " + interests + " " + travelPurpose;
             List<Document> docs = vectorSearchService.searchDocByAttraction(query, attractionId, 8);
+            if (docs == null || docs.isEmpty()) {
+                log.warn("路线检索默认阈值(0.7)召回为空，低阈值兜底重召回 userId={} attractionId={} interests={}",
+                        userId, attractionId, interests);
+                docs = vectorSearchService.searchDocByAttraction(query, attractionId, 8, 0.3);
+            }
             if (docs == null || docs.isEmpty()) {
                 sender.sendJson(ctx, "routeError", "暂无可生成路线的景点资料");
                 return;

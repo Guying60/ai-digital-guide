@@ -61,12 +61,17 @@ public class UserInternalServiceImpl implements UserInternalService {
                 if (depth != null) map.put("guideDepth", depth.getDesc());
             }
             if (pref.getInterests() != null && !pref.getInterests().isBlank()) {
+                // DB 存的是英文枚举名（savePreference 经 Interest.valueOf 校验后落库，如 HISTORY_CULTURE），
+                // 这里同样用 Interest.valueOf 解析，保持读写一致；非法值直接丢弃。
                 String interestLabels = Arrays.stream(pref.getInterests().split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .map(name -> {
-                            Interest interest = Interest.fromDesc(name);
-                            return interest != null ? interest.getDesc() : null;
+                            try {
+                                return Interest.valueOf(name).getDesc();
+                            } catch (IllegalArgumentException e) {
+                                return null;
+                            }
                         })
                         .filter(l -> l != null)
                         .collect(Collectors.joining("、"));
