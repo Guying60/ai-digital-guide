@@ -163,6 +163,23 @@ public class UserReviewServiceImpl extends ServiceImpl<UserReviewMapper, UserRev
         log.info("通过对话ID提交评价成功, userId={}, conversationId={}", userId, conversationId);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void deletePendingReviewByConversationId(String conversationId, Long userId) {
+        LambdaQueryWrapper<UserReview> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserReview::getConversationId, conversationId)
+                .eq(UserReview::getUserId, userId)
+                .eq(UserReview::getIsDeleted, 0)
+                .eq(UserReview::getStatus, 0);
+        List<UserReview> pendingReviews = list(wrapper);
+        if (pendingReviews.isEmpty()) {
+            return;
+        }
+        pendingReviews.forEach(r -> r.setIsDeleted(1));
+        updateBatchById(pendingReviews);
+        log.info("按会话ID清理待评价记录, userId={}, conversationId={}, count={}", userId, conversationId, pendingReviews.size());
+    }
+
     @Override
     public UserSatisfactionTrendDTO getSatisfactionTrend(Long attractionId, Integer days) {
         List<UserSatisfactionTrendDTO.SatisfactionItem> itemList =

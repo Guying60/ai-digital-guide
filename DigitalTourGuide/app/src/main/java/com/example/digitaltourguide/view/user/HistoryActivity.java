@@ -182,22 +182,38 @@ public class HistoryActivity extends AppCompatActivity {
                         .setMessage("确认结束当前对话？")
                         .setPositiveButton("确认结束", (confirmDialog, which) -> {
                             confirmDialog.dismiss();
-                            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
+                            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Boolean>>() {
                                 @Override
-                                public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                                public void onResponse(Call<BaseResponse<Boolean>> call, Response<BaseResponse<Boolean>> response) {
                                     Log.d(TAG, "结束对话接口调用成功");
+                                    boolean deleted = response.body() != null
+                                            && response.body().getCode() == 1
+                                            && Boolean.TRUE.equals(response.body().getData());
+                                    if (deleted) {
+                                        // 零交互会话：后端已删除记录，前端同步移除该项
+                                        int position = dataList.indexOf(spot);
+                                        if (position != -1) {
+                                            dataList.remove(position);
+                                            adapter.notifyItemRemoved(position);
+                                            updateEmptyState();
+                                        }
+                                        Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        // 有对话内容：状态改为「已结束」
+                                        spot.setTourStatus(1); // ENDED
+                                        spot.setEnded(true);
+                                        int position = dataList.indexOf(spot);
+                                        if (position != -1) {
+                                            adapter.notifyItemChanged(position);
+                                        }
+                                    }
                                 }
                                 @Override
-                                public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                                public void onFailure(Call<BaseResponse<Boolean>> call, Throwable t) {
                                     Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                                    Toast.makeText(HistoryActivity.this, "网络错误，请重试", Toast.LENGTH_SHORT).show();
                                 }
                             });
-                            spot.setTourStatus(1); // ENDED
-                            spot.setEnded(true);
-                            int position = dataList.indexOf(spot);
-                            if (position != -1) {
-                                adapter.notifyItemChanged(position);
-                            }
                         })
                         .setNegativeButton("取消", null)
                         .show();
@@ -279,23 +295,36 @@ public class HistoryActivity extends AppCompatActivity {
                         confirmDialog.dismiss();
                         dialog.dismiss();
                         // 调用后端结束对话接口
-                        apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
+                        apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Boolean>>() {
                             @Override
-                            public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                            public void onResponse(Call<BaseResponse<Boolean>> call, Response<BaseResponse<Boolean>> response) {
                                 Log.d(TAG, "结束对话接口调用成功");
+                                boolean deleted = response.body() != null
+                                        && response.body().getCode() == 1
+                                        && Boolean.TRUE.equals(response.body().getData());
+                                if (deleted) {
+                                    int position = dataList.indexOf(spot);
+                                    if (position != -1) {
+                                        dataList.remove(position);
+                                        adapter.notifyItemRemoved(position);
+                                        updateEmptyState();
+                                    }
+                                    Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    spot.setTourStatus(1); // ENDED
+                                    spot.setEnded(true);
+                                    int position = dataList.indexOf(spot);
+                                    if (position != -1) {
+                                        adapter.notifyItemChanged(position);
+                                    }
+                                }
                             }
                             @Override
-                            public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                            public void onFailure(Call<BaseResponse<Boolean>> call, Throwable t) {
                                 Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                                Toast.makeText(HistoryActivity.this, "网络错误，请重试", Toast.LENGTH_SHORT).show();
                             }
                         });
-                        // 本地立刻更新 UI（服务端状态以接口返回为准）
-                        spot.setTourStatus(1); // ENDED
-                        spot.setEnded(true);
-                        int position = dataList.indexOf(spot);
-                        if (position != -1) {
-                            adapter.notifyItemChanged(position);
-                        }
                     })
                     .setNegativeButton("取消", null)
                     .show();

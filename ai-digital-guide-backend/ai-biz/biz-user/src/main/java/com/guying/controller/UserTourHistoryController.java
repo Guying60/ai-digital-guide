@@ -41,10 +41,10 @@ public class UserTourHistoryController {
 
     @Operation(summary = "结束对话")
     @PutMapping("/{conversationId}/end")
-    public Result<?> endTourHistory(@PathVariable String conversationId) {
+    public Result<Boolean> endTourHistory(@PathVariable String conversationId) {
         log.info("结束对话, conversationId:{}", conversationId);
-        userTourHistoryService.endTourHistory(conversationId);
-        return Result.success();
+        boolean deleted = userTourHistoryService.endTourHistory(conversationId);
+        return Result.success(deleted);
     }
 
     @Operation(summary = "评价旅游历史")

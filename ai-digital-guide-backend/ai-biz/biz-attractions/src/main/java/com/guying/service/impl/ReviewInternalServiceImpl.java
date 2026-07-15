@@ -36,6 +36,15 @@ public class ReviewInternalServiceImpl implements ReviewInternalService {
     }
 
     @Override
+    public void deletePendingReviewByConversationId(String conversationId, Long userId) {
+        try {
+            userReviewService.deletePendingReviewByConversationId(conversationId, userId);
+        } catch (Exception e) {
+            log.error("按会话ID清理待评价记录失败, userId={}, conversationId={}", userId, conversationId, e);
+        }
+    }
+
+    @Override
     public UserSatisfactionTrendDTO getSatisfactionTrend(Long attractionId, Integer days) {
         return userReviewService.getSatisfactionTrend(attractionId, days);
     }

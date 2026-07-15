@@ -39,6 +39,13 @@ public interface UserReviewService extends IService<UserReview> {
     void submitByConversationId(String conversationId, Long userId, Integer score, String feedbackText);
 
     /**
+     * 按会话ID逻辑删除待评价记录（用于零交互会话清理）
+     * @param conversationId 会话ID
+     * @param userId         用户ID
+     */
+    void deletePendingReviewByConversationId(String conversationId, Long userId);
+
+    /**
      * 获取景点满意度趋势（按天）
      */
     UserSatisfactionTrendDTO getSatisfactionTrend(Long attractionId, Integer days);

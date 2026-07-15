@@ -7,6 +7,7 @@ import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
 import com.guying.converter.UserTourHistoryConverter;
 import com.guying.attractions.service.ReviewInternalService;
+import com.guying.ai.service.ChatHistoryInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.mapper.UserTourHistoryMapper;
 import com.guying.pojo.dto.TourEvaluateDTO;
@@ -34,6 +35,9 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
 
     @Autowired
     private ReviewInternalService reviewInternalService;
+
+    @Autowired
+    private ChatHistoryInternalService chatHistoryInternalService;
 
     /**
      * 获取旅游历史
@@ -108,18 +112,39 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
 
     /**
      * 结束对话：将会话状态从「进行中」改为「已结束」。
-     * 已是「已评价」的记录不再降级为「已结束」。
+     * 若该会话为零交互（无任何聊天记录），则直接删除游览历史及关联数据，而非改状态，
+     * 避免空记录残留并显示为「可评价」状态。
      * @param conversationId 会话 ID
+     * @return true=记录已删除（零交互），false=记录已结束（有对话内容）
      */
     @Override
-    public void endTourHistory(String conversationId) {
+    public boolean endTourHistory(String conversationId) {
         Long userId = UserContext.getUserId();
+
+        // 零交互判定：聊天记录表中无任何消息 → 删除游览历史及关联数据
+        if (!chatHistoryInternalService.hasMessages(conversationId)) {
+            log.info("结束对话时检测到零交互会话，删除游览历史 userId={}, conversationId={}", userId, conversationId);
+            LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(UserTourHistory::getUserId, userId)
+                    .eq(UserTourHistory::getConversationId, conversationId);
+            UserTourHistory history = userTourHistoryMapper.selectOne(queryWrapper);
+            if (history != null) {
+                userTourHistoryMapper.deleteById(history.getId());
+            }
+            // 联动清理聊天记录与待评价记录（幂等，无数据则无操作）
+            chatHistoryInternalService.deleteByConversationId(conversationId);
+            reviewInternalService.deletePendingReviewByConversationId(conversationId, userId);
+            return true;
+        }
+
+        // 有对话内容：状态「进行中」→「已结束」，已是「已评价」的不再降级
         LambdaUpdateWrapper<UserTourHistory> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(UserTourHistory::getUserId, userId)
                 .eq(UserTourHistory::getConversationId, conversationId)
                 .eq(UserTourHistory::getTourStatus, TourStatusEnum.IN_PROGRESS.getCode())
                 .set(UserTourHistory::getTourStatus, TourStatusEnum.ENDED.getCode());
         userTourHistoryMapper.update(updateWrapper);
+        return false;
     }
 
     /**

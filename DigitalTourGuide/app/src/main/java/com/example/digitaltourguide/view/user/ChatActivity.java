@@ -246,14 +246,14 @@ public class ChatActivity extends AppCompatActivity {
             // 0. 通知后端结束对话（fire-and-forget，不等返回）
             if (conversationId != null && !conversationId.isEmpty()) {
                 ApiService.getInstance().endTourHistory(conversationId).enqueue(
-                        new retrofit2.Callback<BaseResponse<Void>>() {
+                        new retrofit2.Callback<BaseResponse<Boolean>>() {
                             @Override
-                            public void onResponse(retrofit2.Call<BaseResponse<Void>> call,
-                                                   retrofit2.Response<BaseResponse<Void>> response) {
+                            public void onResponse(retrofit2.Call<BaseResponse<Boolean>> call,
+                                                   retrofit2.Response<BaseResponse<Boolean>> response) {
                                 Log.d(TAG, "结束对话接口调用成功");
                             }
                             @Override
-                            public void onFailure(retrofit2.Call<BaseResponse<Void>> call, Throwable t) {
+                            public void onFailure(retrofit2.Call<BaseResponse<Boolean>> call, Throwable t) {
                                 Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
                             }
                         });

@@ -104,9 +104,9 @@ public interface ApiService {
             @Header("Authorization") String authorization,
             @Body EvaluateRequest request
     );
-    //1.10.1 结束对话
+    //1.10.1 结束对话（返回 data=true 表示零交互已删除，false 表示正常结束）
     @PUT("users/tourHistory/{conversationId}/end")
-    Call<BaseResponse<Void>> endTourHistory(
+    Call<BaseResponse<Boolean>> endTourHistory(
             @Path("conversationId") String conversationId
     );
     //1.11
