@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class UserTourHistoryPageVO {
     private Long id;
+    /** 景点 ID（继续对话时前端需回传，注意与 id——游览历史行 ID——区分） */
+    private Long attractionId;
     private String attractionName;
     private String coverUrl;
     private String conversationId;

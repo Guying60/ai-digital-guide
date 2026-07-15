@@ -35,4 +35,7 @@ public interface UserService extends IService<User> {
 
     /** 按 userId + conversationId 删除游览历史记录（无效会话清理） */
     void deleteUserTourHistoryByConversation(Long userId, String conversationId);
+
+    /** 按 userId + conversationId 查询游览历史记录，不存在返回 null */
+    UserTourHistory getUserTourHistoryByConversation(Long userId, String conversationId);
 }

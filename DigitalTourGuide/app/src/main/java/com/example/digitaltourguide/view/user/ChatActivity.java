@@ -104,7 +104,7 @@ public class ChatActivity extends AppCompatActivity {
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private WebSocket webSocketClient;
     private volatile boolean wsConnected = false;  // 标记 WebSocket 是否已成功连接
-    private boolean keepWebSocketAlive = false;     // 返回主页时保持 WS 连接不断开
+    private volatile boolean isActivityVisible = false;  // 页面是否处于前台可见（后台被服务端关闭 WS 时不弹提示）
     private AudioRecord audioRecord;
     private boolean isRecording = false;
     private static final int SAMPLE_RATE = 16000;
@@ -713,9 +713,13 @@ public class ChatActivity extends AppCompatActivity {
         String token = SpUtils.getUserToken(ChatActivity.this);
         String userId = SpUtils.getUserId(this);
 
-        // 2. 构建 WebSocket URL（景点ID 通过 query parameter 传递）
+        // 2. 构建 WebSocket URL（景点ID 通过 query parameter 传递；
+        //    继续对话时携带原 conversationId，服务端校验归属后沿用，实现 LLM 记忆与游览历史衔接）
         String wsUrl = "wss://ai.guying.xyz/ai-project/chat"
                 + "?attractionId=" + attractionId;
+        if (conversationId != null && !conversationId.isEmpty()) {
+            wsUrl += "&conversationId=" + conversationId;
+        }
 
         // 3. 构建 OkHttp 客户端（支持 wss 安全协议）
         // ★ TCP_NODELAY: 禁用 Nagle 算法，视频/音频帧立即发送不等待合并
@@ -903,6 +907,15 @@ public class ChatActivity extends AppCompatActivity {
                         Log.d("MYTEST", "❌ 后端报错：" + errorMsg);
                     }else if ("allDone".equals(type)) {
                         Log.d("MYTEST", "收到 allDone，后端已就绪");
+                        // 服务端下发权威 conversationId：新会话由此获知会话 ID（用于结束对话接口）；
+                        // 继续对话若归属校验失败，服务端会分配新 ID，此处一并同步
+                        JSONObject allDoneData = json.optJSONObject("data");
+                        if (allDoneData != null) {
+                            String serverCid = allDoneData.optString("conversationId", "");
+                            if (!serverCid.isEmpty()) {
+                                conversationId = serverCid;
+                            }
+                        }
                         // 清空队列，准备下一次对话
                         if (avSyncPlayer != null) avSyncPlayer.onConversationEnd();
                         aiIsReplying = false;
@@ -956,7 +969,10 @@ public class ChatActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     stopHeartbeat();
                     stopRecord();  // 停止录音
-                    Toast.makeText(ChatActivity.this, "连接已关闭", Toast.LENGTH_SHORT).show();
+                    // 仅在前台可见时提示：后台（如返回主页后由服务端结束对话）关闭不打扰用户
+                    if (isActivityVisible && !isFinishing()) {
+                        Toast.makeText(ChatActivity.this, "连接已关闭", Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
 
@@ -971,13 +987,16 @@ public class ChatActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     stopHeartbeat();
                     stopRecord();
-                    if (wasConnected) {
-                        // 连接已建立后断开，不是连接失败
-                        Toast.makeText(ChatActivity.this, "连接已断开", Toast.LENGTH_SHORT).show();
-                    } else {
-                        // 真正的连接失败
-                        String msg = t.getMessage();
-                        Toast.makeText(ChatActivity.this, "连接失败: " + (msg != null ? msg : "网络异常"), Toast.LENGTH_SHORT).show();
+                    // 仅在前台可见时提示，避免后台断开的提示盖在主页等其它界面上
+                    if (isActivityVisible && !isFinishing()) {
+                        if (wasConnected) {
+                            // 连接已建立后断开，不是连接失败
+                            Toast.makeText(ChatActivity.this, "连接已断开", Toast.LENGTH_SHORT).show();
+                        } else {
+                            // 真正的连接失败
+                            String msg = t.getMessage();
+                            Toast.makeText(ChatActivity.this, "连接失败: " + (msg != null ? msg : "网络异常"), Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
             }
@@ -1143,20 +1162,21 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // 返回主页时不关闭 WebSocket，对话仍在后台运行
-        keepWebSocketAlive = true;
+        // 返回主页正常关闭 WebSocket（onDestroy 统一处理）。
+        // 会话进度已在服务端落库，主页「继续对话」会携带 conversationId 重连并衔接上下文，
+        // 无需保活连接（旧“保活”实为孤儿连接，Activity 销毁后无法复用，最终被服务端心跳超时回收）。
         setResult(RESULT_OK);
         stopArrivalMonitoring();
         if (avSyncPlayer != null) {
             avSyncPlayer.interrupt();
         }
-        Toast.makeText(this, "对话仍在后台运行", Toast.LENGTH_SHORT).show();
         super.onBackPressed();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        isActivityVisible = true;
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             if (audioRecord == null) {
                 initAudio();
@@ -1179,6 +1199,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        isActivityVisible = false;
         stopArrivalMonitoring();
         if (idlePlayer != null) idlePlayer.setPlayWhenReady(false);
     }
@@ -1194,13 +1215,10 @@ public class ChatActivity extends AppCompatActivity {
             audioRecord.release();
             audioRecord = null;
         }
-        // 返回主页时保持 WebSocket 连接不断开（挂断结束才关闭）
-        if (!keepWebSocketAlive && webSocketClient != null) {
+        if (webSocketClient != null) {
             webSocketClient.close(1000,"用户正常退出");
             webSocketClient = null;
         }
-        // 重置标志位，下次进入时默认关闭
-        keepWebSocketAlive = false;
 
         if (avSyncPlayer != null) {
             avSyncPlayer.release();

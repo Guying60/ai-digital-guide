@@ -100,6 +100,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         Long attractionId = (Long) session.getAttributes().get("attractionId");
+        Long userId = (Long) session.getAttributes().get("userId");
         Long digitalHumanId = digitalHumanInternalService.getDigitalHumanIdByAttractionId(attractionId);
         // 未配置数字人时不再拒绝连接：降级为纯文本问答会话，仍可用 AI 文本/语音问答，
         // 仅跳过 CosyVoice 语音合成与 MuseTalk 数字人视频（二者均依赖数字人素材）。
@@ -107,7 +108,33 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         if (textOnly) {
             log.warn("景点 {} 未配置数字人，降级为纯文本问答模式 sid={}", attractionId, session.getId());
         }
+
+        // 继续对话：校验携带的 conversationId 归属当前用户，防止串会话/读取他人 LLM 记忆。
+        // 校验通过则沿用（LLM 记忆与游览历史衔接），否则移除标记按新会话处理。
+        String resumeConversationId = (String) session.getAttributes().get("conversationId");
+        Integer priorMessageCount = null;
+        if (resumeConversationId != null) {
+            priorMessageCount = userService.getTourHistoryMessageCount(userId, resumeConversationId);
+            if (priorMessageCount == null) {
+                log.warn("继续对话校验失败（会话不存在或不属于该用户），按新会话处理 userId={}, conversationId={}",
+                        userId, resumeConversationId);
+                session.getAttributes().remove("conversationId");
+            } else {
+                // 极端场景（崩溃后快速重进）下同会话可能残留旧连接，先关闭避免注册表出现双活
+                ChatSessionContext stale = registry.getByConversationId(resumeConversationId);
+                if (stale != null) {
+                    log.warn("继续对话检测到同会话残留连接，关闭旧连接 staleSid={}, conversationId={}",
+                            stale.getSid(), resumeConversationId);
+                    closeQuietly(stale.getUserSession(), "StaleUserSession", stale.getSid());
+                }
+            }
+        }
+
         ChatSessionContext ctx = registry.register(session, digitalHumanId);
+        if (priorMessageCount != null) {
+            // 以历史消息数折算提问数作为起点，保证零交互判定与断开落库按累计值计算
+            ctx.seedQuestionCount(priorMessageCount / 2);
+        }
         log.info("用户连接成功，sid: {}，userId: {}，attractionId: {}，digitalHumanId: {}，textOnly: {}",
                 ctx.getSid(), ctx.getUserId(), ctx.getAttractionId(), ctx.getDigitalHumanId(), textOnly);
         log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=CONNECT ═══", registry.size(), ctx.getSid());
@@ -119,8 +146,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
-            // 同步创建游览历史记录（IN_PROGRESS, messageCount=0），
-            // 确保主页立即可见；无效会话（0 提问 + <30s）在断开时同步删除
+            // 同步创建游览历史记录（新会话插入 IN_PROGRESS；继续对话时 upsert 复用原记录，
+            // 不重置 messageCount、状态只升不降），确保主页立即可见；
+            // 无效会话（0 提问 + <30s）在断开时同步删除
             userService.createTourHistory(ctx.getUserId(), ctx.getAttractionId(),
                     ctx.conversationId(), TourStatusEnum.IN_PROGRESS.getCode());
             // 数字人音视频连接仅在配置了数字人时建立，纯文本会话不依赖二者
@@ -133,8 +161,11 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             throw new ServiceException("会话初始化失败");
         }
         log.info("所有初始化完成 sid={} textOnly={}", ctx.getSid(), textOnly);
-        // 下发 textOnly 标识，前端可据此隐藏数字人视频面板；已配数字人的会话恒为 false，向后兼容
-        sender.sendJson(ctx, "allDone", Map.of("textOnly", textOnly));
+        // 下发 textOnly 标识与服务端权威的 conversationId（新会话时前端据此获知会话 ID，
+        // 用于对话页内结束、后续继续对话）；已配数字人的会话 textOnly 恒为 false，向后兼容
+        sender.sendJson(ctx, "allDone", Map.of(
+                "textOnly", textOnly,
+                "conversationId", ctx.conversationId()));
     }
 
     @Override
@@ -204,17 +235,23 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=DISCONNECT ═══", registry.size(), sid);
             return;
         }
-        // 有效会话：MQ 异步更新 messageCount（tourStatus 不改变）
-        // 无效会话（0 提问 + <30s）：同步删除连接时创建的记录，避免 MQ 竞态导致脏数据残留
-        boolean shouldPersist = ctx.getQuestionCount() > 0
-                || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
-        if (shouldPersist) {
-            publishUserTourHistory(ctx);
-            reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+        // 已由 HTTP /end 按零交互删除的会话：记录已被删除，跳过持久化/删除，避免 MQ 重建脏数据
+        if (ctx.isTourHistoryDeleted()) {
+            log.info("会话游览历史已由 /end 删除，cleanup 跳过持久化 sid={}, conversationId={}",
+                    sid, ctx.conversationId());
         } else {
-            log.info("会话判定为无效（零提问且连接<{}ms），同步删除游览历史 sid={}, questionCount={}",
-                    MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
-            userService.deleteTourHistory(ctx.getUserId(), ctx.conversationId());
+            // 有效会话：MQ 异步更新 messageCount（tourStatus 不改变）
+            // 无效会话（0 提问 + <30s）：同步删除连接时创建的记录，避免 MQ 竞态导致脏数据残留
+            boolean shouldPersist = ctx.getQuestionCount() > 0
+                    || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
+            if (shouldPersist) {
+                publishUserTourHistory(ctx);
+                reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+            } else {
+                log.info("会话判定为无效（零提问且连接<{}ms），同步删除游览历史 sid={}, questionCount={}",
+                        MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
+                userService.deleteTourHistory(ctx.getUserId(), ctx.conversationId());
+            }
         }
         // 路线生命周期跟随连接，断开即清理
         routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());

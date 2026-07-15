@@ -159,7 +159,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
             userTourHistoryMapper.updateById(existing);
         } else {
-            // 不存在 → 插入新记录
+            // 不存在 → 插入新记录（messageCount 为 null 时默认 0，避免空值落库）
+            if (userTourHistory.getMessageCount() == null) {
+                userTourHistory.setMessageCount(0);
+            }
             userTourHistoryMapper.insert(userTourHistory);
         }
     }
@@ -170,6 +173,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         wrapper.eq(UserTourHistory::getUserId, userId)
                .eq(UserTourHistory::getConversationId, conversationId);
         userTourHistoryMapper.delete(wrapper);
+    }
+
+    @Override
+    public UserTourHistory getUserTourHistoryByConversation(Long userId, String conversationId) {
+        LambdaQueryWrapper<UserTourHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserTourHistory::getUserId, userId)
+               .eq(UserTourHistory::getConversationId, conversationId);
+        return userTourHistoryMapper.selectOne(wrapper);
     }
 
 }

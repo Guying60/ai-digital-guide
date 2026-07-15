@@ -77,6 +77,11 @@ public class WSJwtHandshakeInterceptor implements HandshakeInterceptor {
                     return false;
                 }
                 attributes.put("attractionId", Long.parseLong(attractionId));
+                // 可选：继续对话时携带原会话 ID（归属校验在 AiChatHandler 中进行）
+                String conversationId = servletRequest.getServletRequest().getParameter("conversationId");
+                if (StringUtils.hasText(conversationId) && !"null".equals(conversationId)) {
+                    attributes.put("conversationId", conversationId);
+                }
                 return true;
             } catch (Exception e) { // 把这里的 NumberFormatException 改成了宽泛的 Exception，防止 jwtUtil 解析失败抛出其他异常导致崩溃
                 log.warn("WebSocket 握手拒绝：Token 解析失败", e);

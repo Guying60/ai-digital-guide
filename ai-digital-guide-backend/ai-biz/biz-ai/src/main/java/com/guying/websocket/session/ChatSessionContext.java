@@ -95,13 +95,23 @@ public class ChatSessionContext {
     private volatile boolean llmRoundComplete = false;
     private final AtomicBoolean speakingDoneEnqueued = new AtomicBoolean(false);
 
+    /**
+     * 该会话的游览历史是否已被 HTTP /end 路径删除（零交互）。
+     * 置位后，WS 断开时的 cleanup() 跳过持久化/删除，避免把已删记录经 MQ 重新 upsert 回来。
+     */
+    private final AtomicBoolean tourHistoryDeleted = new AtomicBoolean(false);
+    public void markTourHistoryDeleted() { tourHistoryDeleted.set(true); }
+    public boolean isTourHistoryDeleted() { return tourHistoryDeleted.get(); }
+
     public ChatSessionContext(WebSocketSession session, Long digitalHumanId) {
         this.userSession = session;
         this.sid = session.getId();
         this.userId = (Long) session.getAttributes().get("userId");
         this.attractionId = (Long) session.getAttributes().get("attractionId");
         this.digitalHumanId = digitalHumanId;
-        this.conversationId = UUID.randomUUID().toString();
+        // 继续对话：握手校验通过的原会话 ID 从 attributes 透传，沿用则 LLM 记忆/游览历史自然衔接
+        String resumeConversationId = (String) session.getAttributes().get("conversationId");
+        this.conversationId = resumeConversationId != null ? resumeConversationId : UUID.randomUUID().toString();
         this.connectTime = System.currentTimeMillis();
         this.lastActiveTime = this.connectTime;
     }
@@ -113,6 +123,14 @@ public class ChatSessionContext {
     /** 用户提问一次（文本或语音），递增计数。 */
     public int incrementQuestionCount() {
         return questionCount.incrementAndGet();
+    }
+
+    /**
+     * 继续对话时以历史消息数折算的提问数作为起点，
+     * 保证零交互判定与断开时 messageCount 落库均按累计值计算。
+     */
+    public void seedQuestionCount(int count) {
+        questionCount.set(count);
     }
 
     /** 返回当前提问次数（int）。注：questionCount 字段已排除类级 @Getter，避免返回 AtomicInteger 对象。 */

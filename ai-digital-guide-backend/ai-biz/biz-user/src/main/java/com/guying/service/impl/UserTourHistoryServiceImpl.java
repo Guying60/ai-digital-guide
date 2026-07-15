@@ -2,12 +2,12 @@ package com.guying.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.guying.ai.service.ChatHistoryInternalService;
 import com.guying.common.enums.TourStatusEnum;
 import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
 import com.guying.converter.UserTourHistoryConverter;
 import com.guying.attractions.service.ReviewInternalService;
-import com.guying.ai.service.ChatHistoryInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.mapper.UserTourHistoryMapper;
 import com.guying.pojo.dto.TourEvaluateDTO;
@@ -112,8 +112,15 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
 
     /**
      * 结束对话：将会话状态从「进行中」改为「已结束」。
-     * 若该会话为零交互（无任何聊天记录），则直接删除游览历史及关联数据，而非改状态，
+     * 若该会话为零交互（用户一次都没提问），则直接删除游览历史及关联数据，而非改状态，
      * 避免空记录残留并显示为「可评价」状态。
+     *
+     * 交互判定信号：
+     *  1) 会话 WebSocket 仍存活：以内存中实时维护的 questionCount 为准（同步信号，无竞态）；
+     *  2) 会话已断开：以 MQ 落库的 messageCount 为准，并以聊天记录表兜底——
+     *     covers 断开后 MQ 尚未消费、messageCount 仍为 0 的短暂窗口
+     *     （断开时聊天记录早已随流式完成落库，此时查它是安全的）。
+     *
      * @param conversationId 会话 ID
      * @return true=记录已删除（零交互），false=记录已结束（有对话内容）
      */
@@ -121,19 +128,29 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
     public boolean endTourHistory(String conversationId) {
         Long userId = UserContext.getUserId();
 
-        // 零交互判定：聊天记录表中无任何消息 → 删除游览历史及关联数据
-        if (!chatHistoryInternalService.hasMessages(conversationId)) {
-            log.info("结束对话时检测到零交互会话，删除游览历史 userId={}, conversationId={}", userId, conversationId);
-            LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(UserTourHistory::getUserId, userId)
-                    .eq(UserTourHistory::getConversationId, conversationId);
-            UserTourHistory history = userTourHistoryMapper.selectOne(queryWrapper);
+        LambdaQueryWrapper<UserTourHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserTourHistory::getUserId, userId)
+                .eq(UserTourHistory::getConversationId, conversationId);
+        UserTourHistory history = userTourHistoryMapper.selectOne(queryWrapper);
+
+        Integer liveQuestionCount = chatHistoryInternalService.getLiveQuestionCount(conversationId);
+        boolean zeroInteraction = liveQuestionCount != null
+                ? liveQuestionCount == 0
+                : (history != null
+                    && (history.getMessageCount() == null || history.getMessageCount() == 0)
+                    && !chatHistoryInternalService.hasMessages(conversationId));
+
+        if (zeroInteraction) {
+            log.info("结束对话时检测到零交互会话，删除游览历史 userId={}, conversationId={}, liveQuestionCount={}",
+                    userId, conversationId, liveQuestionCount);
             if (history != null) {
                 userTourHistoryMapper.deleteById(history.getId());
             }
             // 联动清理聊天记录与待评价记录（幂等，无数据则无操作）
             chatHistoryInternalService.deleteByConversationId(conversationId);
             reviewInternalService.deletePendingReviewByConversationId(conversationId, userId);
+            // 关闭仍存活的 WS（如返回主页时被保活的会话），并标记令 cleanup 跳过持久化
+            chatHistoryInternalService.endLiveSession(conversationId, true);
             return true;
         }
 
@@ -144,6 +161,8 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
                 .eq(UserTourHistory::getTourStatus, TourStatusEnum.IN_PROGRESS.getCode())
                 .set(UserTourHistory::getTourStatus, TourStatusEnum.ENDED.getCode());
         userTourHistoryMapper.update(updateWrapper);
+        // 关闭仍存活的 WS；有交互会话由 cleanup 正常完成 messageCount/待评价的落库
+        chatHistoryInternalService.endLiveSession(conversationId, false);
         return false;
     }
 

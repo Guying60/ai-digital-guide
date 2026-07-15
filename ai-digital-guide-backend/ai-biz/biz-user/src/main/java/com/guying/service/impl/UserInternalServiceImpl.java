@@ -116,7 +116,7 @@ public class UserInternalServiceImpl implements UserInternalService {
         entity.setCoverUrl(attraction.getCoverUrl());
         entity.setType(attraction.getType());
         entity.setCity(attraction.getCity());
-        entity.setMessageCount(0);
+        // messageCount 不设值：继续对话复用记录时不得清零已累计的消息数（upsert 对 null 不更新，新插入默认 0）
         entity.setTourStatus(tourStatus);
         userService.upsertUserTourHistory(entity);
     }
@@ -124,6 +124,15 @@ public class UserInternalServiceImpl implements UserInternalService {
     @Override
     public void deleteTourHistory(Long userId, String conversationId) {
         userService.deleteUserTourHistoryByConversation(userId, conversationId);
+    }
+
+    @Override
+    public Integer getTourHistoryMessageCount(Long userId, String conversationId) {
+        UserTourHistory history = userService.getUserTourHistoryByConversation(userId, conversationId);
+        if (history == null) {
+            return null;
+        }
+        return history.getMessageCount() == null ? 0 : history.getMessageCount();
     }
 
 }

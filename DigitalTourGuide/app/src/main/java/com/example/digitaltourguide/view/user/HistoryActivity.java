@@ -182,8 +182,9 @@ public class HistoryActivity extends AppCompatActivity {
             @Override
             public void onContinueChatClick(ScenicSpot spot) {
                 Intent intent = new Intent(HistoryActivity.this, ChatActivity.class);
-                intent.putExtra("attractionId", spot.getId());           // 景点 ID
-                intent.putExtra("conversationId", spot.getConversationId()); // 会话 ID（用于恢复对话）
+                // 注意：列表项的 getId() 是游览历史行 ID，景点 ID 必须用 getAttractionId()
+                intent.putExtra("attractionId", spot.getAttractionId());
+                intent.putExtra("conversationId", spot.getConversationId()); // 会话 ID（服务端校验归属后沿用）
                 startActivity(intent);
             }
 

@@ -26,6 +26,22 @@ public class ChatSessionRegistry {
         return contexts.get(sid);
     }
 
+    /**
+     * 按会话 ID 查找存活会话（注册表按 sid 存储，此处线性扫描）。
+     * @return 存活的 ChatSessionContext；无则返回 null
+     */
+    public ChatSessionContext getByConversationId(String conversationId) {
+        if (conversationId == null) {
+            return null;
+        }
+        for (ChatSessionContext ctx : contexts.values()) {
+            if (conversationId.equals(ctx.conversationId())) {
+                return ctx;
+            }
+        }
+        return null;
+    }
+
     public ChatSessionContext remove(String sid) {
         return contexts.remove(sid);
     }

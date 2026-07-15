@@ -6,6 +6,9 @@ public class ScenicSpot {
     //用户端
     @SerializedName("id")
     private String id;
+    /** 景点 ID（游览历史列表中 id 是历史记录行 ID，继续对话需用本字段） */
+    @SerializedName("attractionId")
+    private String attractionId;
     @SerializedName("attractionName")
    private String title;
     @SerializedName("coverUrl")
@@ -110,6 +113,14 @@ public class ScenicSpot {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getAttractionId() {
+        return attractionId;
+    }
+
+    public void setAttractionId(String attractionId) {
+        this.attractionId = attractionId;
     }
 
     public ScenicSpot(String title, String coverUrl) {
