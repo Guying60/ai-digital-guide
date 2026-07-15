@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +45,8 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class RouteRecommendationServiceImpl implements RouteRecommendationService, RouteRecommendationInternalService {
+
+    private static final int MAX_ROUTE_STOPS = 15;
 
     @Autowired
     @Qualifier("expertChatClient")
@@ -68,6 +71,7 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
 
     /** 专用线程池：路线生成是短时无状态 LLM+HTTP 调用，绝不借用 ctx 的 TTS executor（会被打断时 shutdownNow）。 */
     private final ExecutorService routeExecutor = Executors.newFixedThreadPool(4);
+    private final ConcurrentHashMap<String, String> activeGenerations = new ConcurrentHashMap<>();
     private final Object[] routeLocks = new Object[64];
 
     private static final DefaultRedisScript<Long> SAVE_PLAN_IF_ACTIVE = new DefaultRedisScript<>(
@@ -92,12 +96,29 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
         if (ctx.isEnding()) {
             return;
         }
+        String activeGenerationKey = generationKey(ctx.getAttractionId(), ctx.getUserId(), ctx.conversationId());
         String generationToken = UUID.randomUUID().toString();
-        stringRedisTemplate.opsForValue().set(
-                generationKey(ctx.getAttractionId(), ctx.getUserId(), ctx.conversationId()),
-                generationToken,
-                RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
-        routeExecutor.submit(() -> doGenerate(ctx, generationToken));
+        if (activeGenerations.putIfAbsent(activeGenerationKey, generationToken) != null) {
+            log.info("路线生成正在进行，忽略重复请求 userId={} attractionId={} conversationId={}",
+                    ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
+            return;
+        }
+        try {
+            stringRedisTemplate.opsForValue().set(
+                    activeGenerationKey,
+                    generationToken,
+                    RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
+            routeExecutor.submit(() -> {
+                try {
+                    doGenerate(ctx, generationToken);
+                } finally {
+                    activeGenerations.remove(activeGenerationKey, generationToken);
+                }
+            });
+        } catch (RuntimeException e) {
+            activeGenerations.remove(activeGenerationKey, generationToken);
+            throw e;
+        }
     }
 
     private void doGenerate(ChatSessionContext ctx, String generationToken) {
@@ -197,7 +218,7 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
         }
 
         List<RouteStopDraft> draftStops = draft.getStops();
-        int n = Math.min(draftStops.size(), 10);
+        int n = Math.min(draftStops.size(), MAX_ROUTE_STOPS);
         List<RouteStopVO> stops = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             RouteStopDraft d = draftStops.get(i);
@@ -307,9 +328,11 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
             return;
         }
         synchronized (routeLock(attractionId, userId, conversationId)) {
+            String activeGenerationKey = generationKey(attractionId, userId, conversationId);
+            activeGenerations.remove(activeGenerationKey);
             stringRedisTemplate.delete(List.of(
                     planKey(attractionId, userId, conversationId),
-                    generationKey(attractionId, userId, conversationId)));
+                    activeGenerationKey));
         }
     }
 

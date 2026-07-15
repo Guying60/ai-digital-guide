@@ -4,11 +4,13 @@ import com.guying.common.constants.RedisConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,6 +23,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AmapClient {
 
+    private static final long REQUEST_INTERVAL_MILLIS = 500L;
+    private static final int CUQPS_MAX_RETRIES = 1;
+    private static final long CUQPS_RETRY_DELAY_MILLIS = 1000L;
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
+
     private static final String TEXT_URL =
             "https://restapi.amap.com/v5/place/text?key={key}&keywords={kw}&page_size=1";
     private static final String TEXT_REGION_URL =
@@ -31,10 +39,12 @@ public class AmapClient {
     @Value("${spring.amap.web-key:}")
     private String webKey;
 
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient = createRestClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final Object requestRateLock = new Object();
+    private long nextRequestAtNanos;
 
     public AmapClient(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
@@ -56,11 +66,15 @@ public class AmapClient {
         AmapPoi cached = readCache(cacheKey);
         if (cached != null) return cached;
 
-        AmapPoi poi = firstPoi(TEXT_URL, webKey, attractionName);
-        if (poi != null) {
-            writeCache(cacheKey, poi, RedisConstants.AMAP_ANCHOR_EXPIRE_TIME, TimeUnit.DAYS);
+        try {
+            AmapPoi poi = firstPoi(TEXT_URL, webKey, attractionName);
+            if (poi != null) {
+                writeCache(cacheKey, poi, RedisConstants.AMAP_ANCHOR_EXPIRE_TIME, TimeUnit.DAYS);
+            }
+            return poi;
+        } catch (AmapQuotaExceededException e) {
+            return null;
         }
-        return poi;
     }
 
     /**
@@ -75,43 +89,84 @@ public class AmapClient {
         AmapPoi cached = readCache(cacheKey);
         if (cached != null) return cached;
 
-        AmapPoi poi = null;
-        if (anchor != null && anchor.longitude() != null && anchor.latitude() != null) {
-            String loc = anchor.longitude() + "," + anchor.latitude();
-            poi = firstPoi(AROUND_URL, webKey, loc, "5000", keyword);
+        try {
+            AmapPoi poi = null;
+            if (anchor != null && anchor.longitude() != null && anchor.latitude() != null) {
+                String loc = anchor.longitude() + "," + anchor.latitude();
+                poi = firstPoi(AROUND_URL, webKey, loc, "5000", keyword);
+            }
+            if (poi == null && !adcode.isBlank()) {
+                poi = firstPoi(TEXT_REGION_URL, webKey, keyword, adcode);
+            }
+            if (poi == null) {
+                poi = firstPoi(TEXT_URL, webKey, keyword);
+            }
+            if (poi != null) {
+                writeCache(cacheKey, poi, RedisConstants.AMAP_POI_EXPIRE_TIME, TimeUnit.DAYS);
+            }
+            return poi;
+        } catch (AmapQuotaExceededException e) {
+            return null;
         }
-        if (poi == null && !adcode.isBlank()) {
-            poi = firstPoi(TEXT_REGION_URL, webKey, keyword, adcode);
-        }
-        if (poi == null) {
-            poi = firstPoi(TEXT_URL, webKey, keyword);
-        }
-        if (poi != null) {
-            writeCache(cacheKey, poi, RedisConstants.AMAP_POI_EXPIRE_TIME, TimeUnit.DAYS);
-        }
-        return poi;
     }
 
     /** 发请求并解析首条 POI，任何异常/无结果返回 null（触发降级）。 */
     private AmapPoi firstPoi(String urlTemplate, Object... uriVars) {
-        try {
-            String body = restClient.get().uri(urlTemplate, uriVars).retrieve().body(String.class);
-            if (body == null) return null;
-            JsonNode root = objectMapper.readTree(body);
-            if (!"1".equals(root.path("status").asText())) {
-                log.warn("高德返回异常 status={} info={} infocode={}",
-                        root.path("status").asText(),
-                        root.path("info").asText(),
-                        root.path("infocode").asText());
+        for (int attempt = 0; attempt <= CUQPS_MAX_RETRIES; attempt++) {
+            try {
+                String body = executeRateLimitedRequest(urlTemplate, uriVars);
+                if (body == null) return null;
+                JsonNode root = objectMapper.readTree(body);
+                if (!"1".equals(root.path("status").asText())) {
+                    String infocode = root.path("infocode").asText();
+                    log.warn("高德返回异常 status={} info={} infocode={}",
+                            root.path("status").asText(),
+                            root.path("info").asText(),
+                            infocode);
+                    if ("10021".equals(infocode)) {
+                        if (attempt < CUQPS_MAX_RETRIES) {
+                            Thread.sleep(CUQPS_RETRY_DELAY_MILLIS);
+                            continue;
+                        }
+                        throw new AmapQuotaExceededException();
+                    }
+                    return null;
+                }
+                JsonNode pois = root.path("pois");
+                if (!pois.isArray() || pois.isEmpty()) return null;
+                return parsePoi(pois.get(0));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (AmapQuotaExceededException e) {
+                throw e;
+            } catch (Exception e) {
+                log.warn("高德请求失败：{}", e.getMessage());
                 return null;
             }
-            JsonNode pois = root.path("pois");
-            if (!pois.isArray() || pois.isEmpty()) return null;
-            return parsePoi(pois.get(0));
-        } catch (Exception e) {
-            log.warn("高德请求失败：{}", e.getMessage());
-            return null;
         }
+        return null;
+    }
+
+    private String executeRateLimitedRequest(String urlTemplate, Object... uriVars) throws InterruptedException {
+        synchronized (requestRateLock) {
+            long waitNanos = nextRequestAtNanos - System.nanoTime();
+            if (waitNanos > 0) {
+                TimeUnit.NANOSECONDS.sleep(waitNanos);
+            }
+            nextRequestAtNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(REQUEST_INTERVAL_MILLIS);
+        }
+        return restClient.get().uri(urlTemplate, uriVars).retrieve().body(String.class);
+    }
+
+    private static RestClient createRestClient() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
+        requestFactory.setReadTimeout(READ_TIMEOUT);
+        return RestClient.builder().requestFactory(requestFactory).build();
+    }
+
+    private static class AmapQuotaExceededException extends RuntimeException {
     }
 
     private AmapPoi parsePoi(JsonNode poi) {
