@@ -126,22 +126,6 @@
             android:textStyle="bold"
             app:cornerRadius="12dp" />
 
-        <!-- 继续对话 -->
-        <Button
-            android:id="@+id/btn_continue_chat"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="12dp"
-            android:backgroundTint="@color/profile_surface"
-            android:text="继续对话"
-            android:textColor="@color/chart_line_primary"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"
-            app:strokeColor="@color/chart_line_primary"
-            app:strokeWidth="1dp"
-            android:stateListAnimator="@null" />
-
         <!-- 返回记录 -->
         <Button
             android:id="@+id/btn_back_history"

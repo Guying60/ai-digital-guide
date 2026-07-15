@@ -175,8 +175,8 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onStopChatClick(ScenicSpot spot) {
-                // 弹出三选一弹窗：去评价 / 继续对话 / 返回记录
-                showConversationEndedDialog(spot);
+                // 先确认再结束对话；结束后仅对有效对话弹出「对话已结束/去评价」
+                showEndChatConfirmDialog(spot);
             }
 
             @Override
@@ -217,8 +217,8 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * 三选一弹窗：对话已结束，引导用户去评价、继续对话、或结束会话返回列表。
-     * 「返回记录」分支复用 showEndChatConfirmDialog 的零交互删除 + 有内容改状态逻辑。
+     * 「对话已结束」引导弹窗：仅在对话已成功结束、且为有效对话（有对话内容）时展示，
+     * 引导用户去评价或返回记录列表。零交互无效对话已在结束时被删除，不会走到这里。
      */
     private void showConversationEndedDialog(ScenicSpot spot) {
         Dialog dialog = new Dialog(this);
@@ -242,29 +242,18 @@ public class HistoryActivity extends AppCompatActivity {
             showRatingDialog(spot);
         });
 
-        // 继续对话
-        view.findViewById(R.id.btn_continue_chat).setOnClickListener(v -> {
-            dialog.dismiss();
-            Intent intent = new Intent(HistoryActivity.this, ChatActivity.class);
-            intent.putExtra("attractionId", spot.getAttractionId());
-            intent.putExtra("conversationId", spot.getConversationId());
-            startActivity(intent);
-        });
-
-        // 返回记录 → 复用 showEndChatConfirmDialog（含零交互删除 + 有内容改状态）
-        view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
-            dialog.dismiss();
-            showEndChatConfirmDialog(spot);
-        });
+        // 返回记录：对话已结束，直接关闭弹窗返回列表
+        view.findViewById(R.id.btn_back_history).setOnClickListener(v -> dialog.dismiss());
 
         dialog.setCanceledOnTouchOutside(true);
         dialog.show();
     }
 
     /**
-     * 自定义「结束对话」确认弹窗：确认后调用后端结束接口，并根据返回区分处理。
-     * - 返回 true（零交互空记录）：从列表移除该项
-     * - 返回 false（有对话内容）：状态改为「已结束」
+     * 「结束对话」确认弹窗：先确认再结束，确认后调用后端结束接口。
+     * 结束接口顺带完成有效性判定并据此处理：
+     * - 返回 true（零交互无效对话）：后端已删除记录，前端移除该项，不再弹去评价
+     * - 返回 false（有对话内容的有效对话）：状态改为「已结束」，弹出「对话已结束」引导去评价
      */
     private void showEndChatConfirmDialog(ScenicSpot spot) {
         Dialog dialog = new Dialog(this);
@@ -293,7 +282,7 @@ public class HistoryActivity extends AppCompatActivity {
                             && response.body().getCode() == 1
                             && Boolean.TRUE.equals(response.body().getData());
                     if (deleted) {
-                        // 零交互会话：后端已删除记录，前端同步移除该项
+                        // 零交互无效对话：后端已删除记录，前端同步移除该项，不弹去评价
                         int position = dataList.indexOf(spot);
                         if (position != -1) {
                             dataList.remove(position);
@@ -302,13 +291,14 @@ public class HistoryActivity extends AppCompatActivity {
                         }
                         Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
                     } else {
-                        // 有对话内容：状态改为「已结束」
+                        // 有效对话：状态改为「已结束」，弹出「对话已结束」引导去评价
                         spot.setTourStatus(1); // ENDED
                         spot.setEnded(true);
                         int position = dataList.indexOf(spot);
                         if (position != -1) {
                             adapter.notifyItemChanged(position);
                         }
+                        showConversationEndedDialog(spot);
                     }
                 }
                 @Override
