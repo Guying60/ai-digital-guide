@@ -122,7 +122,7 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
      *     （断开时聊天记录早已随流式完成落库，此时查它是安全的）。
      *
      * @param conversationId 会话 ID
-     * @return true=记录已删除（零交互），false=记录已结束（有对话内容）
+     * @return true=记录已删除或已不存在（零交互/已被清理），false=记录已结束（有对话内容）
      */
     @Override
     public boolean endTourHistory(String conversationId) {
@@ -134,11 +134,13 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
         UserTourHistory history = userTourHistoryMapper.selectOne(queryWrapper);
 
         Integer liveQuestionCount = chatHistoryInternalService.getLiveQuestionCount(conversationId);
+        // history == null 说明记录已不存在（如无效会话断开时被 cleanup 同步删除，前端列表展示的是旧数据），
+        // 必须按「已删除」返回 true，否则前端会把一条已不存在的记录错误地标成「已结束」
         boolean zeroInteraction = liveQuestionCount != null
                 ? liveQuestionCount == 0
-                : (history != null
-                    && (history.getMessageCount() == null || history.getMessageCount() == 0)
-                    && !chatHistoryInternalService.hasMessages(conversationId));
+                : (history == null
+                    || ((history.getMessageCount() == null || history.getMessageCount() == 0)
+                        && !chatHistoryInternalService.hasMessages(conversationId)));
 
         if (zeroInteraction) {
             log.info("结束对话时检测到零交互会话，删除游览历史 userId={}, conversationId={}, liveQuestionCount={}",
