@@ -176,7 +176,31 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onStopChatClick(ScenicSpot spot) {
-                showConversationEndedDialog(spot);
+                // 直接弹出确认框，确认后结束对话（不再经过三选一弹窗）
+                new AlertDialog.Builder(HistoryActivity.this)
+                        .setTitle("结束对话")
+                        .setMessage("确认结束当前对话？")
+                        .setPositiveButton("确认结束", (confirmDialog, which) -> {
+                            confirmDialog.dismiss();
+                            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
+                                @Override
+                                public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                                    Log.d(TAG, "结束对话接口调用成功");
+                                }
+                                @Override
+                                public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                                    Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                                }
+                            });
+                            spot.setTourStatus(1); // ENDED
+                            spot.setEnded(true);
+                            int position = dataList.indexOf(spot);
+                            if (position != -1) {
+                                adapter.notifyItemChanged(position);
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
             }
 
             @Override
