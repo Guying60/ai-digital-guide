@@ -99,7 +99,6 @@ public class ChatActivity extends AppCompatActivity {
     private WebSocket webSocketClient;
     private volatile boolean wsConnected = false;  // 标记 WebSocket 是否已成功连接
     private boolean keepWebSocketAlive = false;     // 返回主页时保持 WS 连接不断开
-    private boolean hasInteraction = false;          // 用户是否发送过消息或录音（用于判定是否保持 WS）
     private AudioRecord audioRecord;
     private boolean isRecording = false;
     private static final int SAMPLE_RATE = 16000;
@@ -328,7 +327,6 @@ public class ChatActivity extends AppCompatActivity {
             return;
         }
         try {
-            hasInteraction = true;
             JSONObject json=new JSONObject();
             json.put("type","text");
             json.put("text",text);
@@ -1020,8 +1018,6 @@ public class ChatActivity extends AppCompatActivity {
             return;
         }
 
-        hasInteraction = true;
-
         isRecording = true;
        sendMicStatus(true);
        runOnUiThread(() -> ivMic.setImageResource(R.drawable.ic_mic_blue));
@@ -1124,17 +1120,14 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        // 返回主页时不关闭 WebSocket，对话仍在后台运行
+        keepWebSocketAlive = true;
         setResult(RESULT_OK);
         stopArrivalMonitoring();
         if (avSyncPlayer != null) {
             avSyncPlayer.interrupt();
         }
-        // 仅当用户有过交互（发文字/录音）时才保持 WS 连接在后台运行；
-        // 零交互秒退直接断开，让服务端 cleanup 判定并删除无用记录。
-        if (hasInteraction) {
-            keepWebSocketAlive = true;
-            Toast.makeText(this, "对话仍在后台运行", Toast.LENGTH_SHORT).show();
-        }
+        Toast.makeText(this, "对话仍在后台运行", Toast.LENGTH_SHORT).show();
         super.onBackPressed();
     }
 
