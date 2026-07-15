@@ -1,9 +1,12 @@
 package com.example.digitaltourguide.view.user;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -15,9 +18,12 @@ import android.provider.Settings;
 import android.graphics.SurfaceTexture;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 
 import com.example.digitaltourguide.BuildConfig;
 import java.net.InetAddress;
@@ -225,15 +231,32 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /**
-     * 挂断按钮点击：弹出二次确认弹窗，确认后才执行结束对话。
+     * 挂断按钮点击：弹出二次确认弹窗（自定义 UI），确认后才执行结束对话。
      */
     private void confirmEndChat() {
-        new AlertDialog.Builder(this)
-                .setTitle("结束对话")
-                .setMessage("确认结束当前对话？")
-                .setPositiveButton("确认结束", (dialog, which) -> endChatAndGoBack())
-                .setNegativeButton("取消", null)
-                .show();
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_end_chat, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        view.findViewById(R.id.btn_cancel_end).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_confirm_end).setOnClickListener(v -> {
+            dialog.dismiss();
+            endChatAndGoBack();
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
 
     /**

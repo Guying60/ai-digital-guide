@@ -1,7 +1,6 @@
 package com.example.digitaltourguide.view.user;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -176,47 +175,8 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onStopChatClick(ScenicSpot spot) {
-                // 直接弹出确认框，确认后结束对话（不再经过三选一弹窗）
-                new AlertDialog.Builder(HistoryActivity.this)
-                        .setTitle("结束对话")
-                        .setMessage("确认结束当前对话？")
-                        .setPositiveButton("确认结束", (confirmDialog, which) -> {
-                            confirmDialog.dismiss();
-                            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Boolean>>() {
-                                @Override
-                                public void onResponse(Call<BaseResponse<Boolean>> call, Response<BaseResponse<Boolean>> response) {
-                                    Log.d(TAG, "结束对话接口调用成功");
-                                    boolean deleted = response.body() != null
-                                            && response.body().getCode() == 1
-                                            && Boolean.TRUE.equals(response.body().getData());
-                                    if (deleted) {
-                                        // 零交互会话：后端已删除记录，前端同步移除该项
-                                        int position = dataList.indexOf(spot);
-                                        if (position != -1) {
-                                            dataList.remove(position);
-                                            adapter.notifyItemRemoved(position);
-                                            updateEmptyState();
-                                        }
-                                        Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
-                                    } else {
-                                        // 有对话内容：状态改为「已结束」
-                                        spot.setTourStatus(1); // ENDED
-                                        spot.setEnded(true);
-                                        int position = dataList.indexOf(spot);
-                                        if (position != -1) {
-                                            adapter.notifyItemChanged(position);
-                                        }
-                                    }
-                                }
-                                @Override
-                                public void onFailure(Call<BaseResponse<Boolean>> call, Throwable t) {
-                                    Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
-                                    Toast.makeText(HistoryActivity.this, "网络错误，请重试", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                        })
-                        .setNegativeButton("取消", null)
-                        .show();
+                // 弹出自定义结束对话确认弹窗
+                showEndChatConfirmDialog(spot);
             }
 
             @Override
@@ -255,10 +215,15 @@ public class HistoryActivity extends AppCompatActivity {
         });
     }
 
-    private void showConversationEndedDialog(ScenicSpot spot) {
+    /**
+     * 自定义「结束对话」确认弹窗：确认后调用后端结束接口，并根据返回区分处理。
+     * - 返回 true（零交互空记录）：从列表移除该项
+     * - 返回 false（有对话内容）：状态改为「已结束」
+     */
+    private void showEndChatConfirmDialog(ScenicSpot spot) {
         Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        View view = getLayoutInflater().inflate(R.layout.dialog_conversation_ended, null);
+        View view = getLayoutInflater().inflate(R.layout.dialog_end_chat, null);
         dialog.setContentView(view);
 
         Window window = dialog.getWindow();
@@ -271,63 +236,41 @@ public class HistoryActivity extends AppCompatActivity {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // 去评价 → 关闭当前弹窗，弹出评分弹窗
-        view.findViewById(R.id.btn_go_rate).setOnClickListener(v -> {
+        view.findViewById(R.id.btn_cancel_end).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_confirm_end).setOnClickListener(v -> {
             dialog.dismiss();
-            showRatingDialog(spot);
-        });
-
-        // 继续对话 → 关闭弹窗，跳转到 ChatActivity 继续对话
-        view.findViewById(R.id.btn_continue_chat).setOnClickListener(v -> {
-            dialog.dismiss();
-            Intent intent = new Intent(HistoryActivity.this, ChatActivity.class);
-            intent.putExtra("attractionId", spot.getId());
-            intent.putExtra("conversationId", spot.getConversationId());
-            startActivity(intent);
-        });
-
-        // 返回记录 → 二次确认后关闭弹窗，通知后端结束对话并刷新
-        view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
-            new AlertDialog.Builder(HistoryActivity.this)
-                    .setTitle("结束对话")
-                    .setMessage("确认结束当前对话？")
-                    .setPositiveButton("确认结束", (confirmDialog, which) -> {
-                        confirmDialog.dismiss();
-                        dialog.dismiss();
-                        // 调用后端结束对话接口
-                        apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Boolean>>() {
-                            @Override
-                            public void onResponse(Call<BaseResponse<Boolean>> call, Response<BaseResponse<Boolean>> response) {
-                                Log.d(TAG, "结束对话接口调用成功");
-                                boolean deleted = response.body() != null
-                                        && response.body().getCode() == 1
-                                        && Boolean.TRUE.equals(response.body().getData());
-                                if (deleted) {
-                                    int position = dataList.indexOf(spot);
-                                    if (position != -1) {
-                                        dataList.remove(position);
-                                        adapter.notifyItemRemoved(position);
-                                        updateEmptyState();
-                                    }
-                                    Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
-                                } else {
-                                    spot.setTourStatus(1); // ENDED
-                                    spot.setEnded(true);
-                                    int position = dataList.indexOf(spot);
-                                    if (position != -1) {
-                                        adapter.notifyItemChanged(position);
-                                    }
-                                }
-                            }
-                            @Override
-                            public void onFailure(Call<BaseResponse<Boolean>> call, Throwable t) {
-                                Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
-                                Toast.makeText(HistoryActivity.this, "网络错误，请重试", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    })
-                    .setNegativeButton("取消", null)
-                    .show();
+            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Boolean>>() {
+                @Override
+                public void onResponse(Call<BaseResponse<Boolean>> call, Response<BaseResponse<Boolean>> response) {
+                    Log.d(TAG, "结束对话接口调用成功");
+                    boolean deleted = response.body() != null
+                            && response.body().getCode() == 1
+                            && Boolean.TRUE.equals(response.body().getData());
+                    if (deleted) {
+                        // 零交互会话：后端已删除记录，前端同步移除该项
+                        int position = dataList.indexOf(spot);
+                        if (position != -1) {
+                            dataList.remove(position);
+                            adapter.notifyItemRemoved(position);
+                            updateEmptyState();
+                        }
+                        Toast.makeText(HistoryActivity.this, "已删除空对话记录", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // 有对话内容：状态改为「已结束」
+                        spot.setTourStatus(1); // ENDED
+                        spot.setEnded(true);
+                        int position = dataList.indexOf(spot);
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position);
+                        }
+                    }
+                }
+                @Override
+                public void onFailure(Call<BaseResponse<Boolean>> call, Throwable t) {
+                    Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                    Toast.makeText(HistoryActivity.this, "网络错误，请重试", Toast.LENGTH_SHORT).show();
+                }
+            });
         });
 
         dialog.setCanceledOnTouchOutside(true);
