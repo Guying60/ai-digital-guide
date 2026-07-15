@@ -14,6 +14,9 @@ public class RoutePlanVO {
     /** 路线唯一 id（后端 UUID） */
     private String routeId;
 
+    /** 所属会话 id */
+    private String conversationId;
+
     /** 路线标题 */
     private String title;
 
@@ -37,6 +40,9 @@ public class RoutePlanVO {
 
     /** 生成时间（epoch 毫秒） */
     private long generatedAt;
+
+    /** 路线状态版本，每次到达更新递增 */
+    private long revision;
 
     /** 有序地标节点 */
     private List<RouteStopVO> stops;

@@ -100,8 +100,11 @@ public class ChatSessionContext {
      * 置位后，WS 断开时的 cleanup() 跳过持久化/删除，避免把已删记录经 MQ 重新 upsert 回来。
      */
     private final AtomicBoolean tourHistoryDeleted = new AtomicBoolean(false);
+    private final AtomicBoolean ending = new AtomicBoolean(false);
     public void markTourHistoryDeleted() { tourHistoryDeleted.set(true); }
     public boolean isTourHistoryDeleted() { return tourHistoryDeleted.get(); }
+    public void markEnding() { ending.set(true); }
+    public boolean isEnding() { return ending.get(); }
 
     public ChatSessionContext(WebSocketSession session, Long digitalHumanId) {
         this.userSession = session;

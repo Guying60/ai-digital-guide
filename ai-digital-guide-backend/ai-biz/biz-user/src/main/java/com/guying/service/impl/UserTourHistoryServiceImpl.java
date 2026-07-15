@@ -3,6 +3,7 @@ package com.guying.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.guying.ai.service.ChatHistoryInternalService;
+import com.guying.ai.service.RouteRecommendationInternalService;
 import com.guying.common.enums.TourStatusEnum;
 import com.guying.common.result.ScrollResult;
 import com.guying.context.UserContext;
@@ -38,6 +39,9 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
 
     @Autowired
     private ChatHistoryInternalService chatHistoryInternalService;
+
+    @Autowired
+    private RouteRecommendationInternalService routeRecommendationInternalService;
 
     /**
      * 获取旅游历史
@@ -141,6 +145,11 @@ public class UserTourHistoryServiceImpl implements UserTourHistoryService {
                 : (history == null
                     || ((history.getMessageCount() == null || history.getMessageCount() == 0)
                         && !chatHistoryInternalService.hasMessages(conversationId)));
+
+        if (history != null) {
+            routeRecommendationInternalService.clearPlan(
+                    history.getUserId(), history.getAttractionId(), conversationId);
+        }
 
         if (zeroInteraction) {
             log.info("结束对话时检测到零交互会话，删除游览历史 userId={}, conversationId={}, liveQuestionCount={}",

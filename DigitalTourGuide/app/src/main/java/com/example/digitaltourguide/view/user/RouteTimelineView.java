@@ -9,10 +9,13 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.example.digitaltourguide.R;
 import com.example.digitaltourguide.model.user.RoutePlanVO;
 import com.example.digitaltourguide.model.user.RouteStopVO;
 
@@ -22,24 +25,25 @@ import com.example.digitaltourguide.model.user.RouteStopVO;
  */
 public class RouteTimelineView extends HorizontalScrollView {
 
-    private static final int CAPSULE_HEIGHT_DP = 32;
-    private static final int CONNECTOR_WIDTH_DP = 16;
-    private static final int CONNECTOR_HEIGHT_DP = 3;
-    private static final int INDICATOR_SIZE_DP = 20;
+    private static final int CAPSULE_HEIGHT_DP = 36;
+    private static final int CONNECTOR_WIDTH_DP = 24;
+    private static final int CONNECTOR_HEIGHT_DP = 2;
+    private static final int INDICATOR_SIZE_DP = 12;
 
     private final LinearLayout container;
     private RoutePlanVO currentRoute;
+    private boolean generating;
+    private boolean expanded;
     private OnGenerateClickListener generateListener;
-    private OnCloseClickListener closeListener;
     private OnStopClickListener stopClickListener;
 
-    // 状态色
+    private static final int COLOR_ROUTE_BACKGROUND = 0xE00F2850;
     private static final int COLOR_ARRIVED = 0xFF22C55E;
-    private static final int COLOR_CURRENT = 0xFFF59E0B;
-    private static final int COLOR_UPCOMING = 0xFF94A3B8;
-    private static final int COLOR_ARRIVED_TEXT = 0xFFFFFFFF;
+    private static final int COLOR_CURRENT = 0xFF3B82F6;
+    private static final int COLOR_UPCOMING = 0x33FFFFFF;
+    private static final int COLOR_ARRIVED_TEXT = 0xFF86EFAC;
     private static final int COLOR_CURRENT_TEXT = 0xFFFFFFFF;
-    private static final int COLOR_UPCOMING_TEXT = 0xFF94A3B8;
+    private static final int COLOR_UPCOMING_TEXT = 0x73FFFFFF;
 
     public RouteTimelineView(Context context) {
         this(context, null);
@@ -68,10 +72,6 @@ public class RouteTimelineView extends HorizontalScrollView {
         this.generateListener = listener;
     }
 
-    public void setOnCloseClickListener(OnCloseClickListener listener) {
-        this.closeListener = listener;
-    }
-
     public void setOnStopClickListener(OnStopClickListener listener) {
         this.stopClickListener = listener;
     }
@@ -84,23 +84,14 @@ public class RouteTimelineView extends HorizontalScrollView {
             clearRoute();
             return;
         }
+        boolean routeChanged = currentRoute == null
+                || !android.text.TextUtils.equals(currentRoute.getRouteId(), route.getRouteId());
         this.currentRoute = route;
-        container.removeAllViews();
-
-        for (int i = 0; i < route.getStops().size(); i++) {
-            RouteStopVO stop = route.getStops().get(i);
-            // 节点之间的连接线（第一个节点前面不加）
-            if (i > 0) {
-                container.addView(createConnector(stop.isArrived()));
-            }
-            container.addView(createStopCapsule(stop));
+        this.generating = false;
+        if (routeChanged) {
+            this.expanded = false;
         }
-
-        // 右侧间距 + 关闭按钮 + 生成按钮
-        container.addView(createSpacer(dp(8)));
-        container.addView(createCloseButton());
-        container.addView(createSpacer(dp(4)));
-        container.addView(createGenerateButton());
+        renderRoute();
     }
 
     /**
@@ -108,12 +99,121 @@ public class RouteTimelineView extends HorizontalScrollView {
      */
     public void clearRoute() {
         this.currentRoute = null;
+        this.generating = false;
+        this.expanded = false;
         container.removeAllViews();
+        setRouteBackground(false);
         container.addView(createGenerateButton());
+    }
+
+    public void showGenerating() {
+        if (generating) {
+            return;
+        }
+        generating = true;
+        container.removeAllViews();
+        setRouteBackground(false);
+        container.addView(createGeneratingCapsule());
+    }
+
+    public void hideGenerating() {
+        if (!generating) {
+            return;
+        }
+        RoutePlanVO route = currentRoute;
+        generating = false;
+        if (route != null && route.hasStops()) {
+            setRoute(route);
+        } else {
+            clearRoute();
+        }
     }
 
     public RoutePlanVO getCurrentRoute() {
         return currentRoute;
+    }
+
+    private void renderRoute() {
+        container.removeAllViews();
+        setRouteBackground(true);
+        if (!expanded) {
+            container.addView(createCollapsedRoute());
+            return;
+        }
+
+        for (int i = 0; i < currentRoute.getStops().size(); i++) {
+            RouteStopVO stop = currentRoute.getStops().get(i);
+            if (i > 0) {
+                container.addView(createConnector(currentRoute.getStops().get(i - 1)));
+            }
+            container.addView(createStopCapsule(stop));
+        }
+        container.addView(createSpacer(dp(8)));
+        container.addView(createCollapseButton());
+    }
+
+    private View createCollapsedRoute() {
+        LinearLayout summary = new LinearLayout(getContext());
+        summary.setOrientation(LinearLayout.HORIZONTAL);
+        summary.setGravity(Gravity.CENTER_VERTICAL);
+        summary.setPadding(dp(2), 0, dp(2), 0);
+
+        FrameLayout status = new FrameLayout(getContext());
+        GradientDrawable halo = new GradientDrawable();
+        halo.setShape(GradientDrawable.OVAL);
+        halo.setColor(0x593B82F6);
+        status.setBackground(halo);
+        View dot = new View(getContext());
+        GradientDrawable dotBackground = new GradientDrawable();
+        dotBackground.setShape(GradientDrawable.OVAL);
+        dotBackground.setColor(0xFF60A5FA);
+        dot.setBackground(dotBackground);
+        status.addView(dot, new FrameLayout.LayoutParams(dp(8), dp(8), Gravity.CENTER));
+        summary.addView(status, new LinearLayout.LayoutParams(dp(20), dp(20)));
+
+        int currentPosition = 0;
+        RouteStopVO currentStop = currentRoute.getCurrentStop();
+        for (int i = 0; i < currentRoute.getStops().size(); i++) {
+            if (currentRoute.getStops().get(i).isCurrent()) {
+                currentPosition = i;
+                break;
+            }
+            if (currentRoute.getStops().get(i).isArrived()) {
+                currentPosition = i;
+            }
+        }
+
+        TextView progress = new TextView(getContext());
+        progress.setText((currentPosition + 1) + "/" + currentRoute.getStops().size());
+        progress.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        progress.setTextColor(0xB3FFFFFF);
+        progress.setTypeface(null, android.graphics.Typeface.BOLD);
+        progress.setPadding(dp(4), 0, dp(8), 0);
+        summary.addView(progress);
+
+        TextView name = new TextView(getContext());
+        name.setText(currentStop != null ? currentStop.getName() : "路线已完成");
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        name.setTextColor(Color.WHITE);
+        name.setMaxLines(1);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        name.setTypeface(android.graphics.Typeface.create(
+                "sans-serif-medium", android.graphics.Typeface.NORMAL));
+        summary.addView(name, new LinearLayout.LayoutParams(dp(88), dp(CAPSULE_HEIGHT_DP)));
+        name.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView arrow = new TextView(getContext());
+        arrow.setText("▾");
+        arrow.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        arrow.setTextColor(0xB3FFFFFF);
+        arrow.setGravity(Gravity.CENTER);
+        summary.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(CAPSULE_HEIGHT_DP)));
+
+        summary.setOnClickListener(v -> {
+            expanded = true;
+            renderRoute();
+        });
+        return summary;
     }
 
     // ====================== 胶囊节点构建 ======================
@@ -122,137 +222,159 @@ public class RouteTimelineView extends HorizontalScrollView {
      * 创建一个胶囊形状的站点节点
      */
     private View createStopCapsule(RouteStopVO stop) {
-        LinearLayout capsule = new LinearLayout(getContext());
-        capsule.setOrientation(LinearLayout.HORIZONTAL);
-        capsule.setGravity(Gravity.CENTER_VERTICAL);
-        capsule.setPadding(dp(4), dp(3), dp(12), dp(3));
+        LinearLayout stopView = new LinearLayout(getContext());
+        stopView.setOrientation(LinearLayout.VERTICAL);
+        stopView.setGravity(Gravity.CENTER_HORIZONTAL);
+        stopView.setPadding(dp(4), 0, dp(4), 0);
 
-        // 背景形状 — 高圆角矩形（胶囊效果）
-        int bgColor, textColor, indicatorBg, indicatorText;
-        String indicator;
+        FrameLayout indicatorFrame = new FrameLayout(getContext());
+        View indicator = new View(getContext());
+        int textColor;
+        int indicatorColor;
+        int indicatorStroke;
 
         if (stop.isArrived()) {
-            bgColor = COLOR_ARRIVED;
             textColor = COLOR_ARRIVED_TEXT;
-            indicatorBg = 0xFFFFFFFF;
-            indicatorText = COLOR_ARRIVED;
-            indicator = "✓";
+            indicatorColor = COLOR_ARRIVED;
+            indicatorStroke = 0xFF86EFAC;
         } else if (stop.isCurrent()) {
-            bgColor = COLOR_CURRENT;
             textColor = COLOR_CURRENT_TEXT;
-            indicatorBg = 0xFFFFFFFF;
-            indicatorText = COLOR_CURRENT;
-            indicator = "▶";
+            indicatorColor = COLOR_CURRENT;
+            indicatorStroke = 0xFFBFDBFE;
+
+            GradientDrawable halo = new GradientDrawable();
+            halo.setShape(GradientDrawable.OVAL);
+            halo.setColor(0x593B82F6);
+            indicatorFrame.setBackground(halo);
         } else {
-            bgColor = Color.TRANSPARENT;
             textColor = COLOR_UPCOMING_TEXT;
-            indicatorBg = COLOR_UPCOMING;
-            indicatorText = 0xFFFFFFFF;
-            indicator = String.valueOf(stop.getStopIndex() + 1);
+            indicatorColor = COLOR_UPCOMING;
+            indicatorStroke = 0x59FFFFFF;
         }
 
-        GradientDrawable bgDrawable = new GradientDrawable();
-        bgDrawable.setShape(GradientDrawable.RECTANGLE);
-        bgDrawable.setCornerRadius(dp(CAPSULE_HEIGHT_DP / 2));
-        if (!stop.isUpcoming()) {
-            bgDrawable.setColor(bgColor);
-        } else {
-            bgDrawable.setStroke(dp(1.5f), COLOR_UPCOMING);
-            bgDrawable.setColor(0x1A94A3B8); // 微透明底
-        }
-        capsule.setBackground(bgDrawable);
+        GradientDrawable indicatorBackground = new GradientDrawable();
+        indicatorBackground.setShape(GradientDrawable.OVAL);
+        indicatorBackground.setColor(indicatorColor);
+        indicatorBackground.setStroke(dp(2), indicatorStroke);
+        indicator.setBackground(indicatorBackground);
 
-        // ── 状态指示圆 ──
-        TextView indicatorView = new TextView(getContext());
-        indicatorView.setWidth(dp(INDICATOR_SIZE_DP));
-        indicatorView.setHeight(dp(INDICATOR_SIZE_DP));
-        indicatorView.setGravity(Gravity.CENTER);
-        indicatorView.setText(indicator);
-        indicatorView.setTextColor(indicatorText);
-        indicatorView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        indicatorView.setTypeface(null, android.graphics.Typeface.BOLD);
+        FrameLayout.LayoutParams indicatorParams = new FrameLayout.LayoutParams(
+                dp(INDICATOR_SIZE_DP), dp(INDICATOR_SIZE_DP), Gravity.CENTER);
+        indicatorFrame.addView(indicator, indicatorParams);
+        stopView.addView(indicatorFrame, new LinearLayout.LayoutParams(dp(20), dp(20)));
 
-        GradientDrawable indicatorBgDrawable = new GradientDrawable();
-        indicatorBgDrawable.setShape(GradientDrawable.OVAL);
-        indicatorBgDrawable.setColor(indicatorBg);
-        indicatorView.setBackground(indicatorBgDrawable);
-
-        // ── 站点名称 ──
         TextView nameView = new TextView(getContext());
         nameView.setText(stop.getName());
-        nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         nameView.setTextColor(textColor);
-        nameView.setGravity(Gravity.CENTER_VERTICAL);
+        nameView.setGravity(Gravity.CENTER);
         nameView.setMaxLines(1);
         nameView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        nameView.setPadding(dp(6), 0, 0, 0);
-        nameView.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        nameView.setTypeface(android.graphics.Typeface.create(
+                "sans-serif-medium", android.graphics.Typeface.NORMAL));
+        stopView.addView(nameView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(16)));
 
-        // ── 推荐时长（如果有） ──
-        LinearLayout textContainer = new LinearLayout(getContext());
-        textContainer.setOrientation(LinearLayout.HORIZONTAL);
-        textContainer.setGravity(Gravity.CENTER_VERTICAL);
-        textContainer.addView(nameView);
-
-        if (stop.getEstimatedMinutes() > 0) {
-            TextView durationView = new TextView(getContext());
-            durationView.setText(" · " + stop.getEstimatedMinutes() + "min");
-            durationView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-            durationView.setTextColor(stop.isUpcoming()
-                    ? 0xFF94A3B8
-                    : 0xCCFFFFFF);
-            durationView.setPadding(0, 0, 0, 0);
-            textContainer.addView(durationView);
-        }
-
-        capsule.addView(indicatorView);
-        capsule.addView(textContainer);
-
-        // 点击事件
-        capsule.setOnClickListener(v -> {
+        stopView.setOnClickListener(v -> {
             if (stopClickListener != null) {
                 stopClickListener.onStopClick(stop);
             }
         });
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(CAPSULE_HEIGHT_DP + 4));
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(CAPSULE_HEIGHT_DP));
         params.gravity = Gravity.CENTER_VERTICAL;
-        capsule.setLayoutParams(params);
-
-        return capsule;
+        stopView.setLayoutParams(params);
+        return stopView;
     }
 
     /**
      * 站点之间的连接线 — 胶囊风格圆角条
      */
-    private View createConnector(boolean arrived) {
+    private View createConnector(RouteStopVO previousStop) {
+        FrameLayout connectorFrame = new FrameLayout(getContext());
         View connector = new View(getContext());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                dp(CONNECTOR_WIDTH_DP), dp(CONNECTOR_HEIGHT_DP));
-        params.gravity = Gravity.CENTER_VERTICAL;
-        params.leftMargin = dp(2);
-        params.rightMargin = dp(2);
-        connector.setLayoutParams(params);
 
         GradientDrawable line = new GradientDrawable();
         line.setShape(GradientDrawable.RECTANGLE);
         line.setCornerRadius(dp(CONNECTOR_HEIGHT_DP / 2));
-        if (arrived) {
-            line.setColor(COLOR_ARRIVED);
+        if (previousStop.isArrived()) {
+            line.setColor(0xFF4ADE80);
+        } else if (previousStop.isCurrent()) {
+            line.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+            line.setColors(new int[]{COLOR_CURRENT, 0x2EFFFFFF});
         } else {
-            line.setColor(0x4064748B);
+            line.setColor(0x2EFFFFFF);
         }
         connector.setBackground(line);
 
-        return connector;
+        FrameLayout.LayoutParams lineParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(CONNECTOR_HEIGHT_DP));
+        lineParams.topMargin = dp(9);
+        connectorFrame.addView(connector, lineParams);
+
+        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
+                dp(CONNECTOR_WIDTH_DP), dp(CAPSULE_HEIGHT_DP));
+        frameParams.gravity = Gravity.CENTER_VERTICAL;
+        connectorFrame.setLayoutParams(frameParams);
+        return connectorFrame;
     }
 
     private View createSpacer(int width) {
         View spacer = new View(getContext());
         spacer.setLayoutParams(new LinearLayout.LayoutParams(width, 1));
         return spacer;
+    }
+
+    private void setRouteBackground(boolean visible) {
+        if (!visible) {
+            container.setBackgroundColor(Color.TRANSPARENT);
+            container.setPadding(0, 0, 0, 0);
+            return;
+        }
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.RECTANGLE);
+        background.setCornerRadius(dp(20));
+        background.setColor(COLOR_ROUTE_BACKGROUND);
+        background.setStroke(dp(1), 0x1FFFFFFF);
+        container.setBackground(background);
+        container.setPadding(dp(12), 0, dp(8), 0);
+    }
+
+    private View createGeneratingCapsule() {
+        LinearLayout capsule = new LinearLayout(getContext());
+        capsule.setOrientation(LinearLayout.HORIZONTAL);
+        capsule.setGravity(Gravity.CENTER_VERTICAL);
+        capsule.setPadding(dp(12), 0, dp(14), 0);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dp(16));
+        bg.setColor(0x1A3B82F6);
+        bg.setStroke(dp(1), 0x333B82F6);
+        capsule.setBackground(bg);
+
+        ProgressBar progressBar = new ProgressBar(getContext());
+        progressBar.setIndeterminateDrawable(getResources().getDrawable(R.drawable.animation_loading_rotate));
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(dp(18), dp(18));
+        progressParams.gravity = Gravity.CENTER_VERTICAL;
+        progressParams.rightMargin = dp(8);
+        capsule.addView(progressBar, progressParams);
+
+        TextView textView = new TextView(getContext());
+        textView.setText("路线生成中…");
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        textView.setTextColor(0xFF1E40AF);
+        textView.setGravity(Gravity.CENTER_VERTICAL);
+        textView.setTypeface(android.graphics.Typeface.create(
+                "sans-serif-medium", android.graphics.Typeface.NORMAL));
+        capsule.addView(textView);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(CAPSULE_HEIGHT_DP));
+        params.gravity = Gravity.CENTER_VERTICAL;
+        capsule.setLayoutParams(params);
+        return capsule;
     }
 
     private Button createGenerateButton() {
@@ -275,18 +397,18 @@ public class RouteTimelineView extends HorizontalScrollView {
         btn.setLayoutParams(params);
 
         btn.setOnClickListener(v -> {
-            if (generateListener != null) {
+            if (!generating && generateListener != null) {
                 generateListener.onGenerateClick();
             }
         });
         return btn;
     }
 
-    private Button createCloseButton() {
+    private Button createCollapseButton() {
         Button btn = new Button(getContext());
         btn.setText("✕");
         btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        btn.setTextColor(0xFFEF4444);
+        btn.setTextColor(0xB3FFFFFF);
         btn.setPadding(dp(8), dp(4), dp(8), dp(4));
         btn.setAllCaps(false);
         btn.setBackgroundColor(Color.TRANSPARENT);
@@ -303,14 +425,13 @@ public class RouteTimelineView extends HorizontalScrollView {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setCornerRadius(dp(16));
-        bg.setColor(0x0DEF4444);
-        bg.setStroke(dp(1), 0x33EF4444);
+        bg.setColor(0x1FFFFFFF);
+        bg.setStroke(dp(1), 0x1FFFFFFF);
         btn.setBackground(bg);
 
         btn.setOnClickListener(v -> {
-            if (closeListener != null) {
-                closeListener.onCloseClick();
-            }
+            expanded = false;
+            renderRoute();
         });
         return btn;
     }
@@ -325,10 +446,6 @@ public class RouteTimelineView extends HorizontalScrollView {
 
     public interface OnGenerateClickListener {
         void onGenerateClick();
-    }
-
-    public interface OnCloseClickListener {
-        void onCloseClick();
     }
 
     public interface OnStopClickListener {

@@ -3,6 +3,7 @@ package com.guying.service.Impl;
 import com.guying.amap.AmapClient;
 import com.guying.amap.AmapPoi;
 import com.guying.attractions.dto.AttractionDTO;
+import com.guying.ai.service.RouteRecommendationInternalService;
 import com.guying.attractions.service.UserAttractionsInternalService;
 import com.guying.common.constants.RedisConstants;
 import com.guying.common.enums.GenderEnum;
@@ -25,6 +26,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -38,9 +40,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+
 @Service
 @Slf4j
-public class RouteRecommendationServiceImpl implements RouteRecommendationService {
+public class RouteRecommendationServiceImpl implements RouteRecommendationService, RouteRecommendationInternalService {
 
     @Autowired
     @Qualifier("expertChatClient")
@@ -65,6 +68,19 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
 
     /** 专用线程池：路线生成是短时无状态 LLM+HTTP 调用，绝不借用 ctx 的 TTS executor（会被打断时 shutdownNow）。 */
     private final ExecutorService routeExecutor = Executors.newFixedThreadPool(4);
+    private final Object[] routeLocks = new Object[64];
+
+    private static final DefaultRedisScript<Long> SAVE_PLAN_IF_ACTIVE = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                    + "redis.call('set', KEYS[2], ARGV[2], 'EX', ARGV[3]); return 1 "
+                    + "else return 0 end",
+            Long.class);
+
+    public RouteRecommendationServiceImpl() {
+        for (int i = 0; i < routeLocks.length; i++) {
+            routeLocks[i] = new Object();
+        }
+    }
 
     @PreDestroy
     public void shutdown() {
@@ -73,12 +89,21 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
 
     @Override
     public void generateAndPush(ChatSessionContext ctx) {
-        routeExecutor.submit(() -> doGenerate(ctx));
+        if (ctx.isEnding()) {
+            return;
+        }
+        String generationToken = UUID.randomUUID().toString();
+        stringRedisTemplate.opsForValue().set(
+                generationKey(ctx.getAttractionId(), ctx.getUserId(), ctx.conversationId()),
+                generationToken,
+                RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
+        routeExecutor.submit(() -> doGenerate(ctx, generationToken));
     }
 
-    private void doGenerate(ChatSessionContext ctx) {
+    private void doGenerate(ChatSessionContext ctx, String generationToken) {
         Long userId = ctx.getUserId();
         Long attractionId = ctx.getAttractionId();
+        String conversationId = ctx.conversationId();
         try {
             // 1. 个性化字段
             String infoKey = RedisConstants.USER_INFO_KEY + userId;
@@ -126,23 +151,37 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
             }
 
             // 5. 组装 VO + 高德锚点 + 逐站坐标预解析（任一失败均降级，不阻断）
-            RoutePlanVO plan = buildPlan(draft, attractionId);
+            RoutePlanVO plan = buildPlan(draft, attractionId, conversationId);
 
             // 6. 缓存 + 推送
-            stringRedisTemplate.opsForValue().set(
-                    planKey(attractionId, userId),
-                    objectMapper.writeValueAsString(plan),
-                    RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
-            sender.sendJson(ctx, "routeTimeline", plan);
+            synchronized (routeLock(attractionId, userId, conversationId)) {
+                if (ctx.isEnding()) {
+                    return;
+                }
+                Long saved = stringRedisTemplate.execute(
+                        SAVE_PLAN_IF_ACTIVE,
+                        List.of(generationKey(attractionId, userId, conversationId),
+                                planKey(attractionId, userId, conversationId)),
+                        generationToken,
+                        objectMapper.writeValueAsString(plan),
+                        String.valueOf(TimeUnit.HOURS.toSeconds(RedisConstants.ROUTE_PLAN_EXPIRE_TIME)));
+                if (Long.valueOf(1L).equals(saved)) {
+                    sender.sendJson(ctx, "routeTimeline", plan);
+                } else {
+                    log.info("路线生成结果已失效，跳过写入 userId={} attractionId={} conversationId={}",
+                            userId, attractionId, conversationId);
+                }
+            }
         } catch (Exception e) {
             log.error("路线生成失败 userId={} attractionId={}", userId, attractionId, e);
             sender.sendJson(ctx, "routeError", "路线生成失败，请稍后再试");
         }
     }
 
-    private RoutePlanVO buildPlan(RoutePlanDraft draft, Long attractionId) {
+    private RoutePlanVO buildPlan(RoutePlanDraft draft, Long attractionId, String conversationId) {
         RoutePlanVO plan = new RoutePlanVO();
         plan.setRouteId(UUID.randomUUID().toString());
+        plan.setConversationId(conversationId);
         plan.setTitle(draft.getTitle());
         plan.setSummary(draft.getSummary());
         plan.setAttractionId(attractionId);
@@ -209,8 +248,8 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
     }
 
     @Override
-    public RoutePlanVO getCurrentPlan(Long userId, Long attractionId) {
-        String json = stringRedisTemplate.opsForValue().get(planKey(attractionId, userId));
+    public RoutePlanVO getCurrentPlan(Long userId, Long attractionId, String conversationId) {
+        String json = stringRedisTemplate.opsForValue().get(planKey(attractionId, userId, conversationId));
         if (json == null) return null;
         try {
             return objectMapper.readValue(json, RoutePlanVO.class);
@@ -222,51 +261,71 @@ public class RouteRecommendationServiceImpl implements RouteRecommendationServic
 
     @Override
     public RoutePlanVO markArrived(ChatSessionContext ctx, int stopIndex) {
-        String key = planKey(ctx.getAttractionId(), ctx.getUserId());
-        String json = stringRedisTemplate.opsForValue().get(key);
-        if (json == null) return null;
-
-        RoutePlanVO plan;
-        try {
-            plan = objectMapper.readValue(json, RoutePlanVO.class);
-        } catch (Exception e) {
-            log.warn("路线缓存反序列化失败: {}", e.getMessage());
-            return null;
-        }
-        List<RouteStopVO> stops = plan.getStops();
-        if (stops == null || stopIndex < 0 || stopIndex >= stops.size()) {
-            return plan; // 下标非法不改动，原样返回
-        }
-
-        // 置已到达
-        stops.get(stopIndex).setStatus(RouteStopStatus.ARRIVED);
-        // 重算指针：首个未到达节点为 CURRENT，其余 UPCOMING
-        boolean currentAssigned = false;
-        for (RouteStopVO s : stops) {
-            if (s.getStatus() == RouteStopStatus.ARRIVED) continue;
-            if (!currentAssigned) {
-                s.setStatus(RouteStopStatus.CURRENT);
-                currentAssigned = true;
-            } else {
-                s.setStatus(RouteStopStatus.UPCOMING);
+        synchronized (routeLock(ctx.getAttractionId(), ctx.getUserId(), ctx.conversationId())) {
+            if (ctx.isEnding()) {
+                return null;
             }
-        }
+            String key = planKey(ctx.getAttractionId(), ctx.getUserId(), ctx.conversationId());
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json == null) return null;
 
-        stringRedisTemplate.opsForValue().set(
-                key, objectMapper.writeValueAsString(plan),
-                RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
-        return plan;
+            RoutePlanVO plan;
+            try {
+                plan = objectMapper.readValue(json, RoutePlanVO.class);
+            } catch (Exception e) {
+                log.warn("路线缓存反序列化失败: {}", e.getMessage());
+                return null;
+            }
+            List<RouteStopVO> stops = plan.getStops();
+            if (stops == null || stopIndex < 0 || stopIndex >= stops.size()) {
+                return plan;
+            }
+
+            stops.get(stopIndex).setStatus(RouteStopStatus.ARRIVED);
+            plan.setRevision(plan.getRevision() + 1);
+            boolean currentAssigned = false;
+            for (RouteStopVO s : stops) {
+                if (s.getStatus() == RouteStopStatus.ARRIVED) continue;
+                if (!currentAssigned) {
+                    s.setStatus(RouteStopStatus.CURRENT);
+                    currentAssigned = true;
+                } else {
+                    s.setStatus(RouteStopStatus.UPCOMING);
+                }
+            }
+
+            stringRedisTemplate.opsForValue().set(
+                    key, objectMapper.writeValueAsString(plan),
+                    RedisConstants.ROUTE_PLAN_EXPIRE_TIME, TimeUnit.HOURS);
+            return plan;
+        }
     }
 
     @Override
-    public void clearPlan(Long userId, Long attractionId) {
-        stringRedisTemplate.delete(planKey(attractionId, userId));
+    public void clearPlan(Long userId, Long attractionId, String conversationId) {
+        if (conversationId == null) {
+            return;
+        }
+        synchronized (routeLock(attractionId, userId, conversationId)) {
+            stringRedisTemplate.delete(List.of(
+                    planKey(attractionId, userId, conversationId),
+                    generationKey(attractionId, userId, conversationId)));
+        }
     }
 
     // ---- helpers ----
 
-    private String planKey(Long attractionId, Long userId) {
-        return RedisConstants.ROUTE_PLAN_KEY + attractionId + ":" + userId;
+    private Object routeLock(Long attractionId, Long userId, String conversationId) {
+        int hash = (attractionId + ":" + userId + ":" + conversationId).hashCode();
+        return routeLocks[(hash & Integer.MAX_VALUE) % routeLocks.length];
+    }
+
+    private String planKey(Long attractionId, Long userId, String conversationId) {
+        return RedisConstants.ROUTE_PLAN_KEY + attractionId + ":" + userId + ":" + conversationId;
+    }
+
+    private String generationKey(Long attractionId, Long userId, String conversationId) {
+        return planKey(attractionId, userId, conversationId) + ":generation";
     }
 
     private String resolveGender(String genderCode) {

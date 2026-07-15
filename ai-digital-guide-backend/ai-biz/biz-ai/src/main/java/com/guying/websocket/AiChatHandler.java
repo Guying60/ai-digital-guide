@@ -199,7 +199,8 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                 }
             }
             case "routeClose" -> {
-                routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
+                routeRecommendationService.clearPlan(
+                        ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
                 sender.sendJson(ctx, "routeClosed", (String) null);
             }
             default -> log.warn("未知的客户端消息类型: {}", type);
@@ -255,8 +256,6 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                         MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
             }
         }
-        // 路线生命周期跟随连接，断开即清理
-        routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
         OutboundPacer pacer = ctx.getOutboundPacer();
         if (pacer != null) {
             pacer.shutdown();

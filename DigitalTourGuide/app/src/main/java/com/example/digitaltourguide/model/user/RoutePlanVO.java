@@ -12,6 +12,9 @@ public class RoutePlanVO {
     @SerializedName("routeId")
     private String routeId;
 
+    @SerializedName("conversationId")
+    private String conversationId;
+
     @SerializedName("title")
     private String title;
 
@@ -36,6 +39,9 @@ public class RoutePlanVO {
     @SerializedName("generatedAt")
     private long generatedAt;
 
+    @SerializedName("revision")
+    private long revision;
+
     @SerializedName("stops")
     private List<RouteStopVO> stops;
 
@@ -43,6 +49,9 @@ public class RoutePlanVO {
 
     public String getRouteId() { return routeId; }
     public void setRouteId(String routeId) { this.routeId = routeId; }
+
+    public String getConversationId() { return conversationId; }
+    public void setConversationId(String conversationId) { this.conversationId = conversationId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -67,6 +76,9 @@ public class RoutePlanVO {
 
     public long getGeneratedAt() { return generatedAt; }
     public void setGeneratedAt(long generatedAt) { this.generatedAt = generatedAt; }
+
+    public long getRevision() { return revision; }
+    public void setRevision(long revision) { this.revision = revision; }
 
     public List<RouteStopVO> getStops() { return stops; }
     public void setStops(List<RouteStopVO> stops) { this.stops = stops; }

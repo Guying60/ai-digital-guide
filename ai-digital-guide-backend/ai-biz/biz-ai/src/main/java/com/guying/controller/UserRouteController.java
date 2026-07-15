@@ -24,8 +24,9 @@ public class UserRouteController {
 
     @Operation(summary = "恢复当前激活的路线时间轴（刷新/重连用）")
     @GetMapping("/current")
-    public Result<RoutePlanVO> current(@RequestParam Long attractionId) {
+    public Result<RoutePlanVO> current(@RequestParam Long attractionId,
+                                       @RequestParam String conversationId) {
         Long userId = UserContext.getUserId();
-        return Result.success(routeRecommendationService.getCurrentPlan(userId, attractionId));
+        return Result.success(routeRecommendationService.getCurrentPlan(userId, attractionId, conversationId));
     }
 }

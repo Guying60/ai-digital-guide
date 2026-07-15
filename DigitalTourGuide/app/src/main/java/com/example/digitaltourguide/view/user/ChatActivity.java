@@ -740,8 +740,6 @@ public class ChatActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(ChatActivity.this, "✅ 连接成功！", Toast.LENGTH_SHORT).show();
                     startHeartbeat();
-                    // 1.16.1 恢复当前激活路线
-                    loadCurrentRoute();
                     // 1.17 拉取数字人原始视频并开始待机循环播放
                     loadIdleVideo();
                 });
@@ -872,7 +870,10 @@ public class ChatActivity extends AppCompatActivity {
                         // 1.16.2 路线生成失败
                         String errText = json.optString("text", "路线生成失败");
                         Log.w("MYTEST", "路线错误: " + errText);
-                        runOnUiThread(() -> Toast.makeText(ChatActivity.this, errText, Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() -> {
+                            routeTimeline.hideGenerating();
+                            Toast.makeText(ChatActivity.this, errText, Toast.LENGTH_SHORT).show();
+                        });
                     } else if ("error".equals(type)) {
                         String errorMsg = json.optString("text");
                         Log.d("MYTEST", "❌ 后端报错：" + errorMsg);
@@ -885,6 +886,7 @@ public class ChatActivity extends AppCompatActivity {
                             String serverCid = allDoneData.optString("conversationId", "");
                             if (!serverCid.isEmpty()) {
                                 conversationId = serverCid;
+                                loadCurrentRoute();
                             }
                         }
                         // 清空队列，准备下一次对话
@@ -1250,6 +1252,7 @@ public class ChatActivity extends AppCompatActivity {
                     JSONObject msg = new JSONObject();
                     msg.put("type", "routeGenerate");
                     webSocketClient.send(msg.toString());
+                    routeTimeline.showGenerating();
                     Log.d(TAG, "发送路线生成请求: routeGenerate");
                 } catch (JSONException e) {
                     Log.e(TAG, "构造 routeGenerate 失败", e);
@@ -1257,14 +1260,6 @@ public class ChatActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "WebSocket 未连接", Toast.LENGTH_SHORT).show();
             }
-        });
-        routeTimeline.setOnCloseClickListener(() -> {
-            new AlertDialog.Builder(ChatActivity.this)
-                    .setTitle("关闭路线")
-                    .setMessage("确认关闭当前 AI 推荐路线？")
-                    .setPositiveButton("确认", (d, w) -> sendRouteClose())
-                    .setNegativeButton("取消", null)
-                    .show();
         });
         routeTimeline.setOnStopClickListener(stop -> {
             if (stop.isCurrent()) {
@@ -1316,8 +1311,10 @@ public class ChatActivity extends AppCompatActivity {
      * 1.16.1 恢复当前激活路线（WebSocket 连接成功后调用）
      */
     private void loadCurrentRoute() {
-        if (attractionId == null || attractionId.isEmpty()) return;
-        ApiService.getInstance().getCurrentRoute(attractionId).enqueue(new retrofit2.Callback<BaseResponse<RoutePlanVO>>() {
+        if (attractionId == null || attractionId.isEmpty()
+                || conversationId == null || conversationId.isEmpty()) return;
+        String requestedConversationId = conversationId;
+        ApiService.getInstance().getCurrentRoute(attractionId, requestedConversationId).enqueue(new retrofit2.Callback<BaseResponse<RoutePlanVO>>() {
             @Override
             public void onResponse(retrofit2.Call<BaseResponse<RoutePlanVO>> call,
                                    retrofit2.Response<BaseResponse<RoutePlanVO>> response) {
@@ -1325,9 +1322,18 @@ public class ChatActivity extends AppCompatActivity {
                 if (body != null && body.getCode() == 1 && body.getData() != null) {
                     RoutePlanVO route = body.getData();
                     runOnUiThread(() -> {
-                        routeTimeline.setRoute(route);
-                        startArrivalMonitoring(route);
-                        Log.d(TAG, "路线恢复成功: " + route.getTitle() + " stops=" + route.getStops().size());
+                        RoutePlanVO displayed = routeTimeline.getCurrentRoute();
+                        boolean sameConversation = requestedConversationId.equals(conversationId)
+                                && requestedConversationId.equals(route.getConversationId());
+                        boolean notOlder = displayed == null
+                                || route.getGeneratedAt() > displayed.getGeneratedAt()
+                                || (route.getRouteId().equals(displayed.getRouteId())
+                                    && route.getRevision() >= displayed.getRevision());
+                        if (sameConversation && notOlder) {
+                            routeTimeline.setRoute(route);
+                            startArrivalMonitoring(route);
+                            Log.d(TAG, "路线恢复成功: " + route.getTitle() + " stops=" + route.getStops().size());
+                        }
                     });
                 } else {
                     Log.d(TAG, "无激活路线，data=" + (body != null ? body.getData() : "null"));
@@ -1437,24 +1443,6 @@ public class ChatActivity extends AppCompatActivity {
             Log.d(TAG, "发送到达上报: stopIndex=" + stopIndex);
         } catch (JSONException e) {
             Log.e(TAG, "构造 routeArrive 失败", e);
-        }
-    }
-
-    /**
-     * 1.16.2 关闭并清除当前路线
-     */
-    private void sendRouteClose() {
-        if (webSocketClient == null || !wsConnected) {
-            Toast.makeText(this, "WebSocket 未连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            JSONObject msg = new JSONObject();
-            msg.put("type", "routeClose");
-            webSocketClient.send(msg.toString());
-            Log.d(TAG, "发送关闭路线: routeClose");
-        } catch (JSONException e) {
-            Log.e(TAG, "构造 routeClose 失败", e);
         }
     }
 

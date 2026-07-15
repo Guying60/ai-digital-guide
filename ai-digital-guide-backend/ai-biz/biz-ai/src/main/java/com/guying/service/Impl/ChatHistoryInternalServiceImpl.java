@@ -1,6 +1,7 @@
 package com.guying.service.Impl;
 
 import com.guying.ai.service.ChatHistoryInternalService;
+import com.guying.service.RouteRecommendationService;
 import com.guying.websocket.session.ChatSessionContext;
 import com.guying.websocket.session.ChatSessionRegistry;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,9 @@ public class ChatHistoryInternalServiceImpl implements ChatHistoryInternalServic
     @Autowired
     private ChatSessionRegistry chatSessionRegistry;
 
+    @Autowired
+    private RouteRecommendationService routeRecommendationService;
+
     @Override
     public boolean hasMessages(String conversationId) {
         return !chatMemoryRepository.findByConversationId(conversationId).isEmpty();
@@ -48,9 +52,12 @@ public class ChatHistoryInternalServiceImpl implements ChatHistoryInternalServic
         if (ctx == null) {
             return;
         }
+        ctx.markEnding();
         if (tourHistoryDeleted) {
             ctx.markTourHistoryDeleted();
         }
+        routeRecommendationService.clearPlan(
+                ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
         WebSocketSession session = ctx.getUserSession();
         if (session != null && session.isOpen()) {
             try {

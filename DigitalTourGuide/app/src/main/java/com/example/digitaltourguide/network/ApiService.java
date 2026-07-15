@@ -156,7 +156,8 @@ public interface ApiService {
     //==================================================================
     @GET("users/route/current")
     Call<BaseResponse<RoutePlanVO>> getCurrentRoute(
-            @Query("attractionId") String attractionId
+            @Query("attractionId") String attractionId,
+            @Query("conversationId") String conversationId
     );
 
     //==================================================================
