@@ -130,6 +130,7 @@ public class MyPerActivity extends AppCompatActivity {
         initRequirements();
         initToolbar();
         initSaveButton();
+        clearPreferenceSelections();
 
         loadPreferences();
     }
@@ -358,13 +359,17 @@ public class MyPerActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════════
 
     private void resetToDefaults() {
+        clearPreferenceSelections();
+        Toast.makeText(this, "已重置", Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearPreferenceSelections() {
         clearStyleSelection();
         clearDepthSelection();
         selectedInterests.clear();
         refreshInterestTagStates();
         clearPurposeSelection();
         etRequirements.setText("");
-        Toast.makeText(this, "已重置", Toast.LENGTH_SHORT).show();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -375,14 +380,14 @@ public class MyPerActivity extends AppCompatActivity {
     //  内部值 → API code 映射
     // ═══════════════════════════════════════════════════════════════
 
-    private int styleToCode(String style) {
-        if (style == null) return 1;
+    private Integer styleToCode(String style) {
+        if (style == null) return null;
         switch (style) {
             case "professional": return 1;
             case "story":        return 2;
             case "humorous":     return 3;
             case "kids":         return 4;
-            default:             return 1;
+            default:             return null;
         }
     }
 
@@ -396,13 +401,13 @@ public class MyPerActivity extends AppCompatActivity {
         }
     }
 
-    private int depthToCode(String depth) {
-        if (depth == null) return 2;
+    private Integer depthToCode(String depth) {
+        if (depth == null) return null;
         switch (depth) {
             case "brief":    return 1;
             case "standard": return 2;
             case "deep":     return 3;
-            default:         return 2;
+            default:         return null;
         }
     }
 
@@ -415,14 +420,14 @@ public class MyPerActivity extends AppCompatActivity {
         }
     }
 
-    private int purposeToCode(String purpose) {
-        if (purpose == null) return 1;
+    private Integer purposeToCode(String purpose) {
+        if (purpose == null) return null;
         switch (purpose) {
             case "learning": return 1;
             case "family":   return 2;
             case "photo":    return 3;
             case "relax":    return 4;
-            default:         return 1;
+            default:         return null;
         }
     }
 
@@ -494,6 +499,8 @@ public class MyPerActivity extends AppCompatActivity {
     }
 
     private void applyPreferences(GuidePreference pref) {
+        clearPreferenceSelections();
+
         // 讲解风格
         if (pref.getGuideStyle() != null) {
             String style = codeToStyle(pref.getGuideStyle());
