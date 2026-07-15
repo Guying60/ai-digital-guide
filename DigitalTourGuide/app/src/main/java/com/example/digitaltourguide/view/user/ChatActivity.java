@@ -98,6 +98,7 @@ public class ChatActivity extends AppCompatActivity {
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private WebSocket webSocketClient;
     private volatile boolean wsConnected = false;  // 标记 WebSocket 是否已成功连接
+    private boolean keepWebSocketAlive = false;     // 返回主页时保持 WS 连接不断开
     private AudioRecord audioRecord;
     private boolean isRecording = false;
     private static final int SAMPLE_RATE = 16000;
@@ -221,6 +222,18 @@ public class ChatActivity extends AppCompatActivity {
             avSyncPlayer.interrupt();
         }
         Log.d("MYTEST", "已主动停止播放，等待下次交互");
+    }
+
+    /**
+     * 挂断按钮点击：弹出二次确认弹窗，确认后才执行结束对话。
+     */
+    private void confirmEndChat() {
+        new AlertDialog.Builder(this)
+                .setTitle("结束对话")
+                .setMessage("确认结束当前对话？")
+                .setPositiveButton("确认结束", (dialog, which) -> endChatAndGoBack())
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     /**
@@ -1107,19 +1120,14 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // 按返回键时也要断开 WebSocket，然后回到 HistoryActivity
+        // 返回主页时不关闭 WebSocket，对话仍在后台运行
+        keepWebSocketAlive = true;
         setResult(RESULT_OK);
-        // 清理 WebSocket 和资源（精简版，onDestroy 会兜底）
-        if (webSocketClient != null) {
-            webSocketClient.close(1000, "用户返回");
-            webSocketClient = null;
-        }
-        wsConnected = false;
-        stopHeartbeat();
         stopArrivalMonitoring();
         if (avSyncPlayer != null) {
             avSyncPlayer.interrupt();
         }
+        Toast.makeText(this, "对话仍在后台运行", Toast.LENGTH_SHORT).show();
         super.onBackPressed();
     }
 
@@ -1163,10 +1171,13 @@ public class ChatActivity extends AppCompatActivity {
             audioRecord.release();
             audioRecord = null;
         }
-        if (webSocketClient != null) {
+        // 返回主页时保持 WebSocket 连接不断开（挂断结束才关闭）
+        if (!keepWebSocketAlive && webSocketClient != null) {
             webSocketClient.close(1000,"用户正常退出");
             webSocketClient = null;
         }
+        // 重置标志位，下次进入时默认关闭
+        keepWebSocketAlive = false;
 
         if (avSyncPlayer != null) {
             avSyncPlayer.release();
@@ -1192,12 +1203,12 @@ public class ChatActivity extends AppCompatActivity {
         ivCamera = findViewById(R.id.btn_camera);
         ivCamera.setOnClickListener(v -> toggleCamera());
 
-        // 红色电话挂断按钮 → 结束对话
-        ivCapture.setOnClickListener(v -> endChatAndGoBack());
+        // 红色电话挂断按钮 → 二次确认后结束对话
+        ivCapture.setOnClickListener(v -> confirmEndChat());
 
         // 结束对话按钮
         btnEndChat = findViewById(R.id.btn_capture);
-        btnEndChat.setOnClickListener(v -> endChatAndGoBack());
+        btnEndChat.setOnClickListener(v -> confirmEndChat());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {

@@ -139,4 +139,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userTourHistoryMapper.insert(userTourHistory);
     }
 
+    @Override
+    public void upsertUserTourHistory(UserTourHistory userTourHistory) {
+        LambdaQueryWrapper<UserTourHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserTourHistory::getUserId, userTourHistory.getUserId())
+               .eq(UserTourHistory::getConversationId, userTourHistory.getConversationId());
+        UserTourHistory existing = userTourHistoryMapper.selectOne(wrapper);
+        if (existing != null) {
+            // 已存在 → 更新 messageCount；tourStatus 只升不降（0→1→2，不允许 2→1 或 1→0）
+            if (userTourHistory.getMessageCount() != null) {
+                existing.setMessageCount(userTourHistory.getMessageCount());
+            }
+            if (userTourHistory.getTourStatus() != null) {
+                Integer cur = existing.getTourStatus();
+                Integer incoming = userTourHistory.getTourStatus();
+                if (cur == null || incoming > cur) {
+                    existing.setTourStatus(incoming);
+                }
+            }
+            userTourHistoryMapper.updateById(existing);
+        } else {
+            // 不存在 → 插入新记录
+            userTourHistoryMapper.insert(userTourHistory);
+        }
+    }
+
+    @Override
+    public void deleteUserTourHistoryByConversation(Long userId, String conversationId) {
+        LambdaQueryWrapper<UserTourHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserTourHistory::getUserId, userId)
+               .eq(UserTourHistory::getConversationId, conversationId);
+        userTourHistoryMapper.delete(wrapper);
+    }
+
 }

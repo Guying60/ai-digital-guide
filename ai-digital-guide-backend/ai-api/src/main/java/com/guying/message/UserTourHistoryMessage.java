@@ -17,4 +17,6 @@ public class UserTourHistoryMessage {
     private Integer messageCount;
     /** 会话状态：0-进行中 1-已结束 2-已评价 */
     private Integer tourStatus;
+    /** true 表示删除该记录（无效会话清理），false/null 表示创建或更新 */
+    private Boolean deleteRecord;
 }

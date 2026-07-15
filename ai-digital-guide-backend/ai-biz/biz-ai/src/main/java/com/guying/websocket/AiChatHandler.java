@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import com.guying.common.constants.MqConstants;
 import com.guying.common.constants.RedisConstants;
+import com.guying.common.enums.TourStatusEnum;
 import com.guying.attractions.service.DigitalHumanInternalService;
 import com.guying.exception.ServiceException;
 import com.guying.message.UserTourHistoryMessage;
@@ -118,8 +119,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
-            // 游览历史不再在连接建立时落库：改为断开时按"是否提问过 / 连接是否≥30s"判定，
-            // 避免零提问且秒断的连接产生历史/待评价脏数据。
+            // 连接时即创建游览历史记录（IN_PROGRESS, messageCount=0），
+            // 确保主页立即可见；无效会话（0 提问 + <30s）在断开时删除
+            publishUserTourHistory(ctx, TourStatusEnum.IN_PROGRESS.getCode());
             // 数字人音视频连接仅在配置了数字人时建立，纯文本会话不依赖二者
             if (!textOnly) {
                 museTalkConnector.connect(ctx);
@@ -201,16 +203,17 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=DISCONNECT ═══", registry.size(), sid);
             return;
         }
-        // 仅"提问过 或 连接≥30s"的有效会话才落游览历史 + 待评价；
-        // 零提问且秒断的连接直接丢弃，不产生脏数据。
+        // 有效会话：更新 messageCount（tourStatus 由 Listener upsert 保留原值，不降级）
+        // 无效会话（0 提问 + <30s）：删除连接时创建的记录，避免脏数据
         boolean shouldPersist = ctx.getQuestionCount() > 0
                 || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
         if (shouldPersist) {
             publishUserTourHistory(ctx);
             reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
         } else {
-            log.info("会话判定为无效（零提问且连接<{}ms），不落数据库 sid={}, questionCount={}",
+            log.info("会话判定为无效（零提问且连接<{}ms），删除游览历史 sid={}, questionCount={}",
                     MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
+            publishDeleteUserTourHistory(ctx);
         }
         // 路线生命周期跟随连接，断开即清理
         routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
@@ -291,7 +294,38 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         userService.getUserInfo(userId);
     }
 
+    /** 连接时调用：创建 IN_PROGRESS 记录（messageCount=0） */
+    private void publishUserTourHistory(ChatSessionContext ctx, Integer tourStatus) {
+        UserTourHistoryMessage msg = buildBaseMessage(ctx);
+        msg.setTourStatus(tourStatus);
+        rabbitTemplate.convertAndSend(
+                MqConstants.USER_TOUR_HISTORY_DIRECT,
+                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
+                msg);
+    }
+
+    /** 断开时调用：更新 messageCount，不改变 tourStatus（由 Listener upsert 保留原值） */
     private void publishUserTourHistory(ChatSessionContext ctx) {
+        UserTourHistoryMessage msg = buildBaseMessage(ctx);
+        rabbitTemplate.convertAndSend(
+                MqConstants.USER_TOUR_HISTORY_DIRECT,
+                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
+                msg);
+    }
+
+    /** 无效会话清理：发送 delete 消息，Listener 删除连接时创建的记录 */
+    private void publishDeleteUserTourHistory(ChatSessionContext ctx) {
+        UserTourHistoryMessage msg = new UserTourHistoryMessage();
+        msg.setUserId(ctx.getUserId());
+        msg.setConversationId(ctx.conversationId());
+        msg.setDeleteRecord(true);
+        rabbitTemplate.convertAndSend(
+                MqConstants.USER_TOUR_HISTORY_DIRECT,
+                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
+                msg);
+    }
+
+    private UserTourHistoryMessage buildBaseMessage(ChatSessionContext ctx) {
         UserTourHistoryMessage msg = new UserTourHistoryMessage();
         msg.setUserId(ctx.getUserId());
         msg.setAttractionId(ctx.getAttractionId());
@@ -299,9 +333,6 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         // 每轮用户提问对应一条 AI 回复；记忆窗口会裁剪历史，不能事后 COUNT
         int questionCount = ctx.getQuestionCount();
         msg.setMessageCount(questionCount > 0 ? questionCount * 2 : 0);
-        rabbitTemplate.convertAndSend(
-                MqConstants.USER_TOUR_HISTORY_DIRECT,
-                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
-                msg);
+        return msg;
     }
 }

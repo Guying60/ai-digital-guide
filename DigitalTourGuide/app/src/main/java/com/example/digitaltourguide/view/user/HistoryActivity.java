@@ -1,6 +1,7 @@
 package com.example.digitaltourguide.view.user;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -245,27 +246,35 @@ public class HistoryActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // 返回记录 → 关闭弹窗，通知后端结束对话并刷新
+        // 返回记录 → 二次确认后关闭弹窗，通知后端结束对话并刷新
         view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
-            dialog.dismiss();
-            // 调用后端结束对话接口
-            apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
-                @Override
-                public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
-                    Log.d(TAG, "结束对话接口调用成功");
-                }
-                @Override
-                public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
-                    Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
-                }
-            });
-            // 本地立刻更新 UI（服务端状态以接口返回为准）
-            spot.setTourStatus(1); // ENDED
-            spot.setEnded(true);
-            int position = dataList.indexOf(spot);
-            if (position != -1) {
-                adapter.notifyItemChanged(position);
-            }
+            new AlertDialog.Builder(HistoryActivity.this)
+                    .setTitle("结束对话")
+                    .setMessage("确认结束当前对话？")
+                    .setPositiveButton("确认结束", (confirmDialog, which) -> {
+                        confirmDialog.dismiss();
+                        dialog.dismiss();
+                        // 调用后端结束对话接口
+                        apiService.endTourHistory(spot.getConversationId()).enqueue(new Callback<BaseResponse<Void>>() {
+                            @Override
+                            public void onResponse(Call<BaseResponse<Void>> call, Response<BaseResponse<Void>> response) {
+                                Log.d(TAG, "结束对话接口调用成功");
+                            }
+                            @Override
+                            public void onFailure(Call<BaseResponse<Void>> call, Throwable t) {
+                                Log.w(TAG, "结束对话接口调用失败: " + t.getMessage());
+                            }
+                        });
+                        // 本地立刻更新 UI（服务端状态以接口返回为准）
+                        spot.setTourStatus(1); // ENDED
+                        spot.setEnded(true);
+                        int position = dataList.indexOf(spot);
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position);
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
         });
 
         dialog.setCanceledOnTouchOutside(true);

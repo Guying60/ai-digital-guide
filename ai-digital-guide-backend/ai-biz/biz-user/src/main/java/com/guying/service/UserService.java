@@ -26,4 +26,13 @@ public interface UserService extends IService<User> {
     UserRegisterVO userRegister(RegisterDTO registerDTO);
 
     void saveUserTourHistory(UserTourHistory userTourHistory);
+
+    /**
+     * Upsert 游览历史记录：按 userId+conversationId 查，存在则更新（messageCount 更新，
+     * tourStatus 只升不降），不存在则插入。
+     */
+    void upsertUserTourHistory(UserTourHistory userTourHistory);
+
+    /** 按 userId + conversationId 删除游览历史记录（无效会话清理） */
+    void deleteUserTourHistoryByConversation(Long userId, String conversationId);
 }
