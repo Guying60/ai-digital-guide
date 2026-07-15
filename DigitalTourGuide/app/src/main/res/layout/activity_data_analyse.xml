@@ -228,7 +228,7 @@
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
                             android:background="@drawable/bg_spinner_pill"
-                            android:entries="@array/date_options"
+                            android:entries="@array/time_range_options"
                             android:paddingHorizontal="12dp" />
                     </RelativeLayout>
 

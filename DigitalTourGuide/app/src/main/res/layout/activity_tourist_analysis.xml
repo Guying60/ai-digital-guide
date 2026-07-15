@@ -67,11 +67,14 @@
                     android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="16dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="正面情感占比"
                         android:textColor="@color/primary"
                         android:textSize="13sp"
@@ -89,9 +92,11 @@
 
                     <TextView
                         android:id="@+id/tv_positive_change"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="↑21% 较上月"
                         android:textColor="@color/primary"
                         android:textSize="12sp" />
@@ -103,7 +108,7 @@
                 android:layout_width="0dp"
                 android:layout_height="150dp"
                 android:layout_weight="1"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="8dp"
                 app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
@@ -114,11 +119,14 @@
                     android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="16dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="高频关注点"
                         android:textColor="@color/primary"
                         android:textSize="13sp"
@@ -136,9 +144,11 @@
 
                     <TextView
                         android:id="@+id/tv_top_focus_rate"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="占所有问题71%"
                         android:textColor="@color/muted"
                         android:textSize="12sp" />
@@ -150,7 +160,7 @@
                 android:layout_width="0dp"
                 android:layout_height="150dp"
                 android:layout_weight="1"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="8dp"
                 app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
@@ -161,11 +171,14 @@
                     android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="16dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="待改善"
                         android:textColor="@color/error"
                         android:textSize="13sp"
@@ -182,9 +195,11 @@
                         android:textStyle="bold" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:maxLines="1"
                         android:text="负面评价最集中"
                         android:textColor="@color/muted"
                         android:textSize="12sp" />

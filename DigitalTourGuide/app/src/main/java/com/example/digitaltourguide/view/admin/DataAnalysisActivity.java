@@ -50,7 +50,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
     private Spinner spinnerQa,spinnerPeople,spinnerScore;
     private LineChart lineChart,lineChartSatisfaction;;
     private int currentDays = 1;
-    private int satisfactionDays = 1;
+    private int satisfactionDays = 7;
     private LinearLayout tabTouristAnalysis;
     private TextView tvEmpty,tvTotalPeople,tvTouristText,tvDataText,tvBack;
     private DataTooltipMarkerView markerTrend, markerSatisfaction;
@@ -136,9 +136,8 @@ public class DataAnalysisActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 switch(position){
-                    case 0: satisfactionDays=1;break;
-                    case 1: satisfactionDays=7;break;
-                    case 2: satisfactionDays=30;break;
+                    case 0: satisfactionDays=7;break;
+                    case 1: satisfactionDays=30;break;
                 }
                 loadSatisfactionTrendData(satisfactionDays);
             }
@@ -197,6 +196,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
         LineDataSet dataSet = new LineDataSet(entries, "满意度均分");
         styleTrendDataSet(dataSet, chartSecondary);
+        dataSet.setDrawValues(entries.size() <= 10);
 
         LineData lineData = new LineData(dataSet);
         lineChartSatisfaction.setData(lineData);
@@ -271,6 +271,7 @@ public class DataAnalysisActivity extends AppCompatActivity {
 
         LineDataSet dataSet = new LineDataSet(entries, "服务人次");
         styleTrendDataSet(dataSet, chartPrimary);
+        dataSet.setDrawValues(entries.size() <= 10);
 
         LineData lineData=new LineData(dataSet);
         lineChart.setData(lineData);
@@ -388,11 +389,11 @@ public class DataAnalysisActivity extends AppCompatActivity {
         legend.setFormToTextSpace(6f);
         legend.setTextSize(12f);
         legend.setTextColor(textVariant);
-        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
-        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
+        legend.setHorizontalAlignment(Legend.LegendHorizontalAlignment.RIGHT);
+        legend.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
         legend.setOrientation(Legend.LegendOrientation.HORIZONTAL);
         legend.setDrawInside(false);
-        legend.setYOffset(8f);
+        legend.setYOffset(4f);
 
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
