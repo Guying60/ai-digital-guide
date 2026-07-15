@@ -119,9 +119,10 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             // 视频出站按 PTS 时钟节流，消除 bufferbloat 导致的中后期队列抽干
             ctx.setOutboundPacer(new OutboundPacer(ctx.getSid(), msg -> sender.send(ctx, msg)));
             cacheConversationAndUserInfo(ctx);
-            // 连接时即创建游览历史记录（IN_PROGRESS, messageCount=0），
-            // 确保主页立即可见；无效会话（0 提问 + <30s）在断开时删除
-            publishUserTourHistory(ctx, TourStatusEnum.IN_PROGRESS.getCode());
+            // 同步创建游览历史记录（IN_PROGRESS, messageCount=0），
+            // 确保主页立即可见；无效会话（0 提问 + <30s）在断开时同步删除
+            userService.createTourHistory(ctx.getUserId(), ctx.getAttractionId(),
+                    ctx.conversationId(), TourStatusEnum.IN_PROGRESS.getCode());
             // 数字人音视频连接仅在配置了数字人时建立，纯文本会话不依赖二者
             if (!textOnly) {
                 museTalkConnector.connect(ctx);
@@ -203,17 +204,17 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             log.info("═══ [METRICS] SESSIONS | active={} | sid={} | action=DISCONNECT ═══", registry.size(), sid);
             return;
         }
-        // 有效会话：更新 messageCount（tourStatus 由 Listener upsert 保留原值，不降级）
-        // 无效会话（0 提问 + <30s）：删除连接时创建的记录，避免脏数据
+        // 有效会话：MQ 异步更新 messageCount（tourStatus 不改变）
+        // 无效会话（0 提问 + <30s）：同步删除连接时创建的记录，避免 MQ 竞态导致脏数据残留
         boolean shouldPersist = ctx.getQuestionCount() > 0
                 || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
         if (shouldPersist) {
             publishUserTourHistory(ctx);
             reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
         } else {
-            log.info("会话判定为无效（零提问且连接<{}ms），删除游览历史 sid={}, questionCount={}",
+            log.info("会话判定为无效（零提问且连接<{}ms），同步删除游览历史 sid={}, questionCount={}",
                     MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
-            publishDeleteUserTourHistory(ctx);
+            userService.deleteTourHistory(ctx.getUserId(), ctx.conversationId());
         }
         // 路线生命周期跟随连接，断开即清理
         routeRecommendationService.clearPlan(ctx.getUserId(), ctx.getAttractionId());
@@ -294,31 +295,9 @@ public class AiChatHandler extends AbstractWebSocketHandler {
         userService.getUserInfo(userId);
     }
 
-    /** 连接时调用：创建 IN_PROGRESS 记录（messageCount=0） */
-    private void publishUserTourHistory(ChatSessionContext ctx, Integer tourStatus) {
-        UserTourHistoryMessage msg = buildBaseMessage(ctx);
-        msg.setTourStatus(tourStatus);
-        rabbitTemplate.convertAndSend(
-                MqConstants.USER_TOUR_HISTORY_DIRECT,
-                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
-                msg);
-    }
-
-    /** 断开时调用：更新 messageCount，不改变 tourStatus（由 Listener upsert 保留原值） */
+    /** 断开时调用：MQ 异步更新 messageCount，不改变 tourStatus（由 Listener upsert 保留原值） */
     private void publishUserTourHistory(ChatSessionContext ctx) {
         UserTourHistoryMessage msg = buildBaseMessage(ctx);
-        rabbitTemplate.convertAndSend(
-                MqConstants.USER_TOUR_HISTORY_DIRECT,
-                MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,
-                msg);
-    }
-
-    /** 无效会话清理：发送 delete 消息，Listener 删除连接时创建的记录 */
-    private void publishDeleteUserTourHistory(ChatSessionContext ctx) {
-        UserTourHistoryMessage msg = new UserTourHistoryMessage();
-        msg.setUserId(ctx.getUserId());
-        msg.setConversationId(ctx.conversationId());
-        msg.setDeleteRecord(true);
         rabbitTemplate.convertAndSend(
                 MqConstants.USER_TOUR_HISTORY_DIRECT,
                 MqConstants.USER_TOUR_HISTORY_ROUTING_KEY,

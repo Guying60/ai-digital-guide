@@ -1,5 +1,7 @@
 package com.guying.service.impl;
 
+import com.guying.attractions.dto.AttractionDTO;
+import com.guying.attractions.service.UserAttractionsInternalService;
 import com.guying.common.constants.RedisConstants;
 import com.guying.common.enums.GenderEnum;
 import com.guying.common.enums.guide.GuideDepth;
@@ -8,9 +10,11 @@ import com.guying.common.enums.guide.Interest;
 import com.guying.common.enums.guide.TravelPurpose;
 import com.guying.pojo.entity.User;
 import com.guying.pojo.entity.UserGuidePreference;
+import com.guying.pojo.entity.UserTourHistory;
 import com.guying.service.UserGuidePreferenceService;
 import com.guying.service.UserService;
 import com.guying.user.service.UserInternalService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class UserInternalServiceImpl implements UserInternalService {
     @Autowired
     private UserService userService;
@@ -29,6 +34,8 @@ public class UserInternalServiceImpl implements UserInternalService {
     private UserGuidePreferenceService preferenceService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private UserAttractionsInternalService attractionsInternalService;
 
 
     @Override
@@ -92,6 +99,31 @@ public class UserInternalServiceImpl implements UserInternalService {
         stringRedisTemplate.expire(cacheKey, RedisConstants.USER_INFO_EXPIRE_TIME, TimeUnit.HOURS);
 
         return map;
+    }
+
+    @Override
+    public void createTourHistory(Long userId, Long attractionId, String conversationId, Integer tourStatus) {
+        AttractionDTO attraction = attractionsInternalService.getAttraction(attractionId);
+        if (attraction == null) {
+            log.error("createTourHistory: attraction not found for id={}", attractionId);
+            return;
+        }
+        UserTourHistory entity = new UserTourHistory();
+        entity.setUserId(userId);
+        entity.setAttractionId(attractionId);
+        entity.setConversationId(conversationId);
+        entity.setAttractionName(attraction.getAttractionName());
+        entity.setCoverUrl(attraction.getCoverUrl());
+        entity.setType(attraction.getType());
+        entity.setCity(attraction.getCity());
+        entity.setMessageCount(0);
+        entity.setTourStatus(tourStatus);
+        userService.upsertUserTourHistory(entity);
+    }
+
+    @Override
+    public void deleteTourHistory(Long userId, String conversationId) {
+        userService.deleteUserTourHistoryByConversation(userId, conversationId);
     }
 
 }

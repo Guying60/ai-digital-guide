@@ -24,14 +24,6 @@ public class UserTourHistoryListener {
 
     @RabbitListener(queues = MqConstants.USER_TOUR_HISTORY_QUEUE)
     public void saveUserTourHistory(UserTourHistoryMessage msg) {
-        // 无效会话清理：delete 消息不需要 attraction 信息
-        if (Boolean.TRUE.equals(msg.getDeleteRecord())) {
-            log.info("删除无效会话记录 userId={}, conversationId={}", msg.getUserId(), msg.getConversationId());
-            userService.deleteUserTourHistoryByConversation(msg.getUserId(), msg.getConversationId());
-            return;
-        }
-
-        // 正常消息 → upsert（连接时创建 / 断开时更新）
         log.info("Received message: {}", msg);
         AttractionDTO attraction = attractionsInternalService.getAttraction(msg.getAttractionId());
         if (attraction == null){
