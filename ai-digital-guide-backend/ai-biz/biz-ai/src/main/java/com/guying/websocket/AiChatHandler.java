@@ -148,7 +148,7 @@ public class AiChatHandler extends AbstractWebSocketHandler {
             cacheConversationAndUserInfo(ctx);
             // 同步创建游览历史记录（新会话插入 IN_PROGRESS；继续对话时 upsert 复用原记录，
             // 不重置 messageCount、状态只升不降），确保主页立即可见；
-            // 无效会话（0 提问 + <30s）在断开时同步删除
+            // 记录在断开时保留，由用户显式「结束对话」时按零交互清理
             userService.createTourHistory(ctx.getUserId(), ctx.getAttractionId(),
                     ctx.conversationId(), TourStatusEnum.IN_PROGRESS.getCode());
             // 数字人音视频连接仅在配置了数字人时建立，纯文本会话不依赖二者
@@ -241,16 +241,18 @@ public class AiChatHandler extends AbstractWebSocketHandler {
                     sid, ctx.conversationId());
         } else {
             // 有效会话：MQ 异步更新 messageCount（tourStatus 不改变）
-            // 无效会话（0 提问 + <30s）：同步删除连接时创建的记录，避免 MQ 竞态导致脏数据残留
+            // 零交互短会话（0 提问 + <30s）：不再删除，保留连接时创建的 IN_PROGRESS 记录。
+            // 断开不代表用户结束游览——用户可能只是暂时退出、稍后回到主页「继续对话」，
+            // 若此处删除，刷新列表后记录会直接消失。空记录的清理交给用户显式「结束对话」
+            // （endTourHistory 按零交互删除），此处仅不落待评价，避免空记录被标为「可评价」。
             boolean shouldPersist = ctx.getQuestionCount() > 0
                     || (System.currentTimeMillis() - ctx.getConnectTime()) >= MIN_VALID_DURATION_MS;
             if (shouldPersist) {
                 publishUserTourHistory(ctx);
                 reviewInternalService.createPendingReview(ctx.getUserId(), ctx.getAttractionId(), ctx.conversationId());
             } else {
-                log.info("会话判定为无效（零提问且连接<{}ms），同步删除游览历史 sid={}, questionCount={}",
+                log.info("零交互短会话（零提问且连接<{}ms），保留 IN_PROGRESS 记录待用户继续对话 sid={}, questionCount={}",
                         MIN_VALID_DURATION_MS, sid, ctx.getQuestionCount());
-                userService.deleteTourHistory(ctx.getUserId(), ctx.conversationId());
             }
         }
         // 路线生命周期跟随连接，断开即清理
