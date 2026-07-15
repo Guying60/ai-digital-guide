@@ -231,35 +231,6 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /**
-     * 挂断按钮点击：弹出二次确认弹窗（自定义 UI），确认后才执行结束对话。
-     */
-    private void confirmEndChat() {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        View view = getLayoutInflater().inflate(R.layout.dialog_end_chat, null);
-        dialog.setContentView(view);
-
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setLayout(
-                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
-                    WindowManager.LayoutParams.WRAP_CONTENT
-            );
-            window.setGravity(Gravity.CENTER);
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
-
-        view.findViewById(R.id.btn_cancel_end).setOnClickListener(v -> dialog.dismiss());
-        view.findViewById(R.id.btn_confirm_end).setOnClickListener(v -> {
-            dialog.dismiss();
-            endChatAndGoBack();
-        });
-
-        dialog.setCanceledOnTouchOutside(true);
-        dialog.show();
-    }
-
-    /**
      * 结束对话：关闭 WebSocket、释放资源，回到 HistoryActivity。
      * 页面过渡动画与 DataAnalysisActivity ↔ TouristAnalysisActivity 一致（sibling_fade）。
      */
@@ -1244,12 +1215,12 @@ public class ChatActivity extends AppCompatActivity {
         ivCamera = findViewById(R.id.btn_camera);
         ivCamera.setOnClickListener(v -> toggleCamera());
 
-        // 红色电话挂断按钮 → 二次确认后结束对话
-        ivCapture.setOnClickListener(v -> confirmEndChat());
+        // 红色电话挂断按钮 → 直接结束对话
+        ivCapture.setOnClickListener(v -> endChatAndGoBack());
 
         // 结束对话按钮
         btnEndChat = findViewById(R.id.btn_capture);
-        btnEndChat.setOnClickListener(v -> confirmEndChat());
+        btnEndChat.setOnClickListener(v -> endChatAndGoBack());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {

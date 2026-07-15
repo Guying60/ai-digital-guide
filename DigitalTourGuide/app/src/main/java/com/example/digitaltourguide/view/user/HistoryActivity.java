@@ -175,8 +175,8 @@ public class HistoryActivity extends AppCompatActivity {
 
             @Override
             public void onStopChatClick(ScenicSpot spot) {
-                // 弹出自定义结束对话确认弹窗
-                showEndChatConfirmDialog(spot);
+                // 弹出三选一弹窗：去评价 / 继续对话 / 返回记录
+                showConversationEndedDialog(spot);
             }
 
             @Override
@@ -214,6 +214,51 @@ public class HistoryActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    /**
+     * 三选一弹窗：对话已结束，引导用户去评价、继续对话、或结束会话返回列表。
+     * 「返回记录」分支复用 showEndChatConfirmDialog 的零交互删除 + 有内容改状态逻辑。
+     */
+    private void showConversationEndedDialog(ScenicSpot spot) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.dialog_conversation_ended, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    WindowManager.LayoutParams.WRAP_CONTENT
+            );
+            window.setGravity(Gravity.CENTER);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // 去评价
+        view.findViewById(R.id.btn_go_rate).setOnClickListener(v -> {
+            dialog.dismiss();
+            showRatingDialog(spot);
+        });
+
+        // 继续对话
+        view.findViewById(R.id.btn_continue_chat).setOnClickListener(v -> {
+            dialog.dismiss();
+            Intent intent = new Intent(HistoryActivity.this, ChatActivity.class);
+            intent.putExtra("attractionId", spot.getAttractionId());
+            intent.putExtra("conversationId", spot.getConversationId());
+            startActivity(intent);
+        });
+
+        // 返回记录 → 复用 showEndChatConfirmDialog（含零交互删除 + 有内容改状态）
+        view.findViewById(R.id.btn_back_history).setOnClickListener(v -> {
+            dialog.dismiss();
+            showEndChatConfirmDialog(spot);
+        });
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
     }
 
     /**
@@ -310,6 +355,8 @@ public class HistoryActivity extends AppCompatActivity {
                 updateStars(stars, selectedScore[0]);
             });
         }
+        // 初始化为 0 星（未选中灰色），避免弹窗一打开就显示满星
+        updateStars(stars, selectedScore[0]);
 
         // ── 评分标签 (点击高亮切换，同时填充到输入框) ──
         int[] tagIds = {
