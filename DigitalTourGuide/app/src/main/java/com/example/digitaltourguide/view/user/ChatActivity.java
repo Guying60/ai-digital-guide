@@ -234,6 +234,23 @@ public class ChatActivity extends AppCompatActivity {
      * 结束对话：关闭 WebSocket、释放资源，回到 HistoryActivity。
      * 页面过渡动画与 DataAnalysisActivity ↔ TouristAnalysisActivity 一致（sibling_fade）。
      */
+    /**
+     * 挂断：只断开 WebSocket 连接 + 返回列表，不调后端结束接口。
+     * 与 HistoryActivity 中「结束对话」是两套独立逻辑。
+     */
+    private void hangUpAndGoBack() {
+        Log.d(TAG, "挂断按钮被点击，仅断开 WebSocket");
+        if (webSocketClient != null) {
+            webSocketClient.close(1000, "用户挂断");
+            webSocketClient = null;
+        }
+        wsConnected = false;
+        stopHeartbeat();
+        setResult(RESULT_OK);
+        finish();
+        overridePendingTransition(R.anim.sibling_fade_in, R.anim.sibling_fade_out);
+    }
+
     private void endChatAndGoBack() {
         Log.d(TAG, "结束对话按钮被点击，开始清理资源");
         try {
@@ -1217,12 +1234,12 @@ public class ChatActivity extends AppCompatActivity {
         ivCamera = findViewById(R.id.btn_camera);
         ivCamera.setOnClickListener(v -> toggleCamera());
 
-        // 红色电话挂断按钮 → 直接结束对话
-        ivCapture.setOnClickListener(v -> endChatAndGoBack());
+        // 红色电话挂断按钮 → 只断开 WebSocket，不调后端结束接口
+        ivCapture.setOnClickListener(v -> hangUpAndGoBack());
 
         // 结束对话按钮
         btnEndChat = findViewById(R.id.btn_capture);
-        btnEndChat.setOnClickListener(v -> endChatAndGoBack());
+        btnEndChat.setOnClickListener(v -> hangUpAndGoBack());
         tvDigitalHuman = findViewById(R.id.tv_digital_human);
         avSyncPlayer = new AVSyncPlayer(tvDigitalHuman);
         avSyncPlayer.setSubtitleCallback(text -> {
