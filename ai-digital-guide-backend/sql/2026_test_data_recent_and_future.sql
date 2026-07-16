@@ -32,7 +32,7 @@ SET @future_end    = DATE_ADD(@today,  INTERVAL 30 DAY);  -- 未来一个月终�
 -- ============================================
 -- 0. 清理已有测试数据（可重复执行）
 -- ============================================
-DELETE FROM tb_user_tour_history     WHERE id BETWEEN 710000000 AND 710001999;
+DELETE FROM tb_user_tour_history     WHERE id BETWEEN 710000000 AND 710002999;
 DELETE FROM tb_user_review           WHERE id BETWEEN 720000000 AND 720000999;
 DELETE FROM tb_ai_experience_analysis WHERE attraction_id = @attraction_id AND user_id BETWEEN 1001 AND 1010;
 DELETE FROM tb_face_emotion_record   WHERE attraction_id = @attraction_id AND user_id BETWEEN 1001 AND 1010;
@@ -130,29 +130,47 @@ FROM seq
 JOIN tb_attraction_faq f ON f.attraction_id = @attraction_id AND f.id BETWEEN 60001 AND 60010;
 
 -- ============================================
--- 8. tb_user_tour_history（游览记录：1200行，每天20条 → 近30天约600人次）
---    日期 = @past_start + FLOOR(idx/20) 天，消息条数 = (4~32)*2
+-- 8. tb_user_tour_history（游览记录：每天服务次数随机 12~35 次，不再固定20条）
+--    先按天生成随机当日次数 cnt，再用 nums 展开成行，日期 = @past_start + day_idx 天
 -- ============================================
 INSERT INTO tb_user_tour_history (id, user_id, attraction_id, conversation_id, create_time,
     attraction_name, cover_url, type, city, message_count, update_time)
-WITH RECURSIVE seq(idx, r1, r2, r3, r4, r5) AS (
-    SELECT 0, RAND(), RAND(), RAND(), RAND(), RAND()
+WITH RECURSIVE days(idx, r) AS (
+    SELECT 0, RAND()
     UNION ALL
-    SELECT idx + 1, RAND(), RAND(), RAND(), RAND(), RAND() FROM seq WHERE idx < 1199
+    SELECT idx + 1, RAND() FROM days WHERE idx < 60
+),
+day_counts AS (
+    SELECT idx, (12 + FLOOR(r * 24)) AS cnt FROM days       -- 每天 12 ~ 35 次
+),
+nums(n) AS (
+    SELECT 0
+    UNION ALL
+    SELECT n + 1 FROM nums WHERE n < 34
+),
+rows_cte AS (
+    SELECT d.idx AS day_idx, RAND() AS r1, RAND() AS r2, RAND() AS r3, RAND() AS r4, RAND() AS r5
+    FROM day_counts d
+    JOIN nums ON nums.n < d.cnt
+),
+numbered AS (
+    SELECT day_idx, r1, r2, r3, r4, r5,
+           ROW_NUMBER() OVER (ORDER BY day_idx, r1) AS rn
+    FROM rows_cte
 )
 SELECT
-    710000000 + seq.idx,
-    1001 + FLOOR(seq.r1 * 10),
+    710000000 + rn,
+    1001 + FLOOR(r1 * 10),
     @attraction_id,
-    CONCAT(@attraction_id, ':', 1001 + FLOOR(seq.r1 * 10), ':', DATE_FORMAT(DATE_ADD(@past_start, INTERVAL FLOOR(seq.idx / 20) DAY), '%Y%m%d'), seq.idx),
-    DATE_ADD(@past_start, INTERVAL FLOOR(seq.idx / 20) DAY) + INTERVAL FLOOR(seq.r2 * 24) HOUR + INTERVAL FLOOR(seq.r3 * 60) MINUTE,
+    CONCAT(@attraction_id, ':', 1001 + FLOOR(r1 * 10), ':', DATE_FORMAT(DATE_ADD(@past_start, INTERVAL day_idx DAY), '%Y%m%d'), rn),
+    DATE_ADD(@past_start, INTERVAL day_idx DAY) + INTERVAL FLOOR(r2 * 24) HOUR + INTERVAL FLOOR(r3 * 60) MINUTE,
     '故宫博物院',
     'https://oss-cn-guangzhou.aliyuncs.com/guying60/cover/gugong.jpg',
     4, '北京市',
-    (4 + FLOOR(seq.r4 * 28)) * 2,                                   -- 8 ~ 60
-    DATE_ADD(@past_start, INTERVAL FLOOR(seq.idx / 20) DAY) + INTERVAL FLOOR(seq.r2 * 24) HOUR + INTERVAL FLOOR(seq.r3 * 60) MINUTE
-        + INTERVAL (5 + FLOOR(seq.r5 * 40)) MINUTE
-FROM seq;
+    (4 + FLOOR(r4 * 28)) * 2,                                   -- 8 ~ 60
+    DATE_ADD(@past_start, INTERVAL day_idx DAY) + INTERVAL FLOOR(r2 * 24) HOUR + INTERVAL FLOOR(r3 * 60) MINUTE
+        + INTERVAL (5 + FLOOR(r5 * 40)) MINUTE
+FROM numbered;
 
 -- ============================================
 -- 9. tb_user_review（游客评价：600行，每天10条）

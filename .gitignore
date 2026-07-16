@@ -29,6 +29,7 @@ target/
 
 # === Claude Code (local settings) ===
 .claude/
+.zcode/
 
 # === Sensitive configs (contains credentials) ===
 ai-digital-guide-backend/ai-start/src/main/resources/application-dev.yml
